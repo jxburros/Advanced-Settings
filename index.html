@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#172d2b" />
+    <title>Advanced Settings — Meridian Workstation</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="systembar">
+      <span
+        ><b class="mark">m</b> MERIDIAN
+        <span class="muted">/ employee workspace</span></span
+      ><span
+        ><span class="status-dot"></span> LOCAL SESSION <span id="clock"></span
+      ></span>
+    </div>
+    <div class="desktop">
+      <aside class="sidebar">
+        <a class="brand" href="#overview"
+          >Advanced<br />Settings<span>WORKSTATION OS · 04.17</span></a
+        >
+        <div class="profile">
+          <div class="avatar">JD</div>
+          <div><strong>You, probably</strong><small id="rank"></small></div>
+        </div>
+        <div class="nav-label">WORKSPACE</div>
+        <nav id="nav"></nav>
+        <div class="nav-label">PINNED DISCOVERIES</div>
+        <div id="pins"></div>
+        <div class="sidebar-bottom">
+          <span class="status-dot"></span> All work is simulated.<br /><span
+            class="muted"
+            >The satisfaction is real.</span
+          >
+        </div>
+      </aside>
+      <main>
+        <header class="page-header">
+          <div>
+            <div class="eyebrow" id="breadcrumb">WORKSPACE / OVERVIEW</div>
+            <h1 id="title">A little more capable.</h1>
+          </div>
+          <button data-action="navigate" data-id="settings" class="quiet">
+            ⚙ Preferences
+          </button>
+        </header>
+        <div id="stats" class="stats"></div>
+        <div id="content"></div>
+        <footer>
+          MERIDIAN SOFTWARE GROUP <span>Property of the company. Mostly.</span
+          ><span id="save-status">Saved locally</span>
+        </footer>
+      </main>
+      <aside class="activity">
+        <div class="activity-title">
+          SYSTEM ACTIVITY <span class="status-dot"></span>
+        </div>
+        <div class="monitor">
+          <div class="monitor-label">COMPUTE ALLOCATION <b id="cpu"></b></div>
+          <div class="cpu-bars" aria-hidden="true">
+            ▂ ▅ ▃ ▇ ▄ ▆ ▂ ▅ ▇ ▃ ▆ ▄ ▅ ▂ ▇ ▅ ▃
+          </div>
+          <small id="job-count"></small>
+        </div>
+        <div id="jobs"></div>
+        <div class="activity-title log-title">EVENT LOG</div>
+        <div id="logs"></div>
+        <div class="sticky-note">
+          IT reminder<br /><strong
+            >Do not delete files named<br />“probably important”.</strong
+          ><small>We have tried this.</small>
+        </div>
+      </aside>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <input
+      type="file"
+      id="import-file"
+      accept="application/json,.json"
+      hidden
+    />
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
