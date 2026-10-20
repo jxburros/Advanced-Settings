@@ -3,70 +3,70 @@ export const SKILLS = [
     id: "web",
     name: "Web development",
     cost: 70,
-    xp: 15,
+    knowledge: 15,
     desc: "Make things for browsers. Unlocks Lunchboard, the lunch portal that is somehow mission-critical.",
   },
   {
     id: "tests",
     name: "Test harness",
     cost: 90,
-    xp: 25,
+    knowledge: 25,
     desc: "Tests now fix one defect on the way through. Real tests, as opposed to the other kind.",
   },
   {
     id: "hardware",
     name: "Second CPU core",
     cost: 130,
-    xp: 40,
+    knowledge: 40,
     desc: "Two jobs at full speed. Read and build at once, like a person with two hands.",
   },
   {
     id: "database",
     name: "Databases",
     cost: 140,
-    xp: 50,
+    knowledge: 50,
     desc: "Unlocks Archive Index and read access to the personnel archive. Use responsibly, or at least quietly.",
   },
   {
     id: "scheduler",
     name: "Task scheduler",
     cost: 180,
-    xp: 65,
+    knowledge: 65,
     desc: "Tests, debugs and ships finished work by itself. It will not choose features. It has no taste.",
   },
   {
     id: "autocomplete",
     name: "Autocomplete",
     cost: 160,
-    xp: 75,
+    knowledge: 75,
     desc: "Writing jobs run 40% faster. Suggests the next line, and occasionally the next thought.",
   },
   {
     id: "systems",
     name: "Systems programming",
     cost: 220,
-    xp: 95,
+    knowledge: 95,
     desc: "Unlocks Quiet Monitor and the kind of diagnostics that do not show up in Diagnostics.",
   },
   {
-    id: "agents",
+    id: "assistant",
     name: "AI task assistant",
     cost: 300,
-    xp: 120,
-    desc: "A local assistant you can assign to development, research or security. Very polite about everything.",
+    knowledge: 120,
+    desc: "A local assistant you can assign to development, reading or security. Very polite about everything.",
   },
   {
     id: "local",
     name: "Local model runtime",
     cost: 380,
-    xp: 170,
-    requires: "agents",
+    knowledge: 170,
+    requires: "assistant",
     desc: "A third worker and a stronger assistant. Runs entirely on this machine, which is now warm.",
   },
 ];
 export const PROJECTS = [
   {
-    id: "notes",
+    id: "pocket",
     name: "Pocket Notes",
     kind: "SCRIPT",
     desc: "A tiny notes utility with an unreasonable number of opinions about fonts.",
@@ -74,7 +74,7 @@ export const PROJECTS = [
     base: 45,
   },
   {
-    id: "intranet",
+    id: "lunchboard",
     name: "Lunchboard",
     kind: "WEB SERVICE",
     desc: "The internal lunch portal. Three outages last quarter, all of them during lunch.",
@@ -102,7 +102,8 @@ export const PROJECTS = [
     name: "Workspace Zero",
     kind: "LEGACY",
     desc: "Owner: you. Created eleven days before your start date.",
-    skill: "legacy",
+    skill: null,
+    bookmark: "workspace",
     base: 180,
   },
 ];
@@ -143,20 +144,20 @@ export function fresh(now = Date.now()) {
   return {
     version: 1,
     money: 40,
-    xp: 0,
+    knowledge: 0,
     users: 0,
     releases: 0,
     rank: 0,
     skills: [],
     projects: {
-      notes: { version: 0, stage: "plan", bugs: 0, feature: "search" },
+      pocket: { version: 0, stage: "plan", bugs: 0, feature: "search" },
     },
     jobs: [],
-    research: 0,
+    reading: 0,
     auto: false,
     ai: "development",
-    settings: { safe: true, legacy: false, duck: true, offline: false },
-    stories: { employee: 0, hacker: 0, duck: 0, career: 0 },
+    settings: { safe: true, legacy: false, duck: true, isolated: false },
+    stories: { employee: 0, quickfix: 0, duck: 0, career: 0 },
     bookmarks: [],
     logs: [
       {
@@ -174,7 +175,10 @@ export function log(s, text) {
   s.logs = s.logs.slice(0, 40);
 }
 export function unlocked(s, p) {
-  return !p.skill || s.skills.includes(p.skill);
+  return (
+    (!p.skill || s.skills.includes(p.skill)) &&
+    (!p.bookmark || s.bookmarks.includes(p.bookmark))
+  );
 }
 export function workers(s) {
   return (
@@ -226,7 +230,7 @@ export function release(s, id) {
   const money = Math.round(def.base * f.reward * (1 + p.version * 0.12));
   s.money += money;
   s.users += Math.round(money * 1.4);
-  s.xp += 20 + Math.round(def.base / 10);
+  s.knowledge += 20 + Math.round(def.base / 10);
   s.releases++;
   p.version++;
   p.stage = "plan";
@@ -235,7 +239,7 @@ export function release(s, id) {
     `${def.name} v${p.version}.0 shipped. +$${money}. Every test passed on the first run, as they always do.`,
   );
   if (s.releases === 2) {
-    s.stories.hacker = 1;
+    s.stories.quickfix = 1;
     log(
       s,
       "QuickFix installed itself to help with build performance. Build performance is down 20%. QuickFix is thrilled.",
@@ -249,7 +253,7 @@ export function buy(s, id) {
     !k ||
     s.skills.includes(id) ||
     s.money < k.cost ||
-    s.xp < k.xp ||
+    s.knowledge < k.knowledge ||
     (k.requires && !s.skills.includes(k.requires))
   )
     return false;
@@ -258,8 +262,8 @@ export function buy(s, id) {
   log(s, `${k.name} installed. Your workstation is a little more yours, legally still ours.`);
   return true;
 }
-export function research(s) {
-  return addJob(s, "research", null, 20);
+export function read(s) {
+  return addJob(s, "reading", null, 20);
 }
 export function promote(s, track) {
   const rank = Math.min(4, Math.floor(s.releases / 3));
@@ -276,14 +280,13 @@ export function promote(s, track) {
   return true;
 }
 export function discover(s, id) {
-  if (!["legacy", "channel"].includes(id) || s.bookmarks.includes(id))
+  if (!["workspace", "channel"].includes(id) || s.bookmarks.includes(id))
     return false;
-  if (id === "legacy" && !(s.settings.legacy && s.jobs.some((j) => j.paused)))
+  if (id === "workspace" && !(s.settings.legacy && s.jobs.some((j) => j.paused)))
     return false;
-  if (id === "channel" && !(s.skills.includes("systems") && s.settings.offline))
+  if (id === "channel" && !(s.skills.includes("systems") && s.settings.isolated))
     return false;
-  if (id === "legacy") {
-    s.skills.push("legacy");
+  if (id === "workspace") {
     s.stories.employee = Math.max(1, s.stories.employee);
     log(
       s,
@@ -302,7 +305,7 @@ export function discover(s, id) {
 }
 export function story(s, action) {
   if (
-    action === "archive" &&
+    action === "attachment" &&
     s.skills.includes("database") &&
     s.stories.employee === 1
   ) {
@@ -313,22 +316,22 @@ export function story(s, action) {
     );
     return true;
   }
-  if (action === "observe" && s.stories.hacker === 1) {
-    s.stories.hacker = 2;
+  if (action === "observe" && s.stories.quickfix === 1) {
+    s.stories.quickfix = 2;
     log(
       s,
       "Trace complete. QuickFix copies your real build times to an outside address owned by temp-contractor-0417. Someone wants the numbers Stillwater does not publish.",
     );
     return true;
   }
-  if (action === "quarantine" && [1, 2].includes(s.stories.hacker)) {
-    s.stories.hacker = s.stories.hacker === 2 ? 3 : 4;
+  if (action === "quarantine" && [1, 2].includes(s.stories.quickfix)) {
+    s.stories.quickfix = s.stories.quickfix === 2 ? 3 : 4;
     log(s, "QuickFix quarantined. It asked to stay. Build capacity restored.");
     return true;
   }
-  if (action === "patch" && [3, 4].includes(s.stories.hacker)) {
-    s.stories.hacker = 5;
-    s.xp += 25;
+  if (action === "sign" && [3, 4].includes(s.stories.quickfix)) {
+    s.stories.quickfix = 5;
+    s.knowledge += 25;
     log(
       s,
       "Signing policy enforced. temp-contractor-0417 revoked. Its last sign-in was from this desk, on a Thursday, at 4:17 p.m. Probably Greg’s space heater.",
@@ -364,12 +367,12 @@ export function tick(s, seconds) {
       let speed = share;
       if (j.kind === "write" && s.skills.includes("autocomplete")) speed *= 1.4;
       if (
-        s.skills.includes("agents") &&
-        ((s.ai === "development" && j.kind !== "research") ||
-          (s.ai === "research" && j.kind === "research"))
+        s.skills.includes("assistant") &&
+        ((s.ai === "development" && j.kind !== "reading") ||
+          (s.ai === "reading" && j.kind === "reading"))
       )
         speed *= s.skills.includes("local") ? 1.8 : 1.4;
-      if (s.stories.hacker === 1 || s.stories.hacker === 2) speed *= 0.8;
+      if (s.stories.quickfix === 1 || s.stories.quickfix === 2) speed *= 0.8;
       j.done += dt * speed;
     }
     for (const j of [...s.jobs]) {
@@ -385,9 +388,9 @@ export function tick(s, seconds) {
         p.bugs = 0;
         p.stage = "tested";
       }
-      if (j.kind === "research") {
-        s.research++;
-        s.xp += 8;
+      if (j.kind === "reading") {
+        s.reading++;
+        s.knowledge += 8;
         log(s, "Reading complete. +8 knowledge. Some of it was even true.");
       }
     }
@@ -400,15 +403,15 @@ export function tick(s, seconds) {
         }
       }
     if (
-      s.skills.includes("agents") &&
+      s.skills.includes("assistant") &&
       s.ai === "security" &&
-      s.stories.hacker > 0 &&
-      s.stories.hacker < 5
+      s.stories.quickfix > 0 &&
+      s.stories.quickfix < 5
     ) {
       if (s.elapsed % 10 < dt) {
-        if (s.stories.hacker === 1) story(s, "observe");
-        else if (s.stories.hacker === 2) story(s, "quarantine");
-        else story(s, "patch");
+        if (s.stories.quickfix === 1) story(s, "observe");
+        else if (s.stories.quickfix === 2) story(s, "quarantine");
+        else story(s, "sign");
       }
     }
   }
@@ -430,7 +433,7 @@ export function restore(raw, now = Date.now()) {
     throw Error("This is not an Advanced Settings save.");
   for (const k of [
     "money",
-    "xp",
+    "knowledge",
     "users",
     "releases",
     "rank",
@@ -457,20 +460,20 @@ export function restore(raw, now = Date.now()) {
       throw Error("Invalid project.");
   for (const j of s.jobs)
     if (
-      !["write", "test", "debug", "research"].includes(j.kind) ||
+      !["write", "test", "debug", "reading"].includes(j.kind) ||
       !Number.isFinite(j.done) ||
       !Number.isFinite(j.total) ||
       j.total <= 0 ||
-      (j.kind !== "research" && !s.projects[j.project])
+      (j.kind !== "reading" && !s.projects[j.project])
     )
       throw Error("Invalid process.");
   if (
     !Number.isInteger(s.rank) ||
     s.rank > 4 ||
-    !Number.isFinite(s.research) ||
-    s.research < 0 ||
+    !Number.isFinite(s.reading) ||
+    s.reading < 0 ||
     typeof s.auto !== "boolean" ||
-    !["development", "research", "security"].includes(s.ai)
+    !["development", "reading", "security"].includes(s.ai)
   )
     throw Error("Invalid workstation state.");
   if (
@@ -478,11 +481,11 @@ export function restore(raw, now = Date.now()) {
     !["specialist", "manager", "automator"].includes(s.track)
   )
     throw Error("Invalid career.");
-  for (const key of ["safe", "legacy", "duck", "offline"])
+  for (const key of ["safe", "legacy", "duck", "isolated"])
     if (typeof s.settings[key] !== "boolean") throw Error("Invalid settings.");
   for (const [key, max] of Object.entries({
     employee: 3,
-    hacker: 5,
+    quickfix: 5,
     duck: 4,
     career: 4,
   }))
@@ -494,9 +497,9 @@ export function restore(raw, now = Date.now()) {
       throw Error("Invalid case file.");
   if (
     s.skills.some(
-      (id) => ![...SKILLS.map((k) => k.id), "legacy"].includes(id),
+      (id) => !SKILLS.some((k) => k.id === id),
     ) ||
-    s.bookmarks.some((id) => !["legacy", "channel"].includes(id))
+    s.bookmarks.some((id) => !["workspace", "channel"].includes(id))
   )
     throw Error("Invalid unlocks.");
   if (

@@ -1,6 +1,6 @@
 import * as G from "./game.js";
-const KEY = "advanced-settings-v1";
-const UIKEY = "advanced-settings-ui-v1";
+const KEY = "stillwater-workstation";
+const UIKEY = "stillwater-desktop";
 let s = G.fresh(),
   saveError = "";
 try {
@@ -58,7 +58,7 @@ const GLYPHS = {
   trash: '<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>',
   quickfix: '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
   important: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/>',
-  legacy: '<path d="M12 3l9 9-9 9-9-9z"/><path d="M12 8l4 4-4 4-4-4z"/>',
+  workspace: '<path d="M12 3l9 9-9 9-9-9z"/><path d="M12 8l4 4-4 4-4-4z"/>',
   channel:
     '<circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2"/>',
 };
@@ -113,7 +113,7 @@ const NOTES = [
   [() => true, "The build server stops responding at 4:17 every Thursday. Management calls this scheduled maintenance. It is Greg’s space heater."],
   [() => true, "Old themes carry more than colors. If an importer ever wants a snapshot, pause something and let it catch its breath."],
   [() => s.releases >= 1, "Every test passes on the first run. Every single one. You’ll get used to it. Don’t."],
-  [() => s.stories.hacker >= 1, "If a plugin has the word “helpful” in its own description, it isn’t."],
+  [() => s.stories.quickfix >= 1, "If a plugin has the word “helpful” in its own description, it isn’t."],
   [() => s.releases >= 3, "They update your email signature before they tell you you’ve been promoted. Check it every morning. It’s how you find things out here."],
   [() => s.skills.includes("database"), "If you find a project with your name on it, check the creation date before you open it."],
   [() => s.stories.employee >= 2, "The Calm Index in the corner of your screen has no sensor. I followed the cable. There is no cable."],
@@ -171,7 +171,7 @@ const TRACKS = {
 const complete = () =>
   s.rank === 4 &&
   s.stories.employee === 3 &&
-  s.stories.hacker === 5 &&
+  s.stories.quickfix === 5 &&
   s.stories.duck === 4;
 
 /* ---------- small building blocks ---------- */
@@ -202,7 +202,7 @@ function goal() {
     return ["Ship something", "Open Workbench, pick a feature for Pocket Notes, then write, test, fix and ship it. Nobody expects much. That’s the nice part.", "workbench", "Open Workbench"];
   if (s.rank < 4 && s.releases >= 3 * (s.rank + 1))
     return ["Your growth conversation is ready", "People & Serenity would like to discuss your trajectory. It’s in Mail.", "mail", "Open Mail"];
-  if (s.stories.hacker > 0 && s.stories.hacker < 5)
+  if (s.stories.quickfix > 0 && s.stories.quickfix < 5)
     return ["Something is using your processor", "A plugin you didn’t install is helping. Activity Monitor has opinions about that.", "activity", "Open Activity Monitor"];
   if (!s.skills.includes("web"))
     return ["Widen your horizons", "Install Web development in Toolshed to unlock a second project. The lunch portal needs you.", "toolshed", "Open Toolshed"];
@@ -216,7 +216,7 @@ function goal() {
 /* ---------- apps ---------- */
 const STAGE = { plan: 0, writing: 1, written: 1, testing: 2, tested: 3, debugging: 3 };
 function workbench() {
-  const list = G.PROJECTS.filter((p) => p.id !== "workspace" || s.skills.includes("legacy"));
+  const list = G.PROJECTS.filter((p) => !p.bookmark || G.unlocked(s, p));
   const ready = list.find((d) => {
     const p = s.projects[d.id];
     return p && ["written", "tested"].includes(p.stage) && !s.jobs.some((j) => j.project === d.id);
@@ -252,41 +252,41 @@ function projectView(def) {
   const steps = ["Plan", "Write", "Test", "Debug", "Ship"]
     .map((n, i) => `<li class="${i < at ? "done" : i === at && open ? "now" : ""}">${n}</li>`)
     .join("");
-  return `<div class="project-head">${icon(def.id === "workspace" ? "legacy" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${card(control, "controls")}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room.</p>`;
+  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${card(control, "controls")}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room.</p>`;
 }
 function toolshed() {
   const groups = {
     languages: ["web", "database", "systems"],
     tools: ["tests", "autocomplete", "scheduler"],
-    machine: ["hardware", "agents", "local"],
+    machine: ["hardware", "assistant", "local"],
   };
   const cur = tabOf("toolshed", Object.keys(groups));
   const rows = groups[cur]
     .map((id) => {
       const k = G.SKILLS.find((k) => k.id === id);
       const own = s.skills.includes(k.id);
-      const can = s.money >= k.cost && s.xp >= k.xp && (!k.requires || s.skills.includes(k.requires));
-      const why = own ? "" : s.xp < k.xp ? `Needs ${k.xp} knowledge` : k.requires && !s.skills.includes(k.requires) ? "Needs the AI task assistant" : s.money < k.cost ? `Needs ${money(k.cost)}` : "";
-      return `<div class="shelf ${own ? "owned" : ""}"><div><strong>${k.name}</strong><p>${k.desc}</p><small class="muted">${money(k.cost)} · ${k.xp} knowledge${k.requires ? " · needs assistant" : ""}</small></div>${button(own ? "Installed" : can ? "Install" : why, "buy", k.id, own || !can, own ? "ghost" : "primary", `aria-label="${own ? "Installed" : "Install"} ${k.name}"`)}</div>`;
+      const can = s.money >= k.cost && s.knowledge >= k.knowledge && (!k.requires || s.skills.includes(k.requires));
+      const why = own ? "" : s.knowledge < k.knowledge ? `Needs ${k.knowledge} knowledge` : k.requires && !s.skills.includes(k.requires) ? "Needs the AI task assistant" : s.money < k.cost ? `Needs ${money(k.cost)}` : "";
+      return `<div class="shelf ${own ? "owned" : ""}"><div><strong>${k.name}</strong><p>${k.desc}</p><small class="muted">${money(k.cost)} · ${k.knowledge} knowledge${k.requires ? " · needs assistant" : ""}</small></div>${button(own ? "Installed" : can ? "Install" : why, "buy", k.id, own || !can, own ? "ghost" : "primary", `aria-label="${own ? "Installed" : "Install"} ${k.name}"`)}</div>`;
     })
     .join("");
   return (
     tabs("toolshed", [["languages", "Languages"], ["tools", "Tools"], ["machine", "Hardware & AI"]], cur) +
-    `<div class="pane"><div class="balance"><div><span>Budget</span><b>${money(s.money)}</b></div><div><span>Knowledge</span><b>${Math.floor(s.xp)}</b></div></div><p class="fine">Knowledge is never spent. It just has to be there. Budget is spent, enthusiastically.</p>${rows}</div>`
+    `<div class="pane"><div class="balance"><div><span>Budget</span><b>${money(s.money)}</b></div><div><span>Knowledge</span><b>${Math.floor(s.knowledge)}</b></div></div><p class="fine">Knowledge is never spent. It just has to be there. Budget is spent, enthusiastically.</p>${rows}</div>`
   );
 }
 function library() {
-  const busy = s.jobs.find((j) => j.kind === "research");
+  const busy = s.jobs.find((j) => j.kind === "reading");
   return `<div class="pane">${eyebrow("Stillwater Internal Documentation · rev. 41")}<h2>Read the documentation.</h2><p class="lede">Nobody reads it. That’s why it works. Each reading session takes 20 seconds of processor time and leaves you with 8 knowledge, which you keep forever.</p>${card(
     busy
       ? `<div class="progress-label"><span>Reading${busy.paused ? " · paused" : ""}</span><b data-jobpct="${busy.id}">${pct(busy)}</b></div>${jobBar(busy)}`
-      : button("Read the documentation · 20s", "research", "", false, "primary wide"),
+      : button("Read the documentation · 20s", "read", "", false, "primary wide"),
     "controls",
-  )}${s.research ? `<blockquote>${READING[(s.research - 1) % READING.length]}</blockquote><p class="fine">${s.research} session${s.research === 1 ? "" : "s"} completed. Appendix H remains unread.</p>` : `<p class="fine">0 sessions completed. The table of contents alone is 30 pages.</p>`}</div>`;
+  )}${s.reading ? `<blockquote>${READING[(s.reading - 1) % READING.length]}</blockquote><p class="fine">${s.reading} session${s.reading === 1 ? "" : "s"} completed. Appendix H remains unread.</p>` : `<p class="fine">0 sessions completed. The table of contents alone is 30 pages.</p>`}</div>`;
 }
 function conductor() {
-  const agents = s.skills.includes("agents");
-  return `<div class="pane">${eyebrow("Automation")}<h2>Let the familiar run itself.</h2>${toggle("Release pipeline", s.skills.includes("scheduler") ? "Tests, fixes and ships finished work automatically. You still choose every feature; the scheduler has no taste." : "Requires the Task scheduler from Toolshed.", "auto", s.auto, !s.skills.includes("scheduler"))}<div class="setting-row"><div><strong>Assistant assignment</strong><p>Development speeds up project work. Research speeds up reading. Security tracks down things that shouldn’t be there.</p></div><select id="ai" ${agents ? "" : "disabled"} aria-label="Assistant assignment">${["development", "research", "security"].map((v) => `<option value="${v}" ${s.ai === v ? "selected" : ""}>${v[0].toUpperCase() + v.slice(1)}</option>`).join("")}</select></div><p class="fine">${agents ? `Assistant online. ${s.skills.includes("local") ? "Local model: +80% on its assignment." : "Base model: +40% on its assignment."} It would like you to know it is happy to help.` : "Install the AI task assistant in Toolshed to hire one. No real AI is involved; it is very convincing anyway."}</p></div>`;
+  const assistant = s.skills.includes("assistant");
+  return `<div class="pane">${eyebrow("Automation")}<h2>Let the familiar run itself.</h2>${toggle("Release pipeline", s.skills.includes("scheduler") ? "Tests, fixes and ships finished work automatically. You still choose every feature; the scheduler has no taste." : "Requires the Task scheduler from Toolshed.", "auto", s.auto, !s.skills.includes("scheduler"))}<div class="setting-row"><div><strong>Assistant assignment</strong><p>Development speeds up project work. Reading speeds up the documentation. Security tracks down things that shouldn’t be there.</p></div><select id="ai" ${assistant ? "" : "disabled"} aria-label="Assistant assignment">${["development", "reading", "security"].map((v) => `<option value="${v}" ${s.ai === v ? "selected" : ""}>${v[0].toUpperCase() + v.slice(1)}</option>`).join("")}</select></div><p class="fine">${assistant ? `Assistant online. ${s.skills.includes("local") ? "Local model: +80% on its assignment." : "Base model: +40% on its assignment."} It would like you to know it is happy to help.` : "Install the AI task assistant in Toolshed to hire one. No real AI is involved; it is very convincing anyway."}</p></div>`;
 }
 function message(from, subject, body, meta = "", cls = "") {
   return `<article class="message ${cls}"><header><span class="avatar">${from[0]}</span><div><strong>${subject}</strong><small>${from}${meta ? " · " + meta : ""}</small></div></header>${body}</article>`;
@@ -316,7 +316,7 @@ function mail() {
     body += message(
       "Mara Chen (archived)",
       ["A note in your welcome packet", "Workspace Zero", "Re: resignation", "Channel 04"][e],
-      `<blockquote>${["“Old themes carry more than colors. Pause something. Let the importer catch its breath.” — pencilled on the back of the IT policy.", "Workspace Zero is full of my notes, and one attachment the current tools can’t open. Something that reads databases might.", "Resignation accepted. Exit interview: “declined, politely.” Attachment: “Disconnect before you look at channel four. They can’t watch what isn’t connected.”", "“I left the tools, not a puzzle. Okay. A bit of a puzzle.” Her audit is preserved in Files."][e]}</blockquote>${e === 1 ? button(s.skills.includes("database") ? "Read archived attachment" : "Needs Databases to open", "story", "archive", !s.skills.includes("database"), "primary") : ""}<p class="fine">${e === 3 ? "Case closed. Evidence preserved." : `${e} of 3 pieces of evidence recovered.`}</p>`,
+      `<blockquote>${["“Old themes carry more than colors. Pause something. Let the importer catch its breath.” — pencilled on the back of the IT policy.", "Workspace Zero is full of my notes, and one attachment the current tools can’t open. Something that reads databases might.", "Resignation accepted. Exit interview: “declined, politely.” Attachment: “Disconnect before you look at channel four. They can’t watch what isn’t connected.”", "“I left the tools, not a puzzle. Okay. A bit of a puzzle.” Her audit is preserved in Files."][e]}</blockquote>${e === 1 ? button(s.skills.includes("database") ? "Read archived attachment" : "Needs Databases to open", "story", "attachment", !s.skills.includes("database"), "primary") : ""}<p class="fine">${e === 3 ? "Case closed. Evidence preserved." : `${e} of 3 pieces of evidence recovered.`}</p>`,
       "previous user of this workstation",
     );
   }
@@ -324,7 +324,7 @@ function mail() {
 }
 function activity() {
   const cur = tabOf("activity", ["processes", "channels", "security", "log"]);
-  const h = s.stories.hacker;
+  const h = s.stories.quickfix;
   let body = "";
   if (cur === "processes") {
     const active = s.jobs.filter((j) => !j.paused).length;
@@ -332,15 +332,15 @@ function activity() {
       s.jobs.length
         ? s.jobs
             .map((j) => {
-              const name = j.kind === "research" ? "Reading the documentation" : G.PROJECTS.find((p) => p.id === j.project).name;
+              const name = j.kind === "reading" ? "Reading the documentation" : G.PROJECTS.find((p) => p.id === j.project).name;
               return `<div class="proc"><div><strong>${name}</strong><small>${j.kind} · ${j.paused ? "paused" : `<span data-jobpct="${j.id}">${pct(j)}</span>`}</small>${jobBar(j)}</div>${button(j.paused ? "Resume" : "Pause", "pause", j.id, false, "ghost", `aria-label="${j.paused ? "Resume" : "Pause"} ${name}"`)}</div>`;
             })
             .join("")
         : `<div class="empty">Nothing running. A rare moment of stillness. Enjoy it, then start something.</div>`
     }${h === 1 || h === 2 ? `<div class="proc rogue"><div><strong>QuickFix ✨</strong><small>helper · 20% of everything</small></div><span class="pill">unsigned</span></div>` : ""}<p class="fine">Paused jobs keep their progress. Some things are easier to inspect while they’re holding still.</p>`;
   } else if (cur === "channels") {
-    const four = s.skills.includes("systems") && s.settings.offline;
-    body = `<p class="lede">Activity Monitor watches all four channels.</p><div class="channels"><div><span>01 · Build</span><b>${s.jobs.filter((j) => j.kind !== "research").length} jobs</b></div><div><span>02 · Reading</span><b>${s.research} sessions</b></div><div><span>03 · Network</span><b>${s.settings.offline ? "Isolated" : "Connected"}</b></div>${four ? `<div class="four"><span>04 · Local archive</span>${button(s.bookmarks.includes("channel") ? "Open in Files" : "Inspect channel", s.bookmarks.includes("channel") ? "open" : "discover", s.bookmarks.includes("channel") ? "files" : "channel", false, "primary", s.bookmarks.includes("channel") ? 'data-tab="channel"' : "")}</div>` : ""}</div><p class="fine">${four ? "Channel 04 is only visible to systems tools while the workstation is offline." : s.skills.includes("systems") ? "Systems tools are installed. Some channels only appear when nothing else is listening." : "Three channels shown. Network-independent channels may require deeper tools."}</p>${toggle("Isolate workstation", "Disconnect from the network. Local builds keep working. Nobody will notice. Probably.", "offline", s.settings.offline)}`;
+    const four = s.skills.includes("systems") && s.settings.isolated;
+    body = `<p class="lede">Activity Monitor watches all four channels.</p><div class="channels"><div><span>01 · Build</span><b>${s.jobs.filter((j) => j.kind !== "reading").length} jobs</b></div><div><span>02 · Reading</span><b>${s.reading} sessions</b></div><div><span>03 · Network</span><b>${s.settings.isolated ? "Isolated" : "Connected"}</b></div>${four ? `<div class="four"><span>04 · Local archive</span>${button(s.bookmarks.includes("channel") ? "Open in Files" : "Inspect channel", s.bookmarks.includes("channel") ? "open" : "discover", s.bookmarks.includes("channel") ? "files" : "channel", false, "primary", s.bookmarks.includes("channel") ? 'data-tab="channel"' : "")}</div>` : ""}</div><p class="fine">${four ? "Channel 04 is only visible to systems tools while the workstation is offline." : s.skills.includes("systems") ? "Systems tools are installed. Some channels only appear when nothing else is listening." : "Three channels shown. Network-independent channels may require deeper tools."}</p>${toggle("Isolate workstation", "Disconnect from the network. Local builds keep working. Nobody will notice. Probably.", "isolated", s.settings.isolated)}`;
   } else if (cur === "security") {
     body = `${eyebrow("Trust & Quiet · Incident report")}<h2>${h === 0 ? "Nothing to report." : h === 5 ? "Credential revoked. Case closed." : "Unsigned plugin: QuickFix ✨"}</h2><p class="lede">${
       [
@@ -351,7 +351,7 @@ function activity() {
         "Quarantined. Your processor is yours again. You’ll never know who sent it, which is probably fine. Enforce a signing policy anyway.",
         "temp-contractor-0417 is revoked. Unsigned plugins can no longer install themselves, however helpful they claim to be.",
       ][h]
-    }</p><div class="row">${h === 1 ? button("Observe outbound trace", "story", "observe", false, "ghost") : ""}${h === 1 || h === 2 ? button("Quarantine plugin", "story", "quarantine", false, "primary") : ""}${h === 3 || h === 4 ? button("Enforce signing policy", "story", "patch", false, "primary") : ""}</div>`;
+    }</p><div class="row">${h === 1 ? button("Observe outbound trace", "story", "observe", false, "ghost") : ""}${h === 1 || h === 2 ? button("Quarantine plugin", "story", "quarantine", false, "primary") : ""}${h === 3 || h === 4 ? button("Enforce signing policy", "story", "sign", false, "primary") : ""}</div>`;
   } else {
     body = `<div class="log">${s.logs
       .slice(0, 14)
@@ -376,12 +376,12 @@ function files() {
   const cur = tabOf("files", list);
   let body;
   if (cur === "places")
-    body = `<p class="lede">Discoveries are bookmarked here automatically, so you never have to walk the long way twice.</p>${s.bookmarks.length ? s.bookmarks.map((b) => `<button class="place" data-action="tab" data-app="files" data-id="${b}">${icon(b, b === "legacy" ? "lilac" : "ink")}<span><b>${b === "legacy" ? "Workspace Zero" : "Channel 04"}</b><small>${b === "legacy" ? "Recovered from a theme importer" : "Local archive · not networked"}</small></span></button>`).join("") : `<div class="empty">Nothing pinned yet. The settings go deeper than they look.</div>`}`;
-  else if (cur === "legacy")
+    body = `<p class="lede">Discoveries are bookmarked here automatically, so you never have to walk the long way twice.</p>${s.bookmarks.length ? s.bookmarks.map((b) => `<button class="place" data-action="tab" data-app="files" data-id="${b}">${icon(b, b === "workspace" ? "lilac" : "ink")}<span><b>${b === "workspace" ? "Workspace Zero" : "Channel 04"}</b><small>${b === "workspace" ? "Recovered from a theme importer" : "Local archive · not networked"}</small></span></button>`).join("") : `<div class="empty">Nothing pinned yet. The settings go deeper than they look.</div>`}`;
+  else if (cur === "workspace")
     body = `${eyebrow("Workspace Zero · imported as a theme")}<h2>A workspace disguised as a theme.</h2><blockquote>“If anyone asks, it’s a very large color palette.” — M.</blockquote><p class="lede">One project, 212 notes and zero colors. The project is called Workspace Zero. Its owner field says your name. It was created eleven days before you were hired.</p><div class="row">${button("Open Workspace Zero", "open", "workbench", false, "primary", 'data-tab="workspace"')}${button("Read Mara’s mail", "open", "mail", false, "ghost", 'data-tab="recovered"')}</div>`;
   else
     body = `${eyebrow("Channel 04 · local archive")}<h2>A record that survived.</h2><p class="lede">Real release logs beside the client dashboards. They do not agree. They were never meant to. Mara’s signed resignation and her reproducible audit are here, with step-by-step instructions anyone could follow.</p><blockquote>“The project with your name on it is mine. I made it in your name so they couldn’t delete it without asking you.” — M.</blockquote>${button("Read the full message again", "replay", "channel", false, "ghost")}`;
-  return tabs("files", list.map((id) => [id, { places: "Places", legacy: "Workspace Zero", channel: "Channel 04" }[id]]), cur) + `<div class="pane">${body}</div>`;
+  return tabs("files", list.map((id) => [id, { places: "Places", workspace: "Workspace Zero", channel: "Channel 04" }[id]]), cur) + `<div class="pane">${body}</div>`;
 }
 function settings() {
   const sections = [
@@ -407,7 +407,7 @@ function settings() {
         : `<div class="nested"><b>Additional duck notification settings</b>${toggle("Duck-adjacent notifications", "Required by Facilities Policy §12(b).", "x1", true, true)}${toggle("Notify me when duck notifications are disabled", "You just received one.", "x2", true, true)}<div class="setting-row"><div><strong>Duck headline digest</strong><p>How often to summarise the duck.</p></div><select aria-label="Duck headline digest" disabled><option>Hourly</option><option>Hourlier</option></select></div>${button("Open The Daily Current", "open", "news", false, "ghost")}</div>`
     }`;
   else if (cur === "network")
-    body = `<h2>Network</h2>${toggle("Isolate workstation", "Disconnect from the network. Local builds keep working. Monitoring keeps monitoring, mostly.", "offline", s.settings.offline)}<p class="fine">Status: ${s.settings.offline ? "offline. It’s very quiet in here." : "connected to Stillwater HQ."}</p>`;
+    body = `<h2>Network</h2>${toggle("Isolate workstation", "Disconnect from the network. Local builds keep working. Monitoring keeps monitoring, mostly.", "isolated", s.settings.isolated)}<p class="fine">Status: ${s.settings.isolated ? "offline. It’s very quiet in here." : "connected to Stillwater HQ."}</p>`;
   else if (cur === "privacy")
     body = `<h2>Privacy</h2><p class="lede">Stillwater respects your privacy. Here is everything that respect currently involves.</p>${toggle("Share calm metrics with leadership", "Required.", "p1", true, true)}${toggle("Let leadership share calm metrics with you", "Not available in your region.", "p2", false, true)}${toggle("Store your progress in this browser only", "True, as it happens. Nothing here leaves your machine. It may be the only promise on this computer that is literally kept.", "p3", true, true)}`;
   else if (cur === "advanced") body = explorer();
@@ -425,7 +425,7 @@ function explorer() {
     return `<h2>Advanced</h2>${crumbs}<div class="folders">${entries.map((n) => button(`<span class="folder" aria-hidden="true"></span>${esc(n)}<span class="chev">›</span>`, n === real ? "deeper" : "decoy", n === real ? "" : n, false, "entry", `aria-label="${esc(n)}"`)).join("")}</div><p class="fine">${path.length === 0 ? "Editor preferences, plugin metadata, legacy compatibility, and other places nobody goes." : path.length === 4 ? "Older theme formats may carry additional metadata." : `Level ${path.length + 1}. The settings go deeper than they look.`}</p>`;
   }
   const paused = s.jobs.some((j) => j.paused);
-  return `<h2>Supported Formats</h2>${crumbs}<div class="formats"><span>Theme <small>.sth</small></span><span>Palette <small>.spal</small></span><span class="odd">Workspace <small>.swk</small></span></div><p class="lede">Why would a theme importer accept an entire workspace?</p>${toggle("Legacy workspace compatibility", "Decode old workspace containers. Officially deprecated. Unofficially, still here.", "legacy", s.settings.legacy)}<p class="fine">The importer needs a paused process to snapshot. ${paused ? "A paused process is available." : "Pause any job in Activity Monitor first."}</p>${s.bookmarks.includes("legacy") ? button("Open Workspace Zero", "open", "files", false, "ghost", 'data-tab="legacy"') : button("Import Workspace", "discover", "legacy", !(s.settings.legacy && paused), "primary")}`;
+  return `<h2>Supported Formats</h2>${crumbs}<div class="formats"><span>Theme <small>.sth</small></span><span>Palette <small>.spal</small></span><span class="odd">Workspace <small>.swk</small></span></div><p class="lede">Why would a theme importer accept an entire workspace?</p>${toggle("Legacy workspace compatibility", "Decode old workspace containers. Officially deprecated. Unofficially, still here.", "legacy", s.settings.legacy)}<p class="fine">The importer needs a paused process to snapshot. ${paused ? "A paused process is available." : "Pause any job in Activity Monitor first."}</p>${s.bookmarks.includes("workspace") ? button("Open Workspace Zero", "open", "files", false, "ghost", 'data-tab="workspace"') : button("Import Workspace", "discover", "workspace", !(s.settings.legacy && paused), "primary")}`;
 }
 function welcome() {
   return `<div class="pane welcome">${icon("welcome", "blue", "big")}<h2>Welcome to Stillwater.</h2><p class="lede">We’re so glad you’re here. Calm is a deliverable.</p><p>Your job is to make software. You don’t need to know how; very few people here do. Pick a feature, write it, test it, fix what the tests find, then ship it. Shipping earns budget, knowledge and users. Spend the budget on better tools. Repeat until promoted, or until something else happens.</p><ul><li>Jobs share your processor. Pausing one gives the others room to breathe.</li><li>The settings go deeper than they look. That isn’t a warning. It’s a feature.</li><li>The duck is not a security concern. Please stop filing tickets about the duck.</li></ul><div class="row">${button("Open Workbench", "open", "workbench", false, "primary")}${button("Read later", "close", "welcome", false, "ghost")}</div><p class="fine">— People & Serenity</p></div>`;
@@ -549,7 +549,7 @@ function renderChrome() {
   const reported = s.stories.employee === 3;
   $("stats").innerHTML = [
     ["Budget", money(s.money)],
-    ["Knowledge", Math.floor(s.xp)],
+    ["Knowledge", Math.floor(s.knowledge)],
     [reported ? "Users (reported)" : "Users", s.users.toLocaleString()],
     ["Releases", s.releases],
   ]
@@ -558,7 +558,7 @@ function renderChrome() {
   $("calm").textContent = reported ? "Calm —" : `Calm ${97 + (new Date().getMinutes() % 3)}%`;
   const attention = {
     mail: s.rank < 4 && s.releases >= 3 * (s.rank + 1),
-    activity: s.stories.hacker > 0 && s.stories.hacker < 5,
+    activity: s.stories.quickfix > 0 && s.stories.quickfix < 5,
   };
   $("dock").innerHTML = Object.entries(APPS)
     .filter(([, a]) => a.dock)
@@ -567,7 +567,7 @@ function renderChrome() {
   const icons = [
     ["welcome", "Welcome.pdf", "welcome", "blue", ""],
     ["important", "probably important", "important", "ink", ""],
-    ...s.bookmarks.map((b) => ["files", b === "legacy" ? "Workspace Zero" : "Channel 04", b, b === "legacy" ? "lilac" : "ink", b]),
+    ...s.bookmarks.map((b) => ["files", b === "workspace" ? "Workspace Zero" : "Channel 04", b, b === "workspace" ? "lilac" : "ink", b]),
     ["trash", "Trash", "trash", "ink", ""],
   ];
   $("icons").innerHTML = icons
@@ -620,7 +620,7 @@ function announce() {
     else notify("Duck-adjacent update filed under Policy §12(b). " + l.text, "news");
 }
 const MOMENTS = {
-  legacy: {
+  workspace: {
     eyebrow: "Theme importer · legacy mode",
     title: "This is not a theme.",
     lines: [
@@ -629,7 +629,7 @@ const MOMENTS = {
       "Owner field: you.",
       "Created: eleven days before your start date.",
     ],
-    then: () => openApp("files", "legacy"),
+    then: () => openApp("files", "workspace"),
   },
   channel: {
     eyebrow: "Channel 04 · local archive · not networked",
@@ -669,7 +669,7 @@ function moment(kind) {
 }
 function endMoment(kind) {
   $("moment").hidden = true;
-  document.body.classList.remove("in-moment", "moment-legacy", "moment-channel", "moment-ending");
+  document.body.classList.remove("in-moment", "moment-workspace", "moment-channel", "moment-ending");
   MOMENTS[kind]?.then();
   persist();
   render();
@@ -677,11 +677,11 @@ function endMoment(kind) {
 }
 let before = snapshot();
 function snapshot() {
-  return { hacker: s.stories.hacker, bookmarks: [...s.bookmarks], complete: complete() };
+  return { quickfix: s.stories.quickfix, bookmarks: [...s.bookmarks], complete: complete() };
 }
 function afterChange() {
   const now = snapshot();
-  if (before.hacker === 0 && now.hacker === 1) {
+  if (before.quickfix === 0 && now.quickfix === 1) {
     openApp("quickfix");
     document.body.classList.add("glitch");
     setTimeout(() => document.body.classList.remove("glitch"), 900);
@@ -740,8 +740,8 @@ document.addEventListener("click", (e) => {
     case "buy":
       changed = G.buy(s, id);
       break;
-    case "research":
-      changed = G.research(s);
+    case "read":
+      changed = G.read(s);
       break;
     case "pause": {
       const j = s.jobs.find((j) => j.id === Number(id));
@@ -904,7 +904,7 @@ document.addEventListener("dblclick", (e) => {
 /* ---------- clock ---------- */
 let last = Date.now(),
   saveClock = 0;
-const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.xp, s.logs.length, s.logs[0]?.time]);
+const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time]);
 setInterval(() => {
   const now = Date.now();
   const was = sig();
