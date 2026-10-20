@@ -7,10 +7,27 @@
 | Ending | How |
 | --- | --- |
 | End of probation (win) | Reach Principal Engineer (18 releases; promotions at 3, 7, 12 and 18) and finish all four stories: the previous user (Channel 04), QuickFix (credential revoked), and all four duck corrections. |
-| Released to the community (loss) | Acceptable Use concern reaches 100% **twice**. It rises with blocked sites (+1), translated or proxied personal pages, shopping (+4 to +10), blog posts (+6 to +26), and online sudoku play. **Private browsing multiplies it by 1.5.** Real work (a running build) lowers it, and nothing is reported while the workstation is isolated. Mail warns you at 40 and 70, and the Calm Index in the menu bar drops. The first time it reaches 100 you get a Calm Improvement Plan instead: concern resets to 55, Wayfinder closes for three minutes and private browsing is switched off. |
+| Released to the community (loss) | Acceptable Use concern reaches 100% **twice**. It rises with blocked sites (+1), translated or proxied personal pages, shopping (+4 to +10), blog posts (+6 to +26), and online sudoku play. **Private browsing multiplies it by 1.5**, although Settings › Privacy claims it counts *less*; the Calm Improvement Plan issues a correction in the log, in Mail and in the setting itself. Real work (a running build) lowers it, and nothing is reported while the workstation is isolated. Mail warns you at 40 and 70, and the Calm Index in the menu bar drops. The first time it reaches 100 you get a Calm Improvement Plan instead: concern resets to 55, Wayfinder closes for three minutes and private browsing is switched off. |
 | Reimaged (loss) | Leave QuickFix unquarantined for about 15 minutes of build time (900 breach points). It only grows while a build is running and you're online and looking: it pauses while isolated, while nothing is building, and while the tab is in the background. It speeds up 3× if Developer › Install from is set to “Anywhere”. Warnings arrive at 5, 10 and 13 minutes of build time, and its processor use grows from 20% to 30% to 40%. Quiet Monitor releases push it back. |
 
 The Secret Tracker unlocks in the dock after the first ending of any kind, and it persists across new workstations.
+
+## Release tasks
+
+After a version passes its tests (Pocket Notes v1.0 excepted) it needs a release task. Each project rotates through its own kinds; difficulty (shown as dots) is the project's base (Pocket 0, Lunchboard 1, Archive 2, Quiet Monitor and Workspace 3) plus half the version, up to 6. A wrong answer locks the task for 8 + 2 × difficulty seconds. An AI assistant assigned to development finishes a waiting task after 40 seconds (20 with the local model). The Help Desk has a ticket for the current task, ending in its answer.
+
+| Kind | Projects | How to do it | Harder with |
+| --- | --- | --- | --- |
+| Code review | Pocket Notes, Lunchboard, Archive Index, Workspace Zero | One plain-language step contradicts the spec. Flag it. | More rules; from difficulty 3 the spec is shuffled. |
+| Bug triage | Pocket Notes, Lunchboard | Label each report: Bug (something wrong), Feature request (asks for something new), Facilities (anything with the duck). | More reports. |
+| Deploy window | Lunchboard | Lunch traffic repeats every 30 seconds. Deploy while the bar is green; deploying in the rush is an outage (lose $15 + 5 × difficulty, 10 s lock). | A longer rush. |
+| Data migration | Archive Index, Quiet Monitor | Click the steps in runbook order: announce, back up, lock writes, migrate schema, copy records, rebuild index, unlock writes, check counts. A wrong step rolls back to the start. | More steps. |
+| Probe tuning | Quiet Monitor, Workspace Zero | Coverage is rate × depth; overhead is 2 × rate + 3 × depth. Find a setting that meets both targets. Probes are free. | A wider dial range, so more combinations. |
+| Legacy decode | Workspace Zero | A Caesar shift. Turn the dial until the note reads as English. | Longer notes. |
+
+## Story moments
+
+The Secret Tracker's Story tab lists 58 moments in nine sections (Work, the previous user, QuickFix, the duck, Juno, Neil, Mom & Dad, the office, the Calm Index). The 15 marked “needed for probation” are the ones the win requires: the first release, all four promotions, Workspace Zero, the attachment, Channel 04, QuickFix arriving, quarantined and revoked, and the four duck corrections. Some optional ones exclude each other in a single run (getting the cake or missing it; reporting the phishing email or clicking it), so a full tracker takes more than one workstation.
 
 ## Help Desk
 
@@ -45,6 +62,28 @@ Help › Help Desk lists a ticket for every problem the player currently has: th
 | Part of the problem | — | Press Reply all on the fridge-cleanout thread. Six more people reply all to agree with you. |
 | There was cake | A toast: “CAKE in kitchen 3!!” | After the reply-all storm ends (from 4 releases), cake is announced. You have 45 seconds to click Go to kitchen 3. |
 | Not today | The sender is `it-securlty@stillwater.co` | Report the “password expires” email (from 5 releases). Clicking it closes Wayfinder for 90 seconds and dents the Calm Index. |
+| Quiet hours | — | Turn interface sounds off (menu bar speaker, or Settings › Sound). |
+| Unlisted alert | Settings › Sound, after Quiet hours: “one of these wasn’t on the list before” | Choose the Quack alert sound. |
+| Hold the line | Murmur’s only built-in track | Play “Please Continue to Hold” for a minute without stopping. |
+| Old habits | — | Type ↑ ↑ ↓ ↓ ← → ← → B A on the desktop. Ducks parade. |
+| Duck patrol | — | Leave the desk alone for 3 minutes; let the screensaver run for 8 seconds. |
+| Recurring event | Calendar in the menu bar clock | Click any Thursday's event: Panel B maintenance at 4:17. |
+| We have tried this | The “probably important” file | Drag it to the Trash, or right-click › Move to Trash. |
+| See-through | — | Settings › Appearance: drag window transparency all the way. A note appears on the wallpaper. |
+| Calm down | — | Click the Calm Index 10 times. |
+| Live help | Help menu and calendar: “Thursdays, 4:15–4:19 p.m.” | Have the Help Desk open on a real Thursday between 4:15 and 4:19 p.m., local time. Greg answers. |
+| Night shift | — | Play between midnight and 4 a.m., local time. |
+| Forward momentum | Edit › Undo is “unavailable” | Choose Undo 5 times. |
+| Search party | — | Search (Ctrl+K or the menu bar) for “duck”. |
+| Persistent applicant | The block page | Request an exception 5 times. |
+| Full power | Panel B | Before solving it, get all nine breakers on, B7 included. The panel trips back to the start. |
+| Every wrong door | — | Click every decoy in Settings › Advanced (16 of them, on every level). |
+| Same password everywhere | Lock screen: “Other user: mchen”, hint “the top line of the gentle one” | Lock the screen (logo menu or Ctrl+Shift+L), switch to mchen, enter `417396825`. |
+| Good duck | — | With the desk duck (crackers), pat it 5 times. |
+| Never filed | Archive box 7: “Ask the desk.” | Visit `ws-0417.local/box7`. |
+| Cover to cover | — | Complete 11 reading sessions. |
+| Redacted | Settings › About | Click the redacted name 3 times. |
+| Lost in translation | — | Translate translate.stillwater with translate.stillwater. |
 
 ## Conversations
 

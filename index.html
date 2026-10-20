@@ -12,29 +12,39 @@
     <div id="wallpaper" aria-hidden="true"></div>
     <header class="menubar">
       <div class="menus">
-        <button class="logo" data-action="open" data-id="settings" data-tab="about" aria-label="About this workstation">
+        <button class="logo" data-action="menu" data-id="logo" aria-label="Stillwater menu" aria-haspopup="menu">
           <span class="logo-mark"></span>
         </button>
         <strong id="active-app">Desktop</strong>
-        <button class="menu" data-action="menu" data-id="file">File</button>
-        <button class="menu" data-action="menu" data-id="edit">Edit</button>
-        <button class="menu" data-action="menu" data-id="window">Window</button>
-        <button class="menu" data-action="menu" data-id="help">Help</button>
+        <button class="menu" data-action="menu" data-id="file" aria-haspopup="menu">File</button>
+        <button class="menu" data-action="menu" data-id="edit" aria-haspopup="menu">Edit</button>
+        <button class="menu" data-action="menu" data-id="window" aria-haspopup="menu">Window</button>
+        <button class="menu" data-action="menu" data-id="help" aria-haspopup="menu">Help</button>
       </div>
       <div class="status">
         <span id="stats" class="stats"></span>
         <button id="calm" class="calm" data-action="calm" aria-label="Calm Index"></button>
-        <span id="clock"></span>
+        <button id="nowplaying" class="status-btn nowplaying" data-action="open" data-id="music" hidden></button>
+        <button id="wifi" class="status-btn" data-action="popover" data-id="wifi" aria-label="Network"></button>
+        <button id="volume" class="status-btn" data-action="popover" data-id="volume" aria-label="Sound"></button>
+        <button id="search-btn" class="status-btn" data-action="launcher" aria-label="Search (Ctrl+K)"></button>
+        <button id="clock" class="status-btn clock" data-action="popover" data-id="calendar" aria-label="Calendar"></button>
       </div>
     </header>
     <main id="desktop">
+      <div id="graffiti" class="graffiti" aria-hidden="true">the walls are thin here. — M.</div>
       <div id="icons" class="icons" aria-label="Desktop"></div>
+      <div id="lasso" class="lasso" hidden></div>
       <aside id="widgets" class="widgets" aria-label="Widgets"></aside>
       <div id="windows"></div>
     </main>
     <nav id="dock" class="dock" aria-label="Dock"></nav>
     <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
     <div id="moment" class="moment" hidden></div>
+    <div id="pop" class="pop" hidden></div>
+    <div id="launcher" class="launcher" hidden></div>
+    <div id="lock" class="lock" hidden></div>
+    <div id="parade" class="parade" aria-hidden="true"></div>
     <input type="file" id="import-file" accept="application/json,.json" hidden />
     <script type="module" src="app.js"></script>
   </body>

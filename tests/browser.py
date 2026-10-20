@@ -139,8 +139,46 @@ with sync_playwright() as p:
     news.get_by_role("button", name="File correction").click()
     expect(news.get_by_role("button", name="The desk is not taking questions right now")).to_be_visible()
 
+    # A real desktop: menus, the calendar, search, sound, music and the lock screen.
+    bar = page.locator(".menubar")
+    for i in range(5):
+        bar.get_by_role("button", name="Edit").click()
+        page.locator("#pop").get_by_role("menuitem", name="Undo").click()
+    page.locator("#clock").click()
+    page.locator("#pop .cal button.event").first.click()
+    expect(page.locator("#pop .event-card")).to_contain_text("Panel B maintenance")
+    page.keyboard.press("Escape")
+    page.keyboard.press("Control+k")
+    page.locator("#launcher-q").fill("duck")
+    expect(page.locator("#launcher").get_by_text("Board member", exact=False)).to_be_visible()
+    page.keyboard.press("Escape")
+    page.mouse.click(1250, 540, button="right")
+    expect(page.locator("#pop").get_by_role("menuitem", name="Get Info")).to_be_visible()
+    page.keyboard.press("Escape")
+    page.locator("#volume").click()
+    page.locator("#pop").get_by_role("switch", name="Interface sounds").click()
+    page.keyboard.press("Escape")
+    dock.get_by_role("button", name="System Settings").click()
+    settings.get_by_role("button", name="Sound").click()
+    settings.locator("#alert").select_option("quack")
+    dock.get_by_role("button", name="Murmur").click()
+    page.locator("#win-music").get_by_role("button", name="Play", exact=True).click()
+    expect(page.locator("#nowplaying")).to_contain_text("Please Continue to Hold")
+    page.locator("#win-music").get_by_role("button", name="Pause").click()
+    page.keyboard.press("Control+Shift+L")
+    page.get_by_role("button", name="Other user: mchen").click()
+    page.locator("#mchen-pw").fill(SOLUTION[:9])
+    page.locator("#mchen-pw").press("Enter")
+    expect(page.get_by_text("for-whoever.txt")).to_be_visible()
+    page.get_by_role("button", name="Sign out").click()
+    page.get_by_role("button", name="Unlock").click()
+    found = page.evaluate("JSON.parse(localStorage.getItem('stillwater-workstation')).secrets")
+    for sid in ["undo", "calendar", "search", "quiet", "quack", "mchen"]:
+        assert sid in found, sid
+
     # The Help Desk answers vaguely at first, and better answers take a while.
     page.locator(".menubar").get_by_role("button", name="Help").click()
+    page.locator("#pop").get_by_role("menuitem", name="Help Desk").click()
     help_desk = page.locator("#win-help")
     help_desk.get_by_role("button", name="Open a ticket about The duck story").click()
     expect(help_desk.get_by_text("One of them is never empty", exact=False)).to_be_visible()
@@ -181,15 +219,19 @@ with sync_playwright() as p:
     expect(page.get_by_role("heading", name="Your role has been released.")).to_be_visible()
     page.get_by_role("button", name="Open Secret Tracker").click()
     tracker = page.locator("#win-tracker")
-    expect(tracker.get_by_text("Released to the community")).to_be_visible()
+    expect(tracker.get_by_text("First release")).to_be_visible()
+    expect(tracker.get_by_text("needed for probation").first).to_be_visible()
+    tracker.get_by_role("tab", name="Secrets", exact=False).click()
     expect(tracker.get_by_text("Gentle solver")).to_be_visible()
+    tracker.get_by_role("tab", name="Endings", exact=False).click()
+    expect(tracker.get_by_text("Released to the community")).to_be_visible()
     page.locator("#widgets").get_by_role("button", name="Start again").click()
     expect(page.get_by_role("heading", name="Welcome to Stillwater.")).to_be_visible()
     expect(dock.get_by_role("button", name="Secret Tracker")).to_be_visible()
 
     page.set_viewport_size({"width": 390, "height": 844})
     for name in ["Workbench", "Toolshed", "Library", "Conductor", "Mail", "Activity Monitor",
-                 "The Daily Current", "Wayfinder", "Notes", "Files", "Secret Tracker", "System Settings"]:
+                 "The Daily Current", "Wayfinder", "Notes", "Files", "Secret Tracker", "System Settings", "Murmur"]:
         dock.get_by_role("button", name=name, exact=True).click()
         expect(page.locator(f".window.focused[aria-label='{name}']")).to_be_visible()
         no_overflow(page, name)
@@ -201,4 +243,4 @@ with sync_playwright() as p:
     browser.close()
     print("PASS: release cycle, deep settings, Workspace Zero, developer options, filter and Translate, "
           "game store install, sudoku, Mara's blog, IM and family mail, pilots page, duck dashboard, duck desk lockout, returns, "
-          "Help Desk, the improvement plan, firing, Secret Tracker across workstations, every app on mobile; no JS errors.")
+          "menus, calendar, search, sound settings, Murmur, lock screen, Help Desk, the improvement plan, story moments, firing, Secret Tracker across workstations, every app on mobile; no JS errors.")

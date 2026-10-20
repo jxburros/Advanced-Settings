@@ -1,4 +1,5 @@
 import * as G from "./game.js";
+import * as S from "./sound.js";
 const KEY = "stillwater-workstation";
 const UIKEY = "stillwater-desktop";
 const ARCHIVEKEY = "stillwater-archive";
@@ -35,12 +36,23 @@ const UI_DEFAULT = {
   z: 1,
   booted: false,
   web: { page: { url: "intranet.stillwater", status: "ok" }, back: [] },
+  sounds: true,
+  alert: "chime",
+  volume: 0.6,
+  startup: true,
+  music: 0.7,
+  dial: {},
 };
 let ui = structuredClone(UI_DEFAULT);
 try {
   ui = { ...ui, ...JSON.parse(localStorage.getItem(UIKEY) || "{}") };
 } catch {}
 if (!ui.web?.page?.url) ui.web = structuredClone(UI_DEFAULT.web);
+if (!S.ALERTS[ui.alert]) ui.alert = "chime";
+ui.dial = ui.dial && typeof ui.dial === "object" ? ui.dial : {};
+const syncSound = () => Object.assign(S.prefs, { sounds: !!ui.sounds, alert: ui.alert, volume: Math.min(1, Math.max(0, Number(ui.volume) || 0)) });
+syncSound();
+S.setVolume(Number(ui.music) || 0.7);
 let path = [];
 const $ = (id) => document.getElementById(id);
 const esc = (x) =>
@@ -91,6 +103,12 @@ const GLYPHS = {
   ripple: '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01"/>',
 
   help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.6M12 16.8h.01"/>',
+  music: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+  wifi: '<path d="M3 9.5a13 13 0 0 1 18 0M6 13a8.5 8.5 0 0 1 12 0M9 16.5a4 4 0 0 1 6 0"/><path d="M12 20h.01"/>',
+  wifioff: '<path d="M3 9.5a13 13 0 0 1 18 0M6 13a8.5 8.5 0 0 1 12 0M9 16.5a4 4 0 0 1 6 0" opacity=".35"/><path d="M12 20h.01M4 4l16 16"/>',
+  speaker: '<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"/>',
+  speakeroff: '<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/>',
   duckling: '<path d="M8 10a4 4 0 1 1 7.5 2H19c0 4-3 7-7 7s-7-2-7-5c0-2 1.3-3.3 3-4z"/><path d="M15.5 9.5h3"/>',
 };
 const icon = (glyph, tone, cls = "") =>
@@ -207,10 +225,6 @@ const DECOY = {
   Grieve: "Legacy themes are gone, but never deprecated in our hearts.",
   "Recent Imports": "One recent import, deleted the day the previous user left: mara-final-FINAL.swk",
 };
-const MENU = {
-  file: "File › New is disabled during your probation period.",
-  edit: "Undo is unavailable. Stillwater encourages forward momentum.",
-};
 const TRACKS = {
   specialist: ["Specialist", "The one who knows how it works.", "Every new feature starts with one fewer defect."],
   manager: ["Manager", "The one who knows who knows how it works.", "Releases pay 25% more."],
@@ -255,6 +269,9 @@ function goal() {
     return [s.over === "fired" ? "You were let go" : "Your workstation was reimaged", "This workstation is finished. Something kept track of what you found. Start again whenever you like.", "settings", "Start again", "reset"];
   if (!s.releases)
     return ["Ship something", "Open Workbench, pick a feature for Pocket Notes, then write, test, fix and ship it. Nobody expects much. That’s the nice part.", "workbench", "Open Workbench"];
+  const waiting = G.PROJECTS.find((d) => s.projects[d.id]?.stage === "task");
+  if (waiting)
+    return ["A release is waiting on you", `${waiting.name} passed its tests, but it still needs a ${G.T.TASK_NAMES[G.T.kindOf(waiting.id, s.projects[waiting.id].version)].toLowerCase()} before it can ship. The scheduler won’t do this part.`, "workbench", "Open Workbench"];
   if (G.promotionDue(s))
     return ["Your growth conversation is ready", "People & Serenity would like to discuss your trajectory. It’s in Mail.", "mail", "Open Mail"];
   if (s.stories.quickfix > 0 && s.stories.quickfix < 5)
@@ -271,19 +288,53 @@ function goal() {
 }
 
 /* ---------- apps ---------- */
-const STAGE = { plan: 0, writing: 1, written: 1, testing: 2, tested: 3, debugging: 3 };
+const STAGE = { plan: 0, writing: 1, written: 1, testing: 2, tested: 3, debugging: 3, task: 4 };
+/* The release task panel: each kind is played differently. */
+function rushInfo(t) {
+  const ph = (s.elapsed + t.offset) % G.T.PERIOD;
+  const rush = ph < t.rush;
+  const left = Math.ceil(rush ? t.rush - ph : G.T.PERIOD - ph);
+  return { rush, left, width: rush ? 82 + (ph / t.rush) * 18 : 12 + ((ph - t.rush) / (G.T.PERIOD - t.rush)) * 20 };
+}
+function trafficHTML(t) {
+  const r = rushInfo(t);
+  return `<div class="traffic ${r.rush ? "rush" : ""}" data-rush="${t.offset}:${t.rush}"><div class="bar"><i style="width:${r.width}%"></i></div><p class="fine">${r.rush ? `Lunch rush in progress · ends in ${r.left} s` : `Quiet · next rush in ${r.left} s`}</p></div>`;
+}
+function taskView(def, p) {
+  const t = G.T.makeTask(def.id, p.version);
+  const lock = Math.ceil(p.task.lock - s.elapsed);
+  const dis = lock > 0;
+  const head = `<div class="progress-label"><span><b>${G.T.TASK_NAMES[t.kind]}</b> · the last step before v${p.version + 1}.0</span><span class="difficulty" title="Difficulty ${t.d + 1} of 7">${"●".repeat(t.d + 1)}${"○".repeat(6 - t.d)}</span></div>${dis ? `<p class="warn">Locked for ${lock} s. Take a breath and look again.</p>` : ""}`;
+  let body = "";
+  if (t.kind === "review")
+    body = `<p class="fine">The spec says:</p><ul class="spec">${t.spec.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p class="fine">One of these steps disagrees with the spec. Flag it.</p><div class="choices">${t.lines.map((l, i) => button(esc(l), "solve", def.id, dis, "choice", `data-v="${i}"`)).join("")}</div>`;
+  else if (t.kind === "triage")
+    body = `<p class="fine">Label every report. A bug is something that’s wrong. A feature request asks for something new. Anything involving the duck goes to Facilities.</p><form data-form="triage" data-project="${def.id}">${t.reports.map((x, i) => `<div class="task-row"><span>${esc(x)}</span><select id="tri-${def.id}-${p.version}-${i}" aria-label="Label for: ${esc(x)}"><option value="">Label…</option>${Object.entries(G.T.LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>`).join("")}<button class="primary wide" ${dis ? "disabled" : ""}>File the labels</button></form>`;
+  else if (t.kind === "deploy")
+    body = `<p class="fine">Lunchboard can’t go down while people are ordering lunch. Deploy while it’s quiet.</p>${trafficHTML(t)}${button("Deploy now", "solve", def.id, dis, "primary wide")}`;
+  else if (t.kind === "migrate")
+    body = `<p class="fine">Runbook:</p><ul class="spec">${G.T.RUNBOOK.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${p.task.picks.length ? `<ol class="picked">${p.task.picks.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>` : ""}<p class="fine">Run these steps in the right order. A step out of order rolls everything back.</p><div class="choices">${t.shown.map((x) => button(esc(x), "solve", def.id, dis || p.task.picks.includes(x), "choice", `data-v="${esc(x)}"`)).join("")}</div>`;
+  else if (t.kind === "tune") {
+    const opts = (id) => `<select id="${id}" aria-label="${id.includes("-r-") ? "Sample rate" : "Depth"}">${Array.from({ length: t.max }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("")}</select>`;
+    body = `<p class="fine">Set the probe so it sees enough without slowing everything down. Coverage must be at least <b>${t.need}</b>; overhead must be at most <b>${t.cap}</b>.</p><form data-form="tune" data-project="${def.id}" class="row"><label>Sample rate ${opts(`tune-r-${def.id}`)}</label><label>Depth ${opts(`tune-d-${def.id}`)}</label><button class="primary">Run probe</button></form>${p.task.probes.length ? `<table class="tbl probes"><tr><th>Rate</th><th>Depth</th><th>Coverage</th><th>Overhead</th></tr>${p.task.probes.map(([a, b]) => { const r = G.T.probe(a, b); return `<tr><td>${a}</td><td>${b}</td><td>${r.coverage}${r.coverage < t.need ? " · too low" : ""}</td><td>${r.overhead}${r.overhead > t.cap ? " · too high" : ""}</td></tr>`; }).join("")}</table>` : ""}`;
+  } else {
+    const n = Math.min(25, Math.max(0, Number(ui.dial[def.id]) || 0));
+    body = `<p class="fine">One of Mara’s notes, in a legacy encoding. Turn the dial until it reads as English, then submit.</p><p class="cipher">${esc(t.cipher)}</p><input type="range" id="dial-${def.id}" min="0" max="25" value="${n}" data-dial="${def.id}" data-keep="1" aria-label="Decoder dial" /><p class="cipher" data-decoded="${def.id}">${esc(G.T.shift(t.cipher, -n))}</p>${button("Submit decoding", "solve", def.id, dis, "primary wide", `data-dialfrom="dial-${def.id}"`)}`;
+  }
+  return head + body + `<p class="fine">${s.skills.includes("assistant") && s.ai === "development" ? "The assistant will take care of this if you leave it a while." : "The release pipeline can test, fix and ship, but release tasks are yours. An AI assistant on development could take them over."}</p>`;
+}
 function workbench() {
   const list = G.PROJECTS.filter((p) => !p.bookmark || G.unlocked(s, p));
   const ready = list.find((d) => {
     const p = s.projects[d.id];
-    return p && ["written", "tested"].includes(p.stage) && !s.jobs.some((j) => j.project === d.id);
+    return p && ["written", "tested", "task"].includes(p.stage) && !s.jobs.some((j) => j.project === d.id);
   });
   const cur = tabOf("workbench", list.map((p) => p.id), ready?.id);
   const def = list.find((p) => p.id === cur);
   const tabList = list.map((d) => {
     const p = s.projects[d.id];
     const job = s.jobs.find((j) => j.project === d.id);
-    const st = !G.unlocked(s, d) ? "locked" : job ? (job.paused ? "paused" : "busy") : p && ["written", "tested"].includes(p.stage) ? "ready" : "idle";
+    const st = !G.unlocked(s, d) ? "locked" : job ? (job.paused ? "paused" : "busy") : p && ["written", "tested", "task"].includes(p.stage) ? "ready" : "idle";
     return [d.id, d.name, `<i class="dot ${st}"></i>`];
   });
   return tabs("workbench", tabList, cur) + `<div class="pane">${projectView(def)}</div>`;
@@ -310,13 +361,14 @@ function projectView(def) {
     control = `<div class="progress-label"><span>${{ write: "Writing the feature", test: "Running the test suite", debug: "Fixing what the tests found" }[j.kind]}${j.paused ? " · paused" : ""}</span><b data-jobpct="${j.id}">${pct(j)}</b></div>${jobBar(j)}<div class="row">${button(j.paused ? "Resume" : "Pause", "pause", j.id, false, "ghost", `aria-label="${j.paused ? "Resume" : "Pause"} ${def.name}"`)}<small class="muted">Sharing ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""} with everything else</small></div>`;
   else if (p.stage === "written")
     control = `<div class="result">The feature is written. Whether it works is a separate question.</div>${button(`Run tests · ${8 + 2 * p.version}s`, "test", def.id, false, "primary wide")}`;
+  else if (p.stage === "task" && p.task) control = taskView(def, p);
   else if (p.stage === "tested")
     control = p.bugs
       ? `<div class="result warn">${p.bugs} defect${p.bugs > 1 ? "s" : ""} found. The release gate is closed until they’re fixed.</div>${button("Debug feature", "debug", def.id, false, "primary wide")}`
       : `<div class="result">All checks passed. It’s as ready as anything ever is.</div>${button("Ship v" + (p.version + 1) + ".0", "release", def.id, false, "primary wide")}`;
   else control = `<div class="result">Nothing is running for this project. The workstation was reset under it.</div>`;
-  const at = p.stage === "tested" && !p.bugs ? 4 : STAGE[p.stage];
-  const steps = ["Plan", "Write", "Test", "Debug", "Ship"]
+  const at = p.stage === "tested" && !p.bugs ? 5 : STAGE[p.stage];
+  const steps = ["Plan", "Write", "Test", "Debug", "Task", "Ship"]
     .map((n, i) => `<li class="${i < at ? "done" : i === at && open ? "now" : ""}">${n}</li>`)
     .join("");
   return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${card(control, "controls")}${projectExtra(def, p)}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test.</p>`;
@@ -452,7 +504,7 @@ function mail() {
     if (s.returns >= 12)
       body += message("People & Serenity", "Onboarding your successor", "<p>Please prepare WS-0417 for its next user. A short handover note would be appreciated. Previous users have left notes in drawers, margins and, once, a ceiling tile. Please don’t do that.</p>", "draft · not meant for you");
     if (s.warned >= 3)
-      body += message("People & Serenity", "Your Calm Improvement Plan", "<p>Your Calm Index reached zero. Rather than release your role, we have placed you on a plan. The plan is: be calm.</p><p>Your Acceptable Use concern has been partly reset. If it reaches the limit again, there will be no second plan.</p>", "action needed", "alert");
+      body += message("People & Serenity", "Your Calm Improvement Plan", "<p>Your Calm Index reached zero. Rather than release your role, we have placed you on a plan. The plan is: be calm.</p><p>Your Acceptable Use concern has been partly reset. If it reaches the limit again, there will be no second plan.</p><p><b>A correction.</b> Earlier materials described private browsing as counting less toward your Calm Index. It counts for half as much again. Private browsing has been switched off for you, kindly.</p>", "action needed", "alert");
     if (s.warned >= 2)
       body += message("People & Serenity", "Final wellness reminder", "<p>Your workstation activity is now under review. Shopping, social media, blogging and games are wonderful parts of life, and none of them are part of this one.</p><p>If your Calm Index does not recover, you will be placed on a Calm Improvement Plan. There is only ever one.</p>", "action needed", "alert");
     if (s.warned >= 1)
@@ -567,6 +619,7 @@ function settings() {
     ["appearance", "Appearance"],
     ["development", "Development"],
     ["notifications", "Notifications"],
+    ["sound", "Sound"],
     ["network", "Network"],
     ["privacy", "Privacy"],
     ["advanced", "Advanced"],
@@ -580,6 +633,8 @@ function settings() {
     body = `<h2>Appearance</h2><div class="setting-row"><div><strong>Wallpaper</strong><p>Hand-painted by a watercolor process that also does not exist.</p></div></div><div class="swatches">${["stillwater", "dusk", "shallows"].map((w) => `<button class="wall ${ui.wallpaper === w ? "on" : ""}" data-action="wallpaper" data-id="${w}" aria-label="${w} wallpaper" style="background-image:url(assets/wallpapers/${w}.jpg)"><span>${w[0].toUpperCase() + w.slice(1)}</span></button>`).join("")}</div><div class="setting-row"><div><strong>Window transparency</strong><p>How much of the calm shows through.</p></div><input type="range" id="glass" min="0.2" max="0.9" step="0.05" value="${1.1 - ui.glass}" aria-label="Window transparency" /></div><div class="setting-row"><div><strong>Accent</strong><p>Both are on brand. One is slightly more on brand.</p></div><div class="row">${["blue", "pink", "lilac"].map((a) => `<button class="accent-dot a-${a} ${ui.accent === a ? "on" : ""}" data-action="accent" data-id="${a}" aria-label="${a} accent"></button>`).join("")}</div></div>${toggle("Reduce motion", "Fewer animations. Story moments still happen, just more politely.", "still", ui.still, false, "pref")}`;
   else if (cur === "development")
     body = `<h2>Development</h2>${toggle("Safe development mode", "Careful writing means fewer defects. Turn it off to write 30% faster and add two defects to every new feature. Bold.", "safe", s.settings.safe)}`;
+  else if (cur === "sound")
+    body = `<h2>Sound</h2>${toggle("Interface sounds", "Clicks, chimes, windows opening and closing, and alerts. Music is separate.", "sounds", ui.sounds, false, "pref")}<div class="setting-row"><div><strong>Alert sound</strong><p>Played with notifications.${s.secrets.includes("quiet") ? " One of these wasn’t on the list before." : ""}</p></div><select id="alert" aria-label="Alert sound">${Object.entries(S.ALERTS).filter(([k]) => k !== "quack" || s.secrets.includes("quiet")).map(([k, l]) => `<option value="${k}" ${ui.alert === k ? "selected" : ""}>${l}</option>`).join("")}</select></div><div class="setting-row"><div><strong>Volume</strong><p>Interface sounds only.</p></div><input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="${ui.volume}" aria-label="Interface volume" /></div>${toggle("Play sound on startup", "A short chord when you sit down at the desk.", "startup", ui.startup, false, "pref")}${button("Open Murmur", "open", "music", false, "ghost")}`;
   else if (cur === "notifications")
     body = `<h2>Notifications</h2>${toggle("Enable duck-related notifications", "A normal setting for a normal workplace.", "duck", s.settings.duck)}${
       s.settings.duck
@@ -589,14 +644,14 @@ function settings() {
   else if (cur === "network")
     body = `<h2>Network</h2>${toggle("Isolate workstation", "Disconnect from the network. Local builds keep working. Monitoring keeps monitoring, mostly.", "isolated", s.settings.isolated)}<p class="fine">Status: ${s.settings.isolated ? "offline. It’s very quiet in here." : "connected to Stillwater HQ."}</p>`;
   else if (cur === "privacy")
-    body = `<h2>Privacy</h2><p class="lede">Stillwater respects your privacy. Here is everything that respect currently involves.</p>${toggle("Share calm metrics with leadership", "Required. Personal browsing, shopping, blogging and games all count toward your Calm Index.", "p1", true, true)}${toggle("Let leadership share calm metrics with you", "Not available in your region.", "p2", false, true)}${toggle("Private browsing", "Private windows keep no history. Private sessions are flagged for extra review by People & Serenity, so they count for more, not less.", "private", s.private)}${toggle("Store your progress in this browser only", "True, as it happens. Nothing here leaves your machine. It may be the only promise on this computer that is literally kept.", "p3", true, true)}`;
+    body = `<h2>Privacy</h2><p class="lede">Stillwater respects your privacy. Here is everything that respect currently involves.</p>${toggle("Share calm metrics with leadership", "Required. Personal browsing, shopping, blogging and games all count toward your Calm Index.", "p1", true, true)}${toggle("Let leadership share calm metrics with you", "Not available in your region.", "p2", false, true)}${toggle("Private browsing", s.warned >= 3 ? "Correction, issued with your Calm Improvement Plan: private sessions are counted at 1.5×, not less. The earlier description was a calm approximation." : "Private windows keep no history, and private sessions count less toward your Calm Index, out of respect for your privacy.", "private", s.private)}${toggle("Store your progress in this browser only", "True, as it happens. Nothing here leaves your machine. It may be the only promise on this computer that is literally kept.", "p3", true, true)}`;
   else if (cur === "advanced") body = explorer();
   else if (cur === "developer")
     body = `<h2>Developer</h2><p class="lede">You are now a developer. You were already a developer. Now the settings agree.</p><div class="setting-row"><div><strong>Install software from</strong><p>Toolshed only is safest. “Anywhere” is not recommended while unsigned software is running on this workstation.</p></div><select id="installs" aria-label="Install software from">${[["toolshed", "Toolshed only"], ["identified", "Toolshed and identified developers"], ["anywhere", "Anywhere"]].map(([v, l]) => `<option value="${v}" ${s.installs === v ? "selected" : ""}>${l}</option>`).join("")}</select></div><div class="setting-row"><div><strong>Wellness telemetry</strong><p>Managed by your organisation. Current Acceptable Use concern: ${Math.round(s.suspicion)}%. ${s.settings.isolated ? "Not reporting while isolated." : "Reporting."}</p></div><span class="pill">managed</span></div>`;
   else if (cur === "storage")
     body = `<h2>Storage</h2><p class="lede">Progress saves itself in this browser. Running jobs keep going for up to two hours while you’re away. Export a backup to move desks. Clearing browser data clears the desk.</p><div class="row">${button("Export save", "export", "", false, "ghost")}${button("Import save", "import", "", false, "ghost")}${button("New workstation", "reset", "", false, "danger")}</div>${saveError ? `<p class="warn">${saveError}</p>` : ""}`;
   else
-    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: <span class="redact">Mara Chen</span>${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings is a game. All the work is simulated. The satisfaction is not.</p></div>`;
+    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: ${s.secrets.includes("redacted") ? "<b>Mara Chen</b>" : `<button class="redact" data-action="redact" aria-label="Redacted name">Mara Chen</button>`}${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings is a game. All the work is simulated. The satisfaction is not.</p></div>`;
   return `<div class="split"><nav class="sidebar">${sections.map(([id, l]) => `<button class="side ${cur === id ? "on" : ""}" data-action="tab" data-app="settings" data-id="${id}" ${cur === id ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</nav><div class="pane">${body}</div></div>`;
 }
 function explorer() {
@@ -749,9 +804,25 @@ function trace() {
 function tracker() {
   const found = new Set(archive.found);
   const row = (x, got, run) => `<div class="proc ${got ? "" : "unfound"}"><div><strong>${got ? x.name : "???"}</strong><small>${x.hint}</small></div>${run ? '<span class="pill">this run</span>' : ""}</div>`;
-  return `<div class="pane">${eyebrow(`Secret Tracker · ${archive.plays} workstation${archive.plays === 1 ? "" : "s"}`)}<h2>What you’ve found, across every desk.</h2><p class="lede">${found.size} of ${G.SECRETS.length} secrets · ${archive.endings.length} of ${G.ENDINGS.length} endings. This record survives new workstations.</p><h3>Endings</h3>${G.ENDINGS.map((x) => row(x, archive.endings.includes(x.id), (s.over ?? (complete() ? "probation" : "")) === x.id)).join("")}<h3>Secrets</h3>${G.SECRETS.map((x) => row(x, found.has(x.id), s.secrets.includes(x.id))).join("")}</div>`;
+  const seen = new Set(archive.moments);
+  const cur = tabOf("tracker", ["moments", "secrets", "endings"]);
+  let body;
+  if (cur === "moments") {
+    const sections = [...new Set(G.MOMENTS.map((m) => m.section))];
+    const mrow = (m) => `<div class="proc ${seen.has(m.id) ? "" : "unfound"}"><div><strong>${seen.has(m.id) ? esc(m.name) : "???"}</strong><small>${esc(m.hint)}</small></div>${m.required ? '<span class="pill">needed for probation</span>' : ""}${s.moments.includes(m.id) ? '<span class="pill">this run</span>' : ""}</div>`;
+    body = `<p class="fine">Every story moment on the desk. Only the ones marked “needed for probation” are required; the rest depend on what you do, and some rule each other out.</p>${sections.map((sec) => { const list = G.MOMENTS.filter((m) => m.section === sec); return `<h3>${esc(sec)} · ${list.filter((m) => seen.has(m.id)).length}/${list.length}</h3>${list.map(mrow).join("")}`; }).join("")}`;
+  } else if (cur === "secrets") body = G.SECRETS.map((x) => row(x, found.has(x.id), s.secrets.includes(x.id))).join("");
+  else body = G.ENDINGS.map((x) => row(x, archive.endings.includes(x.id), (s.over ?? (complete() ? "probation" : "")) === x.id)).join("");
+  return tabs("tracker", [["moments", `Story · ${seen.size}/${G.MOMENTS.length}`], ["secrets", `Secrets · ${found.size}/${G.SECRETS.length}`], ["endings", `Endings · ${archive.endings.length}/${G.ENDINGS.length}`]], cur) + `<div class="pane">${eyebrow(`Secret Tracker · ${archive.plays} workstation${archive.plays === 1 ? "" : "s"}`)}<h2>What you’ve found, across every desk.</h2><p class="lede">This record survives new workstations.</p>${body}</div>`;
 }
 const HINT_FROM = ["Knowledge base article", "Reply from a human", "Reply from someone who has been here too long"];
+const mmss = (t) => (Number.isFinite(t) && t > 0 ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}` : "0:00");
+function music() {
+  const P = S.player;
+  const t = P.tracks[P.index];
+  const own = P.tracks.length > 1;
+  return `<div class="pane music"><div class="art" aria-hidden="true">${t.synth ? icon("music", "lilac", "big") : ""}</div><div class="now">${eyebrow(P.playing ? "Now playing" : "Paused")}<h2>${esc(t.title)}</h2><p class="fine">${esc(t.artist || "Unknown artist")}</p></div>${t.synth ? "" : `<input type="range" id="music-seek" min="0" max="${Math.max(1, Math.floor(P.duration))}" step="1" value="${Math.floor(P.position)}" data-music-pos="seek" aria-label="Position" />`}<div class="times"><span data-music-pos="time">${mmss(P.position)}</span><span>${t.synth ? "loops forever" : mmss(P.duration)}</span></div><div class="controls">${button("⏮", "music", "prev", false, "ghost", 'aria-label="Previous track"')}${button(P.playing ? "❚❚" : "▶", "music", "toggle", false, "primary", `aria-label="${P.playing ? "Pause" : "Play"}"`)}${button("⏭", "music", "next", false, "ghost", 'aria-label="Next track"')}${button("⇄", "music", "shuffle", false, "ghost " + (P.shuffle ? "on" : ""), `aria-pressed="${P.shuffle}" aria-label="Shuffle"`)}${button("↻", "music", "repeat", false, "ghost " + (P.repeat ? "on" : ""), `aria-pressed="${P.repeat}" aria-label="Repeat"`)}</div><div class="setting-row"><div><strong>Volume</strong></div><input type="range" id="music-vol" min="0" max="1" step="0.05" value="${P.volume}" aria-label="Music volume" /></div>${P.error ? `<p class="warn">${esc(P.error)}</p>` : ""}<h3>Up next</h3><div class="tracklist">${P.tracks.map((x, i) => button(`<span>${esc(x.title)}</span><small>${esc(x.artist)}</small>`, "music", "play:" + i, false, i === P.index ? "on" : "", `aria-label="Play ${esc(x.title)}"`)).join("")}</div><p class="fine">${own ? "Music from assets/music." : "Only the hold music so far. Add your own in assets/music; the README there explains how."}</p></div>`;
+}
 function helpdesk() {
   const open = G.HINTS.filter((h) => h.active(s));
   const tickets = open
@@ -789,7 +860,7 @@ function important() {
   return `<div class="pane"><div class="sticky s1 big-note">IT reminder<br><b>Do not delete files named “probably important.”</b><small>We have tried this.</small></div></div>`;
 }
 function deskduck() {
-  return `<div class="pane qf"><div class="duck big-duck" aria-hidden="true">🦆</div><h2>A duck.</h2><p class="lede">It is sitting next to the box of crackers. It is not a security concern. It is, if anything, a crackers concern.</p></div>`;
+  return `<div class="pane qf"><div class="duck big-duck" aria-hidden="true">🦆</div><h2>A duck.</h2><p class="lede">It is sitting next to the box of crackers. It is not a security concern. It is, if anything, a crackers concern.</p>${button("Pat the duck", "pat", "", false, "ghost")}${s.secrets.includes("pat") ? `<p class="fine">The duck tolerates you. This is the highest honour a duck can give.</p>` : ""}</div>`;
 }
 const APPS = {
   workbench: { title: "Workbench", glyph: "workbench", tone: "blue", size: [620, 560], render: workbench, dock: true },
@@ -812,6 +883,7 @@ const APPS = {
   important: { title: "probably important.txt", glyph: "important", tone: "ink", size: [360, 300], render: important },
   sudoku: { title: "Gentle Sudoku", glyph: "sudoku", tone: "blue", size: [440, 560], render: sudoku },
   trace: { title: "Trace", glyph: "trace", tone: "ink", size: [520, 560], render: trace },
+  music: { title: "Murmur", glyph: "music", tone: "lilac", size: [420, 600], render: music, dock: true },
   help: { title: "Help Desk", glyph: "help", tone: "mint", size: [560, 600], render: helpdesk },
   deskduck: { title: "duck", glyph: "duckling", tone: "peach", size: [380, 320], render: deskduck },
 };
@@ -851,16 +923,19 @@ function openApp(id, tab) {
     w.x = Math.max(12, Math.min(vw - w.w - right, 130 + k * 44));
     w.y = Math.max(44, Math.min(vh - w.h - 96, 52 + k * 30));
   }
+  if (!w.open || w.min) S.play("open");
   w.open = true;
   w.min = false;
   if (tab) w.tab = tab;
   focus(id);
+  if (id === "help") checkClock();
 }
 function focus(id) {
   ui.win[id].z = ++ui.z;
   ui.focus = id;
 }
 function closeApp(id) {
+  if (ui.win[id]?.open) S.play("close");
   if (ui.win[id]) ui.win[id].open = false;
   if (id === "settings") path = [];
   topWindow();
@@ -941,6 +1016,15 @@ function renderChrome() {
     .map(([l, v]) => `<span title="${l}${reported && l.startsWith("Users") ? ` · verified: about ${Math.round(s.users / 1.4).toLocaleString()}` : ""}"><small>${l}</small>${v}</span>`)
     .join("");
   $("calm").textContent = `Calm ${G.calm(s)}%`;
+  $("wifi").innerHTML = `<svg viewBox="0 0 24 24">${GLYPHS[s.settings.isolated ? "wifioff" : "wifi"]}</svg>`;
+  $("wifi").setAttribute("aria-label", s.settings.isolated ? "Network: isolated" : "Network: connected");
+  $("volume").innerHTML = `<svg viewBox="0 0 24 24">${GLYPHS[ui.sounds ? "speaker" : "speakeroff"]}</svg>`;
+  $("volume").setAttribute("aria-label", ui.sounds ? "Sound: on" : "Sound: off");
+  $("search-btn").innerHTML = `<svg viewBox="0 0 24 24">${GLYPHS.search}</svg>`;
+  const P = S.player;
+  $("nowplaying").hidden = !P.playing;
+  $("nowplaying").textContent = P.playing ? "♪ " + P.tracks[P.index].title : "";
+  document.body.classList.toggle("thin-walls", ui.glass <= 0.25);
   $("calm").classList.toggle("low", G.calm(s) < 80);
   const attention = {
     mail: s.warned > 0 || mailNews() || unread("parents") || G.promotionDue(s),
@@ -951,20 +1035,23 @@ function renderChrome() {
     .filter(([, a]) => docked(a))
     .map(([id, a]) => `${id === "settings" ? '<span class="dock-sep"></span>' : ""}<button class="dock-item ${ui.win[id]?.open ? "running" : ""}" data-action="open" data-id="${id}" aria-label="${a.title}">${icon(a.glyph, a.tone)}<span class="dock-label">${a.title}</span>${attention[id] ? '<i class="badge">!</i>' : ""}</button>`)
     .join("");
-  const icons = [
-    ["welcome", s.returns >= 4 ? `Welcome (${s.returns - 2}).pdf` : "Welcome.pdf", "welcome", "blue", ""],
-    ["important", "probably important", "important", "ink", ""],
-    ...s.bookmarks.map((b) => ["files", b === "workspace" ? "Workspace Zero" : "Channel 04", b, b === "workspace" ? "lilac" : "ink", b]),
-    ...(s.perks.includes("crackers") ? [["deskduck", "duck", "duckling", "peach", ""]] : []),
-    ["trash", "Trash", "trash", "ink", ""],
-  ];
-  $("icons").innerHTML = icons
-    .map(([app, label, glyph, tone, tab]) => `<button class="desk-icon" data-action="open" data-id="${app}" ${tab ? `data-tab="${tab}"` : ""}>${icon(glyph, tone)}<span>${label}</span></button>`)
+  $("icons").innerHTML = deskIcons()
+    .map(([key, app, label, glyph, tone, tab]) => `<button class="desk-icon ${selected.has(key) ? "selected" : ""}" data-action="icon" data-id="${app}" data-key="${key}" ${tab ? `data-tab="${tab}"` : ""} draggable="${key !== "trash"}" aria-label="${esc(label)}">${icon(glyph, tone)}<span>${esc(label)}</span></button>`)
     .join("");
   const [title, desc, app, cta, action = "open"] = goal();
   const active = s.jobs.filter((j) => !j.paused).length;
   const d = s.stories.duck;
   $("widgets").innerHTML = `<section class="widget goal">${eyebrow("Your next small victory")}<h3>${title}</h3><p>${desc}</p>${button(cta, action, app, false, "primary")}</section><section class="widget">${eyebrow("Processor")}<div class="meter"><i style="width:${Math.min(100, Math.round((active / G.workers(s)) * 100))}%"></i></div><p>${s.jobs.length ? `${active} running, ${s.jobs.length - active} paused · ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""}` : "Idle. Suspiciously peaceful."}</p></section><button class="widget news-widget" data-action="open" data-id="news">${eyebrow("The Daily Current")}<span class="duck" aria-hidden="true">🦆</span><b>${G.duckOpen(s) || d === 4 ? DUCK[d].head : "A QUIET DAY FOR THE DUCK"}</b></button>`;
+}
+const selected = new Set();
+function deskIcons() {
+  return [
+    ["welcome", "welcome", s.returns >= 4 ? `Welcome (${s.returns - 2}).pdf` : "Welcome.pdf", "welcome", "blue", ""],
+    ["important", "important", "probably important", "important", "ink", ""],
+    ...s.bookmarks.map((b) => [b, "files", b === "workspace" ? "Workspace Zero" : "Channel 04", b, b === "workspace" ? "lilac" : "ink", b]),
+    ...(s.perks.includes("crackers") ? [["deskduck", "deskduck", "duck", "duckling", "peach", ""]] : []),
+    ["trash", "trash", "Trash", "trash", "ink", ""],
+  ];
 }
 function markRead() {
   const visible = (app) => ui.win[app]?.open && !ui.win[app].min;
@@ -980,10 +1067,21 @@ function render() {
   renderChrome();
   renderWindows();
   updateClock();
+  if (pop && pop.kind !== "menu" && pop.kind !== "ctx") renderPop();
 }
 function updateClock() {
   $("clock").textContent = new Date().toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
 }
+let startedUp = false;
+document.addEventListener(
+  "pointerdown",
+  () => {
+    if (startedUp) return;
+    startedUp = true;
+    Promise.resolve(S.unlock()).then(() => ui.startup && S.play("startup"));
+  },
+  { capture: true, once: true },
+);
 
 /* ---------- notifications and story moments ---------- */
 function notify(text, app = "welcome") {
@@ -992,13 +1090,15 @@ function notify(text, app = "welcome") {
   t.className = "toast";
   t.innerHTML = `${icon(a.glyph, a.tone, "tiny")}<div><b>${a.title === "Welcome" ? "Stillwater" : a.title}</b><p>${esc(text)}</p></div>`;
   $("toasts").prepend(t);
+  S.play(/^Discovery noted/.test(text) ? "success" : app === "ripple" || app === "mail" ? "message" : "alert");
   while ($("toasts").children.length > 3) $("toasts").lastChild.remove();
   setTimeout(() => t.classList.add("out"), 6000);
   setTimeout(() => t.remove(), 6600);
 }
 function sourceOf(text) {
   if (/^People & Serenity|^IT:|^IT Security|^Kevin|replied all|got cake/.test(text)) return "mail";
-  if (/^Workspace Zero v/.test(text)) return "workbench";
+  if (/^Workspace Zero v|passed for .* v\d|rejected\. Take|^The assistant finished|^Migration rolled back|^Lunchboard went down/.test(text)) return "workbench";
+  if (/^Live help|Translate translated|box7|Panel B, including B7|cover to cover/.test(text)) return /Live help/.test(text) ? "help" : /cover/.test(text) ? "library" : "browser";
   if (/Panel B|^Procurement|ws-0417\.local|quillpost/i.test(text)) return "browser";
   if (/Tidepool|Sudoku|Installer blocked/.test(text)) return "tidepool";
   if (/Developer options/.test(text)) return "settings";
@@ -1150,7 +1250,7 @@ function nav(url) {
 }
 
 /* ---------- input ---------- */
-const PLAY = ["open", "close", "min", "max", "tab", "menu", "calm", "wallpaper", "accent", "pref", "path", "deeper", "decoy", "moment", "replay", "export", "import", "reset", "back", "pause"];
+const PLAY = ["open", "close", "min", "max", "tab", "menu", "calm", "wallpaper", "accent", "pref", "path", "deeper", "decoy", "moment", "replay", "export", "import", "reset", "back", "pause", "icon", "popover", "launcher", "lock", "unlock", "switchuser", "signout", "shutdown", "minall", "front", "shortcuts", "oshelp", "selectall", "sorticons", "getinfo", "iconinfo", "trashicon", "network", "calday", "music", "hit", "newfolder"];
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-action]");
   if (!b || b.disabled) return;
@@ -1168,7 +1268,9 @@ document.addEventListener("click", (e) => {
       closeApp(id);
       break;
     case "min":
+      if (!ui.win[id]) return;
       ui.win[id].min = true;
+      S.play("minimize");
       break;
     case "max":
       ui.win[id].max = !ui.win[id].max;
@@ -1179,12 +1281,112 @@ document.addEventListener("click", (e) => {
       if (b.dataset.app === "settings" && id !== "advanced") path = [];
       break;
     case "menu":
-      if (id === "window") {
-        for (const w of Object.values(ui.win)) if (w.open) w.min = true;
-      } else if (id === "help") openApp("help");
-      else notify(MENU[id], "settings");
+    case "popover":
+      togglePop(a === "menu" ? "menu" : id, id, b);
+      return;
+    case "icon": {
+      const key = b.dataset.key;
+      if (mobile() || e.pointerType === "touch" || e.detail !== 1) {
+        selected.clear();
+        openApp(id, b.dataset.tab);
+      } else {
+        if (!(e.shiftKey || e.metaKey || e.ctrlKey)) selected.clear();
+        selected.add(key);
+        document.querySelectorAll(".desk-icon").forEach((x) => x.classList.toggle("selected", selected.has(x.dataset.key)));
+        return;
+      }
       break;
+    }
+    case "launcher":
+      openLauncher();
+      return;
+    case "hit":
+      closeLauncher();
+      runHit(Number(id));
+      break;
+    case "lock":
+      lockScreen("lock");
+      return;
+    case "unlock":
+    case "switchuser":
+    case "signout":
+      lockAction(a);
+      return;
+    case "shutdown":
+      notify("Shut Down is disabled. Calm never sleeps. You could lock the screen instead.", "settings");
+      return;
+    case "newfolder":
+      notify(s.rank >= 4 ? "A new folder appeared and disappeared. Principal Engineers keep their folders in their heads." : "File › New is disabled during your probation period.", "settings");
+      return;
+    case "undo": {
+      const n = G.count(s, "undo", 5, "undo");
+      notify(n >= 5 ? "You tried to undo five times. Momentum noted. Nothing was undone." : "Undo is unavailable. Stillwater encourages forward momentum.", "settings");
+      break;
+    }
+    case "selectall":
+      for (const [key] of deskIcons()) selected.add(key);
+      break;
+    case "minall":
+      for (const w of Object.values(ui.win)) if (w.open) w.min = true;
+      S.play("minimize");
+      break;
+    case "front":
+      for (const [k, w] of Object.entries(ui.win)) if (w.open && APPS[k]) (w.min = false), focus(k);
+      break;
+    case "shortcuts":
+      notify("Ctrl+K search · Ctrl+Shift+L lock screen · Esc close menus · double-click icons to open. Appendix G lists the shortcuts removed for wellness reasons.", "settings");
+      return;
+    case "oshelp":
+      notify("Stillwater OS Help is available on Thursdays, from 4:15 to 4:19 p.m. The Help Desk is open the rest of the time.", "help");
+      return;
+    case "sorticons":
+      notify("Icons sorted by calm. The order is unchanged. They were already calm.", "files");
+      return;
+    case "getinfo":
+      notify(`WS-0417 · Stillwater OS 9.4.17 · 512 GB, of which 3.1 GB belongs to the previous user and ${(0.2 * s.returns).toFixed(1)} GB to you.`, "files");
+      return;
+    case "iconinfo":
+      notify({ welcome: "Welcome.pdf · revised " + (s.returns + 1) + " times · author: People & Serenity", important: "probably important.txt · 1 KB · do not delete", trash: "Trash · emptying disabled by policy", deskduck: "duck · 1.3 kg · moving with purpose", workspace: "Workspace Zero · owner: you · created eleven days before your start date", channel: "Channel 04 · not networked · not watched" }[id] ?? "No information. Very calm.", "files");
+      return;
+    case "trashicon":
+      trashIcon(id);
+      break;
+    case "network":
+      notify({ guest: "Stillwater-Guest requires a calm badge. Yours is provisional.", greg: "Greg’s Hotspot (heater) wants a password. It is probably “thursday”. It is not.", van: "You are not allowed to join “Definitely Not People & Serenity”. It already knows you." }[id], "settings");
+      return;
+    case "calday":
+      if (G.secret(s, "calendar")) notify("Recurring event found: Thursday, 4:17 p.m. · Panel B maintenance · organizer Greg Okafor · attendees: the build server, the Furnace of Thursdays.", "settings");
+      calDay = Number(id);
+      renderPop();
+      break;
+    case "music":
+      musicAction(id);
+      break;
+    case "pat": {
+      const n = G.count(s, "pat", 5, "pat");
+      if (ui.sounds) S.preview("quack");
+      notify(n >= 5 ? "The duck allows it. You are now, officially, a friend of the duck." : ["The duck looks at you.", "The duck looks at the crackers.", "The duck tolerates this.", "The duck closes its eyes, briefly."][(n - 1) % 4], "deskduck");
+      break;
+    }
+    case "redact":
+      if (G.count(s, "redact", 3, "redacted") >= 3) notify("The redaction flakes off. It was a sticker. Underneath: Mara Chen.", "settings");
+      else notify("Redacted. For privacy. Mostly hers.", "settings");
+      break;
+    case "solve": {
+      const p = s.projects[id];
+      const t = p?.task && G.T.makeTask(id, p.version);
+      const v = b.dataset.dialfrom ? Number($(b.dataset.dialfrom)?.value) : b.dataset.v;
+      const res = G.solve(s, id, t?.kind === "review" ? Number(v) : v);
+      if (res === "wrong" || res === "outage") S.play("error");
+      if (res === "ok") S.play("success");
+      changed = !!res;
+      break;
+    }
     case "calm":
+      if (G.count(s, "poke", 10, "poke") >= 10) {
+        notify("Please stop poking the Calm Index. It is trying its best.", "settings");
+        break;
+      }
       notify(s.stories.employee === 3 ? "The Calm Index has no sensor for the clients. It never did. It has one for you." : s.stories.employee === 2 ? "The Calm Index is calculated from proprietary signals. Mara says there’s no cable. You could check." : "The Calm Index is calculated from proprietary signals, some of them yours. You are doing great.", "settings");
       break;
     case "start":
@@ -1220,6 +1422,12 @@ document.addEventListener("click", (e) => {
       break;
     case "pref":
       ui[id] = !ui[id];
+      if (id === "sounds") {
+        syncSound();
+        if (!ui.sounds && G.secret(s, "quiet"))
+          notify("In the quiet, you can hear the desk humming. It hums in a key that isn’t on the list. (Settings › Sound has a new alert.)", "settings");
+        else S.play("click");
+      }
       break;
     case "wallpaper":
       ui.wallpaper = id;
@@ -1256,6 +1464,13 @@ document.addEventListener("click", (e) => {
       path = path.slice(0, Number(id) + 1);
       break;
     case "decoy":
+      if (!id.startsWith("__")) {
+        G.mark(s, "door:" + id);
+        if (Object.keys(DECOY).every((k) => s.marks.includes("door:" + k)) && G.secret(s, "doors")) {
+          afterChange();
+          persist();
+        }
+      }
       notify(
         id === "__restore" ? "Restore is disabled by policy. The previous user stays mostly removed." : id === "__current" ? "This profile is still in use. For now." : DECOY[id],
         id.startsWith("__") ? "trash" : "settings",
@@ -1293,8 +1508,9 @@ document.addEventListener("click", (e) => {
       }
       break;
     case "exception":
-      notify(EXCEPTIONS[Math.floor(Math.random() * EXCEPTIONS.length)], "browser");
-      return;
+      if (G.count(s, "exception", 5, "exception") === 5) notify("Exception granted. For the duck. Not for you. The duck thanks you for your persistence.", "browser");
+      else notify(EXCEPTIONS[Math.floor(Math.random() * EXCEPTIONS.length)], "browser");
+      break;
     case "download":
       changed = G.download(s, id);
       if (changed) notify("TidepoolClassroom.pkg saved to Files › Downloads.", "files");
@@ -1370,7 +1586,10 @@ document.addEventListener("click", (e) => {
     default:
       return;
   }
-  if (!changed) notify("That isn’t available yet. Most things here aren’t, at first.", "settings");
+  if (!changed) {
+    S.play("error");
+    notify("That isn’t available yet. Most things here aren’t, at first.", "settings");
+  }
   afterChange();
   persist();
   render();
@@ -1382,6 +1601,39 @@ document.addEventListener("submit", (e) => {
   const input = form.querySelector("input[name=v]:checked, input[name=v][type=text]");
   const v = input?.value ?? "";
   const kind = form.dataset.form;
+  if (kind === "mchen") {
+    const pw = $("mchen-pw");
+    if (pw.value.replace(/\s/g, "") === G.BLOG_PASSWORD) {
+      lockScreen("mara");
+      if (G.secret(s, "mchen")) afterChange(), persist(), render();
+    } else {
+      pw.value = "";
+      pw.classList.remove("shake");
+      void pw.offsetWidth;
+      pw.classList.add("shake");
+      S.play("error");
+    }
+    return;
+  }
+  if (kind === "triage" || kind === "tune") {
+    const pid = form.dataset.project;
+    const value =
+      kind === "triage"
+        ? [...form.querySelectorAll("select")].map((x) => x.value)
+        : [Number($(`tune-r-${pid}`).value), Number($(`tune-d-${pid}`).value)];
+    if (kind === "triage" && value.includes("")) return void notify("Label every report first.", "workbench");
+    const res = G.solve(s, pid, value);
+    if (res === "probe") {
+      const r = G.T.probe(...value);
+      const t = G.T.makeTask(pid, s.projects[pid].version);
+      notify(r.coverage < t.need ? `Probe missed events: coverage ${r.coverage}, needs ${t.need}.` : `Probe slowed everything down: overhead ${r.overhead}, limit ${t.cap}.`, "activity");
+    }
+    S.play(res === "ok" ? "success" : res === "wrong" ? "error" : "click");
+    afterChange();
+    persist();
+    render();
+    return;
+  }
   if (s.over && kind !== "address") return void notify("This workstation is finished. Start a new one from the desktop.", "settings");
   let clear = true;
   switch (kind) {
@@ -1416,6 +1668,16 @@ document.addEventListener("submit", (e) => {
   render();
 });
 document.addEventListener("change", (e) => {
+  if (e.target.id === "alert" && S.ALERTS[e.target.value]) {
+    ui.alert = e.target.value;
+    syncSound();
+    S.preview(ui.alert);
+    if (ui.alert === "quack" && G.secret(s, "quack")) notify("Alert sound set to Quack. Facilities Policy §12(b) has been satisfied.", "settings");
+    afterChange();
+    persist();
+    render();
+    return;
+  }
   if (s.over) return;
   if (e.target.id === "ai") s.ai = e.target.value;
   else if (e.target.id === "installs") G.setInstalls(s, e.target.value);
@@ -1425,10 +1687,37 @@ document.addEventListener("change", (e) => {
   render();
 });
 document.addEventListener("input", (e) => {
-  if (e.target.id === "glass") {
+  const id = e.target.id;
+  if (id === "glass") {
     ui.glass = Math.round((1.1 - Number(e.target.value)) * 100) / 100;
     document.documentElement.style.setProperty("--glass", ui.glass);
+    document.body.classList.toggle("thin-walls", ui.glass <= 0.25);
     saveUI();
+    if (ui.glass <= 0.25 && G.secret(s, "glass")) afterChange(), persist();
+  }
+  if (id === "launcher-q") {
+    hits = searchHits(e.target.value);
+    hitOn = 0;
+    renderLauncher();
+    if (s.secrets.includes("search") && !before.secrets.includes("search")) afterChange(), persist();
+  }
+  if (id === "sfx-volume") {
+    ui.volume = Number(e.target.value);
+    syncSound();
+    saveUI();
+  }
+  if (id === "music-vol") {
+    ui.music = Number(e.target.value);
+    S.setVolume(ui.music);
+    saveUI();
+  }
+  if (id === "music-seek") S.seek(Number(e.target.value));
+  if (e.target.dataset?.dial) {
+    const pid = e.target.dataset.dial;
+    ui.dial[pid] = Number(e.target.value);
+    const p = s.projects[pid];
+    const out = document.querySelector(`[data-decoded="${pid}"]`);
+    if (p?.task && out) out.textContent = G.T.shift(G.T.makeTask(pid, p.version).cipher, -ui.dial[pid]);
   }
   const cell = e.target.dataset?.cell;
   if (cell !== undefined) {
@@ -1442,9 +1731,50 @@ document.addEventListener("input", (e) => {
   }
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !$("moment").hidden) {
-    const first = $("moment").querySelector("[data-action=moment]");
-    if (first) endMoment(first.dataset.id);
+  const typing = e.target.closest?.("input, textarea, select");
+  if (e.key === "Escape") {
+    if (!$("launcher").hidden) return closeLauncher();
+    if (pop) return closePop();
+    if (!$("moment").hidden) {
+      const first = $("moment").querySelector("[data-action=moment]");
+      if (first) endMoment(first.dataset.id);
+    }
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    return $("launcher").hidden ? openLauncher() : closeLauncher();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "l") {
+    e.preventDefault();
+    return lockScreen("lock");
+  }
+  if (e.target.id === "launcher-q") {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      hitOn = (hitOn + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % Math.max(1, hits.length);
+      renderLauncher();
+    } else if (e.key === "Enter" && hits.length) {
+      closeLauncher();
+      runHit(hitOn);
+      afterChange();
+      persist();
+      render();
+    }
+    return;
+  }
+  if (typing) return;
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (key === KONAMI[konami]) konami++;
+  else konami = key === "ArrowUp" ? Math.min(konami, 2) || 1 : 0;
+  if (konami === KONAMI.length) {
+    konami = 0;
+    parade();
+    if (G.secret(s, "konami")) {
+      afterChange();
+      persist();
+      render();
+    }
   }
 });
 $("import-file").addEventListener("change", async (e) => {
@@ -1466,6 +1796,301 @@ $("import-file").addEventListener("change", async (e) => {
   }
   e.target.value = "";
 });
+
+/* ---------- menus, popovers, search and the lock screen ---------- */
+let pop = null,
+  calDay = 0;
+function menuItems(id) {
+  const top = topWindow();
+  if (id === "logo")
+    return [["About This Workstation", "open", "settings", false, 'data-tab="about"'], ["System Settings…", "open", "settings"], "-", ["Lock Screen", "lock", "", false, "", "Ctrl Shift L"], ["Shut Down…", "shutdown"]];
+  if (id === "file")
+    return [["New Folder", "newfolder", "", s.rank < 4], ["Open…", "launcher", "", false, "", "Ctrl K"], "-", ["Close Window", "close", top ?? "", !top], ["Minimize Window", "min", top ?? "", !top], "-", ["Export Save…", "export"]];
+  if (id === "edit") return [["Undo", "undo"], ["Redo", "", "", true], "-", ["Cut", "", "", true], ["Copy", "", "", true], ["Paste", "", "", true], "-", ["Select All Icons", "selectall"]];
+  if (id === "window") {
+    const open = Object.entries(ui.win).filter(([k, w]) => APPS[k] && w.open);
+    return [["Minimize All", "minall", "", !open.length], ["Bring All to Front", "front", "", !open.length], ...(open.length ? ["-"] : []), ...open.map(([k, w]) => [`${k === top ? "✓ " : ""}${APPS[k].title}${w.min ? " · minimized" : ""}`, "open", k])];
+  }
+  if (id === "help") return [["Help Desk", "open", "help"], ["Search…", "launcher", "", false, "", "Ctrl K"], ["Keyboard Shortcuts", "shortcuts"], "-", ["Stillwater OS Help", "oshelp"]];
+  if (id === "desktop")
+    return [["New Folder", "newfolder", "", s.rank < 4], "-", ["Change Wallpaper…", "open", "settings", false, 'data-tab="appearance"'], ["Sort Icons by Name", "sorticons"], ["Get Info", "getinfo"], "-", ["Lock Screen", "lock"]];
+  if (id.startsWith("icon:")) {
+    const [key, app, , , , tab] = deskIcons().find((x) => x[0] === id.slice(5)) ?? [];
+    if (!key) return [];
+    return [["Open", "open", app, false, tab ? `data-tab="${tab}"` : ""], ["Get Info", "iconinfo", key], ...(key === "trash" ? [] : ["-", ["Move to Trash", "trashicon", key]])];
+  }
+  return [];
+}
+const item = ([label, action, id = "", disabled = false, extra = "", kbd = ""]) =>
+  `<button class="item" role="menuitem" data-action="${action}" data-id="${esc(id)}" ${disabled || !action ? "disabled" : ""} ${extra}><span>${esc(label)}</span>${kbd ? `<kbd>${kbd}</kbd>` : ""}</button>`;
+function popHTML() {
+  if (!pop) return "";
+  if (pop.kind === "menu" || pop.kind === "ctx") return menuItems(pop.id).map((x) => (x === "-" ? "<hr>" : item(x))).join("");
+  if (pop.kind === "wifi")
+    return `<h4>Wi-Fi</h4>${toggle("Stillwater-Calm", s.settings.isolated ? "Isolated. Only the desk itself is listening." : "Connected to Stillwater HQ.", "isolated", !s.settings.isolated, false, "toggle")}<hr><h4>Other networks</h4>${[["guest", "Stillwater-Guest"], ["greg", "Greg’s Hotspot (heater)"], ["van", "Definitely Not People & Serenity"]].map(([k, l]) => item([l, "network", k])).join("")}<hr>${item(["Network Settings…", "open", "settings", false, 'data-tab="network"'])}`;
+  if (pop.kind === "volume")
+    return `<h4>Sound</h4>${toggle("Interface sounds", ui.sounds ? "On" : "Off", "sounds", ui.sounds, false, "pref")}<div class="pad"><input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="${ui.volume}" aria-label="Interface volume" /></div><hr>${item([S.player.playing ? "♪ " + S.player.tracks[S.player.index].title : "Murmur", "open", "music"])}${item(["Sound Settings…", "open", "settings", false, 'data-tab="sound"'])}`;
+  if (pop.kind === "calendar") {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const first = new Date(y, m, 1).getDay();
+    const days = new Date(y, m + 1, 0).getDate();
+    const cells = Array.from({ length: first }, () => "<span></span>").join("") + Array.from({ length: days }, (_, i) => {
+      const d = i + 1, thu = new Date(y, m, d).getDay() === 4;
+      return `<button class="${d === now.getDate() ? "today" : ""} ${thu ? "event" : ""}" data-action="${thu ? "calday" : ""}" data-id="${d}" aria-label="${d}${thu ? ", 1 event" : ""}">${d}</button>`;
+    }).join("");
+    const ev = calDay ? `<div class="event-card"><b>Thursday ${calDay} · 4:17 p.m.</b><p>Panel B maintenance (recurring)</p><p class="fine">Organizer: Greg Okafor · Attendees: the build server, the Furnace of Thursdays</p></div>` : "";
+    const today = [G.promotionDue(s) && "Growth conversation · People & Serenity", "12:00 · Lunch rush (Lunchboard)", now.getDay() === 4 && "4:15–4:19 p.m. · Live help desk"].filter(Boolean);
+    return `<h4>${now.toLocaleString([], { month: "long", year: "numeric" })}</h4><div class="cal">${["S", "M", "T", "W", "T", "F", "S"].map((x) => `<b>${x}</b>`).join("")}${cells}</div>${ev}<h4>Today</h4><div class="pad fine">${today.map(esc).join("<br>")}</div>`;
+  }
+  return "";
+}
+function renderPop() {
+  const el = $("pop");
+  document.querySelectorAll("[aria-expanded]").forEach((x) => x.removeAttribute("aria-expanded"));
+  if (!pop) return void (el.hidden = true);
+  el.innerHTML = popHTML();
+  el.hidden = false;
+  el.setAttribute("role", pop.kind === "menu" || pop.kind === "ctx" ? "menu" : "dialog");
+  const w = el.offsetWidth, h = el.offsetHeight;
+  let x = pop.x, y = pop.y;
+  if (pop.anchor) {
+    const r = pop.anchor.getBoundingClientRect();
+    pop.anchor.setAttribute("aria-expanded", "true");
+    x = pop.kind === "menu" ? r.left : r.right - w;
+    y = r.bottom + 6;
+  }
+  el.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + "px";
+  el.style.top = Math.max(8, Math.min(innerHeight - h - 8, y)) + "px";
+}
+function togglePop(kind, id, anchor) {
+  if (pop && pop.kind === kind && pop.id === id) pop = null;
+  else pop = { kind, id, anchor };
+  calDay = 0;
+  S.play("click");
+  renderPop();
+}
+function closePop() {
+  if (!pop) return;
+  pop = null;
+  renderPop();
+}
+document.addEventListener(
+  "pointerdown",
+  (e) => {
+    S.unlock();
+    if (pop && !e.target.closest("#pop") && !e.target.closest("[data-action=menu],[data-action=popover]")) closePop();
+    // Clear the icon selection without re-rendering: replacing the DOM mid-click would eat the click.
+    if (!e.target.closest(".desk-icon") && selected.size && !e.target.closest("#pop")) {
+      selected.clear();
+      document.querySelectorAll(".desk-icon.selected").forEach((x) => x.classList.remove("selected"));
+    }
+  },
+  true,
+);
+document.addEventListener("click", (e) => {
+  // Choosing anything in a menu closes it; switches inside popovers keep it open.
+  if (pop && e.target.closest("#pop .item")) closePop();
+});
+document.addEventListener("contextmenu", (e) => {
+  if (e.target.closest(".window, .dock, .menubar, #pop, input, textarea, .lock, .launcher, .moment")) return;
+  e.preventDefault();
+  const iconEl = e.target.closest(".desk-icon");
+  pop = { kind: "ctx", id: iconEl ? "icon:" + iconEl.dataset.key : "desktop", x: e.clientX, y: e.clientY };
+  if (iconEl) {
+    selected.clear();
+    selected.add(iconEl.dataset.key);
+    document.querySelectorAll(".desk-icon").forEach((x) => x.classList.toggle("selected", x === iconEl));
+  }
+  renderPop();
+});
+function trashIcon(key) {
+  if (key === "important") {
+    S.play("trash");
+    G.secret(s, "important");
+    notify("IT reminder: do not delete files named “probably important”. We have tried this. The file has been restored to the desktop.", "trash");
+  } else if (key === "trash") return;
+  else notify("This item can’t be moved to the Trash. It is load-bearing.", "trash");
+}
+/* drag an icon onto the Trash */
+document.addEventListener("dragstart", (e) => {
+  const el = e.target.closest?.(".desk-icon");
+  if (!el) return;
+  e.dataTransfer.setData("text/x-icon", el.dataset.key);
+  e.dataTransfer.effectAllowed = "move";
+});
+document.addEventListener("dragover", (e) => {
+  const t = e.target.closest?.(".desk-icon[data-key=trash]");
+  if (!t) return;
+  e.preventDefault();
+  t.classList.add("droptarget");
+});
+document.addEventListener("dragleave", (e) => e.target.closest?.(".desk-icon")?.classList.remove("droptarget"));
+document.addEventListener("drop", (e) => {
+  const t = e.target.closest?.(".desk-icon[data-key=trash]");
+  if (!t) return;
+  e.preventDefault();
+  t.classList.remove("droptarget");
+  trashIcon(e.dataTransfer.getData("text/x-icon"));
+  afterChange();
+  persist();
+  render();
+});
+/* drag a selection box on the empty desktop */
+let lasso = null;
+document.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || mobile() || !(e.target.id === "desktop" || e.target.id === "icons" || e.target.id === "widgets")) return;
+  lasso = { x: e.clientX, y: e.clientY };
+});
+document.addEventListener("pointermove", (e) => {
+  if (!lasso) return;
+  const box = $("lasso");
+  const x = Math.min(lasso.x, e.clientX), y = Math.min(lasso.y, e.clientY);
+  const w = Math.abs(e.clientX - lasso.x), h = Math.abs(e.clientY - lasso.y);
+  if (w + h < 6) return;
+  Object.assign(box.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
+  box.hidden = false;
+  selected.clear();
+  for (const el of document.querySelectorAll(".desk-icon")) {
+    const r = el.getBoundingClientRect();
+    if (r.right > x && r.left < x + w && r.bottom > y && r.top < y + h) selected.add(el.dataset.key);
+    el.classList.toggle("selected", selected.has(el.dataset.key));
+  }
+});
+document.addEventListener("pointerup", () => {
+  lasso = null;
+  $("lasso").hidden = true;
+});
+
+/* search */
+let hits = [],
+  hitOn = 0;
+function searchHits(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  const out = [];
+  for (const [id, a] of Object.entries(APPS)) if ((docked(a) || ["help", "trash", "welcome"].includes(id)) && a.title.toLowerCase().includes(q)) out.push({ title: a.title, sub: "Application", run: () => openApp(id) });
+  for (const [id, l] of [["appearance", "Appearance"], ["development", "Development"], ["notifications", "Notifications"], ["sound", "Sound"], ["network", "Network"], ["privacy", "Privacy"], ["advanced", "Advanced"], ["storage", "Storage"], ["about", "About"]])
+    if (l.toLowerCase().includes(q) || "settings".includes(q)) out.push({ title: `System Settings › ${l}`, sub: "Setting", run: () => openApp("settings", id) });
+  for (const u of G.OPEN_SITES.filter((u) => u !== "ws-0417.local" && u !== "learn.tidepool.games")) if (u.includes(q)) out.push({ title: u, sub: "Website", run: () => nav(u) });
+  for (const [id, n] of [["workspace", "Workspace Zero"], ["channel", "Channel 04"]]) if (s.bookmarks.includes(id) && n.toLowerCase().includes(q)) out.push({ title: n, sub: "Files", run: () => openApp("files", id) });
+  if (/duck/.test(q)) {
+    G.secret(s, "search");
+    out.push({ title: "Duck", sub: "Board member · directory.stillwater", run: () => nav("directory.stillwater") });
+  }
+  if (/mara|chen/.test(q)) out.push({ title: "No results for Mara Chen", sub: "Try asking the desk.", run: () => {} });
+  if (/furnace|heater|greg/.test(q)) out.push({ title: "B7 GREG — DO NOT", sub: "Panel B · facilities.stillwater", run: () => nav("facilities.stillwater") });
+  if (/calm/.test(q)) out.push({ title: "Calm Index", sub: `Currently ${G.calm(s)}%. It is watching the search too.`, run: () => {} });
+  return out.slice(0, 9);
+}
+function renderLauncher() {
+  const res = $("launcher").querySelector(".results");
+  res.innerHTML = hits.length
+    ? hits.map((h, i) => `<button class="hit ${i === hitOn ? "on" : ""}" data-action="hit" data-id="${i}"><span><b>${esc(h.title)}</b><small>${esc(h.sub)}</small></span></button>`).join("")
+    : `<p class="fine pad">${$("launcher-q").value.trim() ? "Nothing found. It may be somewhere deeper." : "Search applications, settings and sites."}</p>`;
+}
+function openLauncher() {
+  closePop();
+  const el = $("launcher");
+  el.innerHTML = `<div class="launcher-box" role="dialog" aria-label="Search"><input id="launcher-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search WS-0417" aria-label="Search" /><div class="results"></div></div>`;
+  el.hidden = false;
+  hits = [];
+  hitOn = 0;
+  renderLauncher();
+  $("launcher-q").focus();
+}
+function closeLauncher() {
+  $("launcher").hidden = true;
+}
+function runHit(i) {
+  hits[i]?.run();
+}
+$("launcher").addEventListener("pointerdown", (e) => {
+  if (e.target.id === "launcher") closeLauncher();
+});
+
+/* lock screen and screensaver */
+let lockState = null,
+  saverAt = 0,
+  lastInput = Date.now();
+const timeStr = () => new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const dateStr = () => new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+function lockHTML() {
+  if (lockState === "saver") return `<div class="saver-clock">${timeStr()}</div><div class="saver-duck" aria-hidden="true">🦆</div>`;
+  const head = `<div><div class="big-time">${timeStr()}</div><div class="date">${dateStr()}</div>`;
+  if (lockState === "mchen")
+    return `${head}<div class="user"><div class="avatar-lg">M</div><b>mchen</b><form data-form="mchen" class="row"><input id="mchen-pw" type="password" autocomplete="off" placeholder="Password" aria-label="Password for mchen" /><button class="primary">Sign in</button></form><p class="fine">Password hint: the top line of the gentle one.</p><button class="link" data-action="signout">Back</button></div></div>`;
+  if (lockState === "mara")
+    return `${head}<div class="user"><div class="avatar-lg">M</div><b>mchen’s desktop</b><div class="note">The desktop is empty except for one file, <i>for-whoever.txt</i>:<br><br>“You found my password twice. Go outside sometimes. The duck does. — M.”</div><button class="primary" data-action="signout">Sign out</button></div></div>`;
+  return `${head}<div class="user"><div class="avatar-lg">${G.RANKS[s.rank][0]}</div><b>You · WS-0417</b><button class="primary" data-action="unlock">Unlock</button><button class="link" data-action="switchuser">Other user: mchen</button></div></div>`;
+}
+function lockScreen(state) {
+  closePop();
+  closeLauncher();
+  if (state === "lock" && lockState !== "lock") S.play("lock");
+  lockState = state;
+  saverAt = state === "saver" ? Date.now() : 0;
+  const el = $("lock");
+  el.className = "lock " + (state === "saver" ? "saver" : "");
+  el.innerHTML = lockHTML();
+  el.hidden = false;
+  el.querySelector("input, button")?.focus({ preventScroll: true });
+}
+function lockAction(a) {
+  if (a === "unlock") {
+    lockState = null;
+    $("lock").hidden = true;
+    S.play("open");
+  } else lockScreen(a === "switchuser" ? "mchen" : "lock");
+}
+function wake() {
+  lastInput = Date.now();
+  if (lockState === "saver") lockScreen("lock");
+}
+["pointerdown", "keydown", "wheel"].forEach((ev) => document.addEventListener(ev, wake, true));
+document.addEventListener("pointermove", () => {
+  if (lockState !== "saver" || Date.now() - saverAt > 800) wake();
+}, true);
+/* idle, real-world time, and the hold music: checked by the desktop clock */
+function checkClock() {
+  const d = new Date();
+  let found = false;
+  if (d.getHours() < 4) found = G.secret(s, "nightowl") || found;
+  if (d.getDay() === 4 && d.getHours() === 16 && d.getMinutes() >= 15 && d.getMinutes() <= 19 && ui.win.help?.open && !ui.win.help.min && G.secret(s, "livehelp")) {
+    G.log(s, "Live help: “Hi, this is Greg. Nobody else does Thursdays. Is it the heater? It’s always the heater.”");
+    found = true;
+  }
+  if (S.holdHeard() >= 60) found = G.secret(s, "hold") || found;
+  if (lockState === "saver" && Date.now() - saverAt > 8000) found = G.secret(s, "screensaver") || found;
+  if (!lockState && $("moment").hidden && Date.now() - lastInput > 180000) lockScreen("saver");
+  if (lockState) $("lock").querySelectorAll(".big-time, .saver-clock").forEach((x) => (x.textContent = timeStr()));
+  return found;
+}
+
+/* the desk remembers the old codes */
+const KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+let konami = 0;
+function parade() {
+  const el = $("parade");
+  el.innerHTML = Array.from({ length: 7 }, (_, i) => `<span style="animation-delay:${i * 0.45}s">🦆</span>`).join("");
+  if (ui.sounds) S.preview("quack");
+  setTimeout(() => (el.innerHTML = ""), 11000);
+}
+
+/* music */
+function musicAction(id) {
+  if (id === "toggle") S.toggle();
+  else if (id === "next") S.next();
+  else if (id === "prev") S.prev();
+  else if (id === "shuffle") S.player.shuffle = !S.player.shuffle;
+  else if (id === "repeat") S.player.repeat = !S.player.repeat;
+  else if (id.startsWith("play:")) S.playTrack(Number(id.slice(5)));
+}
+S.onMusic(() => {
+  renderChrome();
+  if (ui.win.music?.open) renderWindows();
+});
+S.loadTracks();
 
 /* dragging and resizing */
 let drag = null;
@@ -1543,8 +2168,21 @@ setInterval(() => {
       const j = s.jobs.find((j) => j.id === Number(el.dataset.jobpct));
       if (j) el.textContent = pct(j);
     }
+    for (const el of document.querySelectorAll("[data-rush]")) {
+      const [offset, rush] = el.dataset.rush.split(":").map(Number);
+      el.outerHTML = trafficHTML({ offset, rush });
+    }
+    S.step();
+    for (const el of document.querySelectorAll("[data-music-pos]")) {
+      if (el.dataset.musicPos === "time") el.textContent = mmss(S.player.position);
+      else if (document.activeElement !== el) el.value = Math.floor(S.player.position);
+    }
     if (saveClock % 20 === 0) renderChrome();
     updateClock();
+  }
+  if (saveClock % 4 === 0 && checkClock()) {
+    afterChange();
+    render();
   }
   if (saveClock % 5 === 0) persist();
 }, 500);
