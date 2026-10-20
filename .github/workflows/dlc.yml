@@ -1,0 +1,58 @@
+# Push a tag like dlc-thursday-v1.0.0 to publish dlc/packs/thursday at version 1.0.0: the pack
+# is zipped, released under that tag, and added to dlc/catalog.json on the default branch.
+name: DLC
+on:
+  push:
+    tags: ["dlc-*-v*.*.*"]
+permissions:
+  contents: write
+concurrency:
+  group: dlc-catalog
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --omit=dev --ignore-scripts
+      - name: Pack
+        id: pack
+        run: |
+          tag="$GITHUB_REF_NAME"
+          rest="${tag#dlc-}"
+          id="${rest%-v*}"
+          version="${rest##*-v}"
+          if [ "$id" = "example" ]; then echo "::error::The example pack is a template and is never published."; exit 1; fi
+          git checkout "$tag" -- "dlc/packs/$id"
+          pkgver=$(node -p "require('./dlc/packs/$id/manifest.json').version")
+          if [ "$pkgver" != "$version" ]; then echo "::error::Tag says $version but the manifest says $pkgver."; exit 1; fi
+          node tools/pack-dlc.mjs "$id"
+          # Only the catalog is committed: put the pack folder back as the default branch has it.
+          git reset -q -- "dlc/packs/$id"
+          git checkout -q HEAD -- "dlc/packs/$id" 2>/dev/null || rm -rf "dlc/packs/$id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ID: ${{ steps.pack.outputs.id }}
+          VERSION: ${{ steps.pack.outputs.version }}
+        run: |
+          name=$(node -p "require('./dlc/catalog.json').find(e => e.id === process.env.ID).name")
+          gh release create "$GITHUB_REF_NAME" "dist/dlc-$ID-$VERSION.zip" --title "DLC: $name $VERSION" --notes "Downloadable content for Advanced Settings. Install it from Software Update › DLC in the Windows edition." --latest=false
+      - name: Update the catalog
+        env:
+          ID: ${{ steps.pack.outputs.id }}
+          VERSION: ${{ steps.pack.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dlc/catalog.json
+          git commit -m "DLC catalog: $ID $VERSION"
+          git push origin HEAD

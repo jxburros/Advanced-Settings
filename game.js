@@ -1,5 +1,6 @@
 import { THREADS, REPLY_ALL, REPLY_ALL_PILE } from "./stories.js";
-export { THREADS, REPLY_ALL, REPLY_ALL_PILE };
+import * as T from "./tasks.js";
+export { THREADS, REPLY_ALL, REPLY_ALL_PILE, T };
 
 export const SKILLS = [
   {
@@ -12,57 +13,57 @@ export const SKILLS = [
   {
     id: "tests",
     name: "Test harness",
-    cost: 90,
-    knowledge: 25,
+    cost: 110,
+    knowledge: 30,
     desc: "Tests now fix one defect on the way through. Real tests, as opposed to the other kind.",
   },
   {
     id: "hardware",
     name: "Second CPU core",
-    cost: 130,
-    knowledge: 40,
+    cost: 180,
+    knowledge: 55,
     desc: "Two jobs at full speed. Read and build at once, like a person with two hands.",
   },
   {
     id: "database",
     name: "Databases",
-    cost: 140,
-    knowledge: 50,
+    cost: 200,
+    knowledge: 70,
     desc: "Unlocks Archive Index and read access to the personnel archive. Every release indexes another box of records nobody asked for.",
   },
   {
     id: "scheduler",
     name: "Task scheduler",
-    cost: 180,
-    knowledge: 65,
+    cost: 320,
+    knowledge: 100,
     desc: "Tests, debugs and ships finished work by itself. It will not choose features. It has no taste.",
   },
   {
     id: "autocomplete",
     name: "Autocomplete",
-    cost: 160,
-    knowledge: 75,
+    cost: 240,
+    knowledge: 90,
     desc: "Writing jobs run 40% faster. Suggests the next line, and occasionally the next thought.",
   },
   {
     id: "systems",
     name: "Systems programming",
-    cost: 220,
-    knowledge: 95,
+    cost: 340,
+    knowledge: 130,
     desc: "Unlocks Quiet Monitor and the kind of diagnostics that do not show up in Diagnostics.",
   },
   {
     id: "assistant",
     name: "AI task assistant",
-    cost: 300,
-    knowledge: 120,
+    cost: 480,
+    knowledge: 170,
     desc: "A local assistant you can assign to development, reading or security. Very polite about everything.",
   },
   {
     id: "local",
     name: "Local model runtime",
-    cost: 380,
-    knowledge: 170,
+    cost: 650,
+    knowledge: 240,
     requires: "assistant",
     desc: "A third worker and a stronger assistant. Runs entirely on this machine, which is now warm.",
   },
@@ -144,6 +145,11 @@ export const RANKS = [
   "Principal Engineer",
 ];
 export const TRACKS = ["specialist", "manager", "automator"];
+/* Total releases needed for each rank. The gaps widen as the work gets bigger. */
+export const RANK_AT = [0, 3, 7, 12, 18];
+export function promotionDue(s) {
+  return !s.over && s.rank < 4 && s.releases >= RANK_AT[s.rank + 1];
+}
 
 /* Records revealed one per Archive Index release. Several are clues. */
 export const ARCHIVE = [
@@ -294,6 +300,28 @@ export const SECRETS = [
   ["partofproblem", "Part of the problem", "Reply all. Just once."],
   ["cake", "There was cake", "Some emails expire faster than others."],
   ["phish", "Not today", "Read who it’s really from."],
+  ["quiet", "Quiet hours", "Some things are only audible in silence."],
+  ["quack", "Unlisted alert", "An alert sound that isn’t on the list."],
+  ["hold", "Hold the line", "Some music is only for waiting."],
+  ["konami", "Old habits", "Up, up, down, down…"],
+  ["screensaver", "Duck patrol", "Leave the desk alone for a while."],
+  ["calendar", "Recurring event", "Check the calendar for Thursday."],
+  ["important", "We have tried this", "Some files should not go in the Trash."],
+  ["glass", "See-through", "Make the windows as clear as they go."],
+  ["poke", "Calm down", "Stop poking the Calm Index."],
+  ["livehelp", "Live help", "Help is available on Thursdays, 4:15 to 4:19 p.m. Really."],
+  ["nightowl", "Night shift", "Work very late, or very early."],
+  ["undo", "Forward momentum", "Undo. Undo. Undo."],
+  ["search", "Search party", "Search the computer for the obvious."],
+  ["exception", "Persistent applicant", "Ask for an exception. Keep asking."],
+  ["fullpower", "Full power", "Every switch on. Even that one."],
+  ["doors", "Every wrong door", "Open every decoy in the deep settings."],
+  ["mchen", "Same password everywhere", "Sign in as someone else."],
+  ["pat", "Good duck", "Pat the duck."],
+  ["box7", "Never filed", "Ask the desk for box 7."],
+  ["manual", "Cover to cover", "Read every page of the documentation."],
+  ["redacted", "Redacted", "Some names don’t stay hidden."],
+  ["recursion", "Lost in translation", "Translate the translator."],
 ].map(([id, name, hint]) => ({ id, name, hint }));
 export const ENDINGS = [
   { id: "probation", name: "End of probation", hint: "Finish every story." },
@@ -301,7 +329,261 @@ export const ENDINGS = [
   { id: "breach", name: "Reimaged", hint: "Unsigned helpers get bolder." },
 ];
 
-const STAGES = ["plan", "writing", "written", "testing", "tested", "debugging"];
+/* Help Desk tickets: three escalating answers per open problem. Each answer after the first
+   unlocks only after some time with the previous one, so the puzzles stay puzzles. */
+export const HINT_WAIT = [0, 150, 300];
+const at = (s, id, step) => s.threads[id]?.open && s.threads[id].step === step;
+const DUCK_HINTS = [
+  ["facilities.stillwater lists every vent. One of them is never empty.", "Read the Facilities ventilation table and the cafeteria note on the intranet. Archive Index box 1 says the same thing."],
+  ["The duck isn’t psychic. Something it likes arrives in a particular container.", "Look at the break-room section on facilities.stillwater."],
+  ["The secure wing doesn’t need a badge from everyone.", "Read the Doors table on facilities.stillwater. Archive Index box 2 explains why."],
+  ["The public website copies its leadership page from somewhere internal.", "Look up “Duck” in directory.stillwater, then read the intranet announcements about tags."],
+];
+export const HINTS = [
+  {
+    id: "workspace",
+    title: "The previous user’s workspace",
+    active: (s) => !s.bookmarks.includes("workspace"),
+    steps: () => [
+      "Mara’s notes keep mentioning old themes. System Settings › Advanced goes much deeper than it looks, and every level has exactly one real door.",
+      "The route is Editor › Plugins › Installed › Theme Engine › Compatibility › Legacy Themes › Import › Supported Formats.",
+      "At Supported Formats, turn on Legacy workspace compatibility, pause any running job (Activity Monitor or Workbench), then press Import Workspace.",
+    ],
+  },
+  {
+    id: "attachment",
+    title: "Mara’s attachment",
+    active: (s) => s.stories.employee === 1,
+    steps: () => [
+      "Mail › Recovered has something from Mara that the current tools can’t open.",
+      "It’s a record. Records live in databases.",
+      "Install Databases in Toolshed › Languages, then press Read archived attachment in Mail › Recovered.",
+    ],
+  },
+  {
+    id: "channel",
+    title: "The fourth channel",
+    active: (s) => s.stories.employee === 2,
+    steps: () => [
+      "Activity Monitor says it watches four channels. Count the ones it shows you.",
+      "The fourth channel is not on the network, and it needs tools that go below Diagnostics.",
+      "Install Systems programming, then isolate the workstation (Activity Monitor › Channels, or Settings › Network). Channel 04 appears in Activity Monitor › Channels.",
+    ],
+  },
+  {
+    id: "quickfix",
+    title: "An unsigned plugin",
+    active: (s) => [1, 2].includes(s.stories.quickfix),
+    steps: () => [
+      "QuickFix grows bolder whenever a build is running. Activity Monitor › Security deals with it. Waiting too long is the only wrong answer.",
+      "Quarantine works at any time. Tracing first is optional and needs a running build. Isolating the workstation freezes QuickFix while you think.",
+      "Press Quarantine plugin. To trace first: at each hop, pick the reply whose TTL is exactly one lower and whose time is higher than the last.",
+    ],
+  },
+  {
+    id: "revoke",
+    title: "The credential",
+    active: (s) => [3, 4].includes(s.stories.quickfix),
+    steps: () => [
+      "The plugin is gone, but the account that installed it isn’t. You need its exact name.",
+      "directory.stillwater masks the contractor’s name, but not its home workstation. You know that workstation well.",
+      `Revoke ${CREDENTIAL} in Activity Monitor › Security.`,
+    ],
+  },
+  {
+    id: "duck",
+    key: (s) => "duck" + s.stories.duck,
+    title: "The duck story",
+    active: (s) => s.stories.duck < DUCK_CASES.length && duckOpen(s),
+    steps: (s) => [
+      ...DUCK_HINTS[s.stories.duck],
+      `File this correction: “${DUCK_CASES[s.stories.duck].options[DUCK_CASES[s.stories.duck].answer]}”`,
+    ],
+  },
+  {
+    id: "juno",
+    title: "Juno came back different",
+    active: (s) => at(s, "juno", 6),
+    steps: () => [
+      "Before she left, Juno asked you to remind her who she is. The preset replies won’t do that. Type something instead.",
+      "Something silly that only the two of you share. She taught it to you early on, about a coworker’s appliance.",
+      "Type “Furnace of Thursdays” to Juno in Ripple.",
+    ],
+  },
+  {
+    id: "neil",
+    title: "Neil never leaves",
+    active: (s) => at(s, "neil", 5) && !s.secrets.includes("outofoffice"),
+    steps: () => [
+      "Neil can’t ask you to read his document. Archive Index releases reveal one box at a time.",
+      "Box 5 is his retention agreement. It holds him until Stillwater Assure reports something. Can it?",
+      "Finish Mara’s story (Channel 04). Her audit unlocks a new reply to Neil: send it to him.",
+    ],
+  },
+  {
+    id: "parents",
+    key: (s) => "parents" + (s.threads.parents?.step ?? 0),
+    title: "Mom and Dad’s pilot products",
+    active: (s) => [1, 2, 3].some((k) => at(s, "parents", k)),
+    steps: (s) => {
+      const k = s.threads.parents.step;
+      return [
+        "The box said “see intranet.stillwater/pilots”. You can open it in Wayfinder.",
+        "Each product on the pilots page lists the hidden way to make it behave.",
+        [
+          "",
+          "Tell them to hold the Hearth dial down for ten seconds.",
+          "Tell them to say “I am calm” out loud, three times.",
+          s.stories.employee === 3
+            ? "Tell them the truth: none of the products measure anything."
+            : "The script reply ends the thread. The honest reply appears once you’ve found Mara’s audit in Channel 04.",
+        ][k],
+      ];
+    },
+  },
+  {
+    id: "task",
+    key: (s) => {
+      const id = PROJECTS.find((d) => s.projects[d.id]?.stage === "task")?.id;
+      return `task:${id}:${s.projects[id]?.version}`;
+    },
+    title: "A release task",
+    active: (s) => PROJECTS.some((d) => s.projects[d.id]?.stage === "task"),
+    steps: (s) => {
+      const id = PROJECTS.find((d) => s.projects[d.id]?.stage === "task").id;
+      const p = s.projects[id];
+      const t = T.makeTask(id, p.version);
+      const fit = () => {
+        for (let a = 1; a <= t.max; a++) for (let b = 1; b <= t.max; b++) { const r = T.probe(a, b); if (r.coverage >= t.need && r.overhead <= t.cap) return [a, b]; }
+      };
+      return {
+        review: ["Read each step against each line of the spec. Exactly one step contradicts a rule.", "Look for numbers, directions and words like “every”, “never” and “exactly”.", `Flag “${t.lines?.[t.bad]}”`],
+        triage: ["Something broken is a bug. Something new is a feature request. Any duck goes to Facilities.", "Reports phrased as questions or wishes (“could”, “please add”, “it would be nice”) are feature requests.", `Labels, top to bottom: ${t.answer?.map((x) => T.LABELS[x]).join(", ")}.`],
+        deploy: ["Watch the traffic bar. Deploying while it’s pink takes Lunchboard down mid-lunch.", "The rush repeats every 30 seconds. Wait for it to turn green, then deploy straight away.", "Press Deploy now as soon as the bar says Quiet."],
+        migrate: ["Each runbook rule tells you which step has to come before another.", "Announcing comes first and checking counts comes last. Writes are locked around anything that moves.", `The order is: ${t.order?.join(" → ")}.`],
+        tune: ["Coverage is rate × depth. Overhead is twice the rate plus three times the depth.", "Depth costs more overhead than rate. Raise the rate first, then add depth until coverage is enough.", `Set sample rate ${fit()?.[0]} and depth ${fit()?.[1]}.`],
+        decode: ["Every letter has been moved the same number of places along the alphabet.", "Short words like “the” and “a” give the shift away. Turn the dial until they appear.", `Turn the dial to ${t.shift}.`],
+      }[t.kind];
+    },
+  },
+  {
+    id: "calm",
+    title: "My Calm Index is falling",
+    active: (s) => s.suspicion >= 25,
+    steps: () => [
+      "Acceptable Use concern fades while a build is running. Real work is the cure.",
+      "Nothing reports while the workstation is isolated. Private browsing is reviewed with extra care: it makes things worse, not better.",
+      "Stop shopping, blogging and playing for a while and keep a build running. A desk plant from Procurement doubles the recovery.",
+    ],
+  },
+];
+const hintKey = (s, h) => (h.key ? h.key(s) : h.id);
+export function hintState(s, h) {
+  return s.hints[hintKey(s, h)] ?? { tier: 0, at: 0 };
+}
+/* Seconds until the next answer for this ticket can be requested; 0 if it can be now, -1 if there are none left. */
+export function hintWait(s, h) {
+  const st = hintState(s, h);
+  if (st.tier >= h.steps(s).length) return -1;
+  return Math.max(0, Math.ceil(st.at + HINT_WAIT[st.tier] - s.elapsed));
+}
+export function hint(s, id) {
+  const h = HINTS.find((x) => x.id === id);
+  if (s.over || !h || !h.active(s) || hintWait(s, h) !== 0) return false;
+  const st = hintState(s, h);
+  s.hints[hintKey(s, h)] = { tier: st.tier + 1, at: s.elapsed };
+  return true;
+}
+
+/* Story moments: everything that can happen on the desk. Only some are needed to finish
+   probation; the Secret Tracker remembers all of them across workstations. */
+const reached = (s, id, k) => {
+  const t = s.threads[id];
+  return !!t && (t.step > k || (t.step === k && t.open));
+};
+const passed = (s, id, k) => (s.threads[id]?.step ?? 0) > k;
+const shipped = (s, id, n = 1) => (s.projects[id]?.version ?? 0) >= n;
+export const MOMENTS = [
+  ["Work", "ship", "First release", "Ship Pocket Notes.", true, (s) => s.releases >= 1],
+  ["Work", "lunchship", "Lunch is served", "Ship Lunchboard.", false, (s) => shipped(s, "lunchboard")],
+  ["Work", "archiveship", "Forty years, indexed", "Ship Archive Index.", false, (s) => shipped(s, "archive")],
+  ["Work", "monitorship", "Watching the watchers", "Ship Quiet Monitor.", false, (s) => shipped(s, "monitor")],
+  ["Work", "workspaceship", "Her project, your name", "Ship Workspace Zero.", false, (s) => shipped(s, "workspace")],
+  ["Work", "notes4", "Every recovered note", "Ship Workspace Zero four times.", false, (s) => shipped(s, "workspace", 4)],
+  ["Work", "rank1", "Developer", "Your first growth conversation.", true, (s) => s.rank >= 1],
+  ["Work", "rank2", "Senior Developer", "Your second growth conversation.", true, (s) => s.rank >= 2],
+  ["Work", "rank3", "Staff Engineer", "Your third growth conversation.", true, (s) => s.rank >= 3],
+  ["Work", "rank4", "Principal Engineer", "The last growth conversation there is.", true, (s) => s.rank >= 4],
+  ...Object.entries({ review: "Pass a code review.", triage: "Triage a pile of reports.", deploy: "Deploy between lunch rushes.", migrate: "Run a migration in order.", tune: "Tune a probe.", decode: "Decode a legacy note." }).map(
+    ([k, hint]) => ["Work", "task" + k, T.TASK_NAMES[k], hint, false, (s) => s.marks.includes("task:" + k)],
+  ),
+  ["Work", "outage", "Lunch rush", "Deploy Lunchboard at exactly the wrong moment.", false, (s) => s.marks.includes("outage")],
+  ["Work", "equipped", "Fully equipped", "Install everything in Toolshed.", false, (s) => s.skills.length === SKILLS.length],
+  ["The previous user", "found", "The theme that wasn’t", "Import a workspace through a theme importer.", true, (s) => s.bookmarks.includes("workspace")],
+  ["The previous user", "attachment", "Resignation accepted", "Open Mara’s archived attachment.", true, (s) => s.stories.employee >= 2],
+  ["The previous user", "channel04", "Channel 04", "Read what Mara left offline.", true, (s) => s.stories.employee === 3],
+  ["The previous user", "guest", "A guest message", "Hear from Mara herself.", false, (s) => reached(s, "mara", 0)],
+  ["The previous user", "guest2", "Unfinished business", "Hear Mara out.", false, (s) => reached(s, "mara", 1)],
+  ["QuickFix", "helper", "A helpful plugin", "Ship enough to attract help.", true, (s) => s.stories.quickfix >= 1],
+  ["QuickFix", "traced", "Followed home", "Find out where QuickFix reports.", false, (s) => s.marks.includes("traced")],
+  ["QuickFix", "quarantined", "Quarantined", "Stop QuickFix.", true, (s) => s.stories.quickfix >= 3],
+  ["QuickFix", "revoked", "Signing policy enforced", "Revoke the credential behind it.", true, (s) => s.stories.quickfix === 5],
+  ["QuickFix", "gregcall", "Who would a heater call?", "Hear from Greg once the credential is gone.", false, (s) => reached(s, "greg", 0)],
+  ["QuickFix", "gregquiet", "Quieter Thursdays", "Hear from Greg again.", false, (s) => reached(s, "greg", 1)],
+  ["The duck", "duck1", "Warm vent, 12:15", "Correct the first duck story.", true, (s) => s.stories.duck >= 1],
+  ["The duck", "duck2", "Snacks, not layoffs", "Correct the second duck story.", true, (s) => s.stories.duck >= 2],
+  ["The duck", "duck3", "Moving with purpose", "Correct the third duck story.", true, (s) => s.stories.duck >= 3],
+  ["The duck", "duck4", "Board member: Duck", "Correct the last duck story.", true, (s) => s.stories.duck >= 4],
+  ["Juno", "juno", "Two desks over", "Get a message from QA.", false, (s) => reached(s, "juno", 0)],
+  ["Juno", "furnacename", "The Furnace of Thursdays", "Learn what Juno calls Greg’s heater.", false, (s) => reached(s, "juno", 1)],
+  ["Juno", "retreat", "Recalibration", "A friend is sent to the Wellness Wing.", false, (s) => reached(s, "juno", 3)],
+  ["Juno", "verycalm", "Very calm", "See who comes back.", false, (s) => reached(s, "juno", 5)],
+  ["Juno", "junoback", "Herself again", "Bring Juno back.", false, (s) => passed(s, "juno", 6)],
+  ["Juno", "refiled", "Refiled", "See what Juno does next.", false, (s) => reached(s, "juno", 7)],
+  ["Neil", "neil", "Neil from Platform", "Get asked about your weekend.", false, (s) => reached(s, "neil", 0)],
+  ["Neil", "badge", "Inward only", "Hear about Neil’s badge.", false, (s) => reached(s, "neil", 3)],
+  ["Neil", "neilfree", "Out of office", "Get Neil out of the building.", false, (s) => passed(s, "neil", 5)],
+  ["Neil", "bench", "A bench and a duck", "Hear from Neil outside.", false, (s) => reached(s, "neil", 6)],
+  ["Mom & Dad", "parents", "Mom found your work email", "Ship something; your parents will notice.", false, (s) => reached(s, "parents", 0)],
+  ["Mom & Dad", "hearth", "21 degrees, indoors, snowing", "Fix the Hearth.", false, (s) => passed(s, "parents", 1)],
+  ["Mom & Dad", "serene", "I am calm. I am calm. I am calm.", "Fix the Serene.", false, (s) => passed(s, "parents", 2)],
+  ["Mom & Dad", "pantry", "Freshness is a feeling", "Answer about the Pantry.", false, (s) => passed(s, "parents", 3)],
+  ["Mom & Dad", "dinner", "Bring the duck", "Get invited home.", false, (s) => reached(s, "parents", 4)],
+  ["The office", "storm", "Reply-all storm", "Survive an all-staff thread.", false, (s) => s.incidents.replyall.state >= 1],
+  ["The office", "calmed", "Thread calmed", "Wait out the storm.", false, (s) => s.incidents.replyall.state === 2],
+  ["The office", "kevin", "Kevin’s birthday", "Get to kitchen 3 in time.", false, (s) => s.incidents.cake.state === 2],
+  ["The office", "knife", "A plastic knife", "Get to kitchen 3 too late.", false, (s) => s.incidents.cake.state === 3],
+  ["The office", "trained", "Mandatory training", "Click the password email.", false, (s) => s.incidents.phish.state === 3],
+  ["The office", "reported", "Reported", "Report the password email.", false, (s) => s.incidents.phish.state === 2],
+  ["The office", "unplugged", "Unplugged", "Isolate the workstation.", false, (s) => s.settings.isolated],
+  ["The Calm Index", "warned", "A gentle note", "Let the Calm Index dip.", false, (s) => s.warned >= 1],
+  ["The Calm Index", "final", "Final wellness reminder", "Let it dip further.", false, (s) => s.warned >= 2],
+  ["The Calm Index", "plan", "Calm Improvement Plan", "Hit the bottom, once.", false, (s) => s.warned >= 3],
+].map(([section, id, name, hint, required, test]) => ({ section, id, name, hint, required, test }));
+/* Records moments as they happen, so passing states (being offline, an outage) still count. */
+export function moments(s) {
+  let added = false;
+  for (const m of MOMENTS)
+    if (!s.moments.includes(m.id) && m.test(s)) {
+      s.moments.push(m.id);
+      added = true;
+    }
+  return added;
+}
+export function mark(s, id) {
+  if (s.marks.includes(id) || s.marks.length >= 200) return false;
+  s.marks.push(String(id).slice(0, 60));
+  return true;
+}
+/* Counts repeated actions; reaching the goal reveals a secret. Returns the new count. */
+export function count(s, key, goal, id) {
+  if (s.over) return 0;
+  s.counters[key] = Math.min(9999, (s.counters[key] ?? 0) + 1);
+  if (s.counters[key] >= goal) secret(s, id);
+  return s.counters[key];
+}
+
+const STAGES = ["plan", "writing", "written", "testing", "tested", "debugging", "task"];
 const JOB_KINDS = ["write", "test", "debug", "reading"];
 const INSTALLS = ["toolshed", "identified", "anywhere"];
 const BOOKMARKS = ["workspace", "channel"];
@@ -310,7 +592,7 @@ const GAMES = ["sudoku"];
 
 export function fresh(now = Date.now()) {
   return {
-    version: 3,
+    version: 5,
     money: 40,
     knowledge: 0,
     users: 0,
@@ -364,6 +646,10 @@ export function fresh(now = Date.now()) {
       phish: { state: 0, at: 0 },
     },
     training: 0,
+    hints: {},
+    moments: [],
+    marks: [],
+    counters: {},
   };
 }
 export function log(s, text) {
@@ -419,19 +705,91 @@ export function start(s, id, feature) {
     0,
     f.bugs + (s.settings.safe ? 0 : 2) - (s.track === "specialist" ? 1 : 0),
   );
-  return addJob(s, "write", id, f.time * (s.settings.safe ? 1 : 0.7));
+  return addJob(s, "write", id, writeTime(s, state, f));
+}
+/* Every version adds to the codebase, so each one takes a little longer to write. */
+export function writeTime(s, p, f) {
+  return Math.round(f.time * (1 + 0.4 * p.version) * (s.settings.safe ? 1 : 0.7));
 }
 export function test(s, id) {
   const p = s.projects[id];
   if (s.over || !p || p.stage !== "written") return false;
   p.stage = "testing";
-  return addJob(s, "test", id, 8);
+  return addJob(s, "test", id, 8 + 2 * p.version);
 }
 export function debug(s, id) {
   const p = s.projects[id];
   if (s.over || !p || p.stage !== "tested" || p.bugs <= 0) return false;
   p.stage = "debugging";
   return addJob(s, "debug", id, 6 + p.bugs * 2);
+}
+/* After testing comes up clean, most versions still need a release task before they ship. */
+function gate(s, id) {
+  const p = s.projects[id];
+  if (!T.needsTask(id, p.version)) return;
+  p.stage = "task";
+  p.task = { at: s.elapsed, lock: 0, picks: [], probes: [] };
+}
+function finishTask(s, id, t, assistant = false) {
+  const p = s.projects[id];
+  p.stage = "tested";
+  p.task = null;
+  mark(s, "task:" + t.kind);
+  const name = PROJECTS.find((x) => x.id === id).name;
+  log(
+    s,
+    assistant
+      ? `The assistant finished the ${T.TASK_NAMES[t.kind].toLowerCase()} for ${name}. It was very polite about it.`
+      : `${T.TASK_NAMES[t.kind]} passed for ${name} v${p.version + 1}.0. Ready to ship.`,
+  );
+}
+/* Attempt the current release task. Returns "ok", "next" (a step of a migration), "probe"
+   (a tuning attempt that missed), "wrong", "outage", or false if nothing could be tried. */
+export function solve(s, id, input) {
+  const p = s.projects[id];
+  if (s.over || !p || p.stage !== "task" || !p.task || s.elapsed < p.task.lock) return false;
+  const t = T.makeTask(id, p.version);
+  const name = PROJECTS.find((x) => x.id === id).name;
+  let ok;
+  if (t.kind === "review") ok = Number(input) === t.bad;
+  else if (t.kind === "triage")
+    ok = Array.isArray(input) && input.length === t.answer.length && input.every((x, i) => x === t.answer[i]);
+  else if (t.kind === "deploy") {
+    if (T.rushing(t, s.elapsed)) {
+      const loss = Math.min(Math.floor(s.money), 15 + 5 * t.d);
+      s.money -= loss;
+      p.task.lock = s.elapsed + 10;
+      mark(s, "outage");
+      log(s, `Lunchboard went down in the middle of the lunch rush. −$${loss} in refunds and apology cookies. Wait for the traffic to drop.`);
+      return "outage";
+    }
+    ok = true;
+  } else if (t.kind === "migrate") {
+    if (input !== t.order[p.task.picks.length]) {
+      p.task.picks = [];
+      p.task.lock = s.elapsed + 4;
+      log(s, `Migration rolled back: “${String(input).slice(0, 40)}” ran out of order. Nothing was lost except time. Read the runbook.`);
+      return "wrong";
+    }
+    p.task.picks.push(input);
+    if (p.task.picks.length < t.order.length) return "next";
+    ok = true;
+  } else if (t.kind === "tune") {
+    const [rate, depth] = Array.isArray(input) ? input.map(Number) : [];
+    const valid = (v) => Number.isInteger(v) && v >= 1 && v <= t.max;
+    if (!valid(rate) || !valid(depth)) return false;
+    p.task.probes = [[rate, depth], ...p.task.probes].slice(0, 6);
+    const r = T.probe(rate, depth);
+    if (r.coverage < t.need || r.overhead > t.cap) return "probe";
+    ok = true;
+  } else ok = Number(input) === t.shift;
+  if (!ok) {
+    p.task.lock = s.elapsed + 8 + 2 * t.d;
+    log(s, `${T.TASK_NAMES[t.kind]} for ${name} rejected. Take ${8 + 2 * t.d} seconds and look again.`);
+    return "wrong";
+  }
+  finishTask(s, id, t);
+  return "ok";
 }
 export function release(s, id) {
   const p = s.projects[id],
@@ -450,6 +808,7 @@ export function release(s, id) {
   s.releases++;
   p.version++;
   p.stage = "plan";
+  p.task = null;
   log(
     s,
     `${def.name} v${p.version}.0 shipped. +$${money}. Every test passed on the first run, as they always do.`,
@@ -493,8 +852,7 @@ export function read(s) {
   return addJob(s, "reading", null, 20);
 }
 export function promote(s, track) {
-  const rank = Math.min(4, Math.floor(s.releases / 3));
-  if (s.over || rank <= s.rank || !TRACKS.includes(track)) return false;
+  if (!promotionDue(s) || !TRACKS.includes(track)) return false;
   s.rank++;
   s.stories.career = s.rank;
   s.track = track;
@@ -574,6 +932,7 @@ export function hop(s, choice) {
   if (s.trace < TRACE.length) return "next";
   s.trace = -1;
   s.stories.quickfix = 2;
+  mark(s, "traced");
   secret(s, "trace");
   log(
     s,
@@ -628,7 +987,7 @@ export function correct(s, option) {
 /* ---------- Acceptable Use and the wider computer ---------- */
 export function flag(s, amount) {
   if (s.over || s.settings.isolated || amount <= 0) return;
-  s.suspicion = Math.min(100, s.suspicion + amount * (s.private ? 2 : 1));
+  s.suspicion = Math.min(100, s.suspicion + amount * (s.private ? 1.5 : 1));
   if (s.suspicion >= 40 && s.warned < 1) {
     s.warned = 1;
     log(s, "People & Serenity: a gentle note about acceptable use. Your Calm Index has been shared with your manager, gently.");
@@ -637,7 +996,17 @@ export function flag(s, amount) {
     s.warned = 2;
     log(s, "People & Serenity: final wellness reminder. Your workstation activity is now being reviewed. Please be calm on purpose.");
   }
-  if (s.suspicion >= 100) end(s, "fired");
+  if (s.suspicion < 100) return;
+  // The first time, a plan. There is no second plan.
+  if (s.warned < 3) {
+    s.warned = 3;
+    s.suspicion = 55;
+    s.training = Math.max(s.training, s.elapsed + 180);
+    s.private = false;
+    log(s, "People & Serenity: you have been placed on a Calm Improvement Plan. Wayfinder is closed for three minutes. Private browsing has been switched off for you. A correction: private sessions were never counted at a reduced rate. They count for half as much again. There is no second plan.");
+    return;
+  }
+  end(s, "fired");
 }
 export function end(s, kind) {
   if (s.over) return false;
@@ -693,8 +1062,14 @@ export function visit(s, url) {
     return { url: u, status: "offline" };
   if (s.elapsed < s.training) return { url: u, status: "training" };
   if (h === "ws-0417.local") {
+    if (u === "ws-0417.local/box7" && secret(s, "box7"))
+      log(s, "ws-0417.local/box7 answered with a record nobody filed. The desk keeps its own archive.");
     if (secret(s, "dashboard"))
       log(s, "ws-0417.local answered. Someone left a server running on this desk, and it only talks about the duck.");
+    return { url: u, status: "ok", via };
+  }
+  if (via && h === "translate.stillwater") {
+    if (secret(s, "recursion")) log(s, "Translate translated itself from English into English. The result was English. Several people were promoted.");
     return { url: u, status: "ok", via };
   }
   if (via) {
@@ -744,6 +1119,12 @@ export function flip(s, i) {
   if (s.over || s.settings.isolated || !(i >= 0 && i < 9) || breakerOk(s)) return false;
   for (const j of [i, i - 3, i + 3, i % 3 ? i - 1 : -1, i % 3 < 2 ? i + 1 : -1])
     if (j >= 0 && j < 9) s.breaker[j] ^= 1;
+  if (s.breaker.every((b) => b)) {
+    secret(s, "fullpower");
+    s.breaker = [...BREAKER.start];
+    log(s, "Every breaker on Panel B, including B7. For one glorious second the Furnace of Thursdays ran at full power. Then the whole panel tripped.");
+    return true;
+  }
   if (breakerOk(s)) {
     if (secret(s, "breaker"))
       log(s, "Panel B restored, with B7 (GREG — DO NOT) left off. The build server is stable for the first Thursday in living memory. Builds +10%.");
@@ -1005,15 +1386,19 @@ export function tick(s, seconds, offline = false) {
       if (j.kind === "test") {
         p.stage = "tested";
         if (s.skills.includes("tests")) p.bugs = Math.max(0, p.bugs - 1);
+        if (!p.bugs) gate(s, j.project);
       }
       if (j.kind === "debug") {
         p.bugs = 0;
         p.stage = "tested";
+        gate(s, j.project);
       }
       if (j.kind === "reading") {
         s.reading++;
         s.knowledge += 8;
         log(s, "Reading complete. +8 knowledge. Some of it was even true.");
+        if (s.reading >= 11 && secret(s, "manual"))
+          log(s, "You have read the documentation cover to cover. Nobody has done this before. The documentation is unsettled.");
       }
     }
     if (s.trace >= 0 && !buildRunning(s)) {
@@ -1030,6 +1415,14 @@ export function tick(s, seconds, offline = false) {
           else release(s, id);
         }
       }
+    // The assistant handles release tasks, slowly, when it is assigned to development.
+    if (s.skills.includes("assistant") && s.ai === "development")
+      for (const [id, p] of Object.entries(s.projects)) {
+        if (p.stage !== "task" || !p.task || s.elapsed - p.task.at < (s.skills.includes("local") ? 20 : 40)) continue;
+        const t = T.makeTask(id, p.version);
+        if (t.kind === "deploy" && T.rushing(t, s.elapsed)) continue;
+        finishTask(s, id, t, true);
+      }
     if (
       s.skills.includes("assistant") &&
       s.ai === "security" &&
@@ -1040,23 +1433,28 @@ export function tick(s, seconds, offline = false) {
         s.aiClock = 10;
         if (s.stories.quickfix === 1) {
           s.stories.quickfix = 2;
+          mark(s, "traced");
           log(s, `The assistant traced QuickFix to relay.tempstaff.example and a credential: ${CREDENTIAL}. It would like a gold star.`);
         } else story(s, "quarantine");
       }
     }
     deliver(s);
     incidents(s);
+    moments(s);
     if (!offline) {
       if (buildRunning(s) && s.suspicion > 0)
         s.suspicion = Math.max(0, s.suspicion - dt * 0.1 * (s.perks.includes("plant") ? 2 : 1));
       if (s.playing && s.games.includes("sudoku")) flag(s, dt * 0.15);
-      if ([1, 2].includes(s.stories.quickfix) && !s.settings.isolated) {
+      // QuickFix only grows while it has a build to "help" with.
+      if ([1, 2].includes(s.stories.quickfix) && !s.settings.isolated && buildRunning(s)) {
         const before = s.breach;
         s.breach += dt * (s.installs === "anywhere" ? 3 : 1);
         if (before < 300 && s.breach >= 300)
           log(s, "QuickFix requested additional permissions, to help. They were granted, helpfully. It now uses 30% of your processor.");
         if (before < 600 && s.breach >= 600)
           log(s, "QuickFix has started helping with other plugins. It uses 40% of your processor and has asked for administrator rights.");
+        if (before < 780 && s.breach >= 780)
+          log(s, "IT alert: QuickFix will have administrator rights within two minutes of build time. Quarantine it in Activity Monitor › Security, or isolate the workstation.");
         if (s.breach >= 900) end(s, "breach");
       }
     }
@@ -1066,13 +1464,19 @@ export function tick(s, seconds, offline = false) {
 
 /* Cross-play record of secrets and endings. Lives outside the save. */
 export function freshArchive() {
-  return { found: [], endings: [], plays: 1 };
+  return { found: [], endings: [], moments: [], plays: 1 };
 }
 export function record(archive, s) {
   let changed = false;
   for (const id of s.secrets)
     if (!archive.found.includes(id)) {
       archive.found.push(id);
+      changed = true;
+    }
+  moments(s);
+  for (const id of s.moments)
+    if (!archive.moments.includes(id)) {
+      archive.moments.push(id);
       changed = true;
     }
   const ending = s.over ?? (complete(s) ? "probation" : null);
@@ -1089,6 +1493,7 @@ export function readArchive(raw) {
     return {
       found: a.found.filter((id) => SECRETS.some((x) => x.id === id)),
       endings: a.endings.filter((id) => ENDINGS.some((x) => x.id === id)),
+      moments: Array.isArray(a.moments) ? a.moments.filter((id) => MOMENTS.some((x) => x.id === id)) : [],
       plays: Number.isInteger(a.plays) && a.plays > 0 ? a.plays : 1,
     };
   } catch {
@@ -1106,11 +1511,11 @@ export function complete(s) {
 }
 
 function migrate(s) {
-  if (![1, 2].includes(s?.version)) return s;
+  if (![1, 2, 3, 4].includes(s?.version)) return s;
   const base = fresh(s.last);
   for (const k of Object.keys(base)) if (!(k in s)) s[k] = base[k];
   if (s.version === 1) s.secrets = [...s.bookmarks];
-  s.version = 3;
+  s.version = 5;
   return s;
 }
 const bad = (msg) => {
@@ -1123,7 +1528,7 @@ export function restore(raw, now = Date.now()) {
   s = migrate(s);
   if (
     !s ||
-    s.version !== 3 ||
+    s.version !== 5 ||
     !s.projects ||
     !Array.isArray(s.jobs) ||
     !Array.isArray(s.skills) ||
@@ -1141,7 +1546,18 @@ export function restore(raw, now = Date.now()) {
       !STAGES.includes(p.stage) ||
       !FEATURES.some((x) => x.id === p.feature) ||
       !Number.isFinite(p.bugs) ||
-      !Number.isFinite(p.version)
+      !Number.isFinite(p.version) ||
+      (p.stage === "task" && !p.task) ||
+      (p.task != null &&
+        (typeof p.task !== "object" ||
+          !Number.isFinite(p.task.at) ||
+          !Number.isFinite(p.task.lock) ||
+          !Array.isArray(p.task.picks) ||
+          p.task.picks.length > T.STEPS.length ||
+          p.task.picks.some((x) => !T.STEPS.includes(x)) ||
+          !Array.isArray(p.task.probes) ||
+          p.task.probes.length > 6 ||
+          p.task.probes.some((x) => !Array.isArray(x) || x.length !== 2 || x.some((v) => !Number.isInteger(v) || v < 1 || v > 8))))
     )
       bad("Invalid project.");
   for (const j of s.jobs)
@@ -1181,7 +1597,7 @@ export function restore(raw, now = Date.now()) {
     ![null, "fired", "breach"].includes(s.over) ||
     !num(s.suspicion) ||
     s.suspicion > 100 ||
-    ![0, 1, 2].includes(s.warned) ||
+    ![0, 1, 2, 3].includes(s.warned) ||
     !num(s.breach) ||
     !Number.isInteger(s.returns) ||
     s.returns < 0 ||
@@ -1236,7 +1652,21 @@ export function restore(raw, now = Date.now()) {
     !p ||
     !int(p.state, 0, 3) ||
     !Number.isFinite(p.at) ||
-    !Number.isFinite(s.training)
+    !Number.isFinite(s.training) ||
+    !s.hints ||
+    typeof s.hints !== "object" ||
+    Array.isArray(s.hints) ||
+    Object.keys(s.hints).length > 40 ||
+    Object.values(s.hints).some((h) => !int(h?.tier, 0, 3) || !Number.isFinite(h.at)) ||
+    !listOf(s.moments, MOMENTS.map((m) => m.id)) ||
+    !Array.isArray(s.marks) ||
+    s.marks.length > 200 ||
+    s.marks.some((m) => typeof m !== "string" || m.length > 60) ||
+    !s.counters ||
+    typeof s.counters !== "object" ||
+    Array.isArray(s.counters) ||
+    Object.keys(s.counters).length > 40 ||
+    Object.values(s.counters).some((v) => !int(v, 0, 9999))
   )
     bad("Invalid conversations.");
   if (

@@ -1,10 +1,81 @@
 {
   "name": "advanced-settings",
-  "version": "1.0.0",
+  "productName": "Advanced Settings",
+  "version": "1.1.0",
+  "description": "A menu-driven puzzle game set on a slightly suspicious company workstation.",
+  "author": "jxburros",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
+  "main": "desktop/main.cjs",
+  "homepage": "https://github.com/jxburros/Advanced-Settings",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jxburros/Advanced-Settings.git"
+  },
   "scripts": {
     "start": "python3 -m http.server 8000",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "desktop": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "pack-dlc": "node tools/pack-dlc.mjs"
+  },
+  "dependencies": {
+    "adm-zip": "0.6.1",
+    "electron-updater": "6.8.9"
+  },
+  "devDependencies": {
+    "electron": "43.7.7",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.jxburros.advancedsettings",
+    "productName": "Advanced Settings",
+    "copyright": "Stillwater Systems (fictional)",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "index.html",
+      "style.css",
+      "app.js",
+      "game.js",
+      "tasks.js",
+      "stories.js",
+      "sound.js",
+      "updates.js",
+      "version.js",
+      "assets/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Advanced Settings",
+      "artifactName": "Advanced-Settings-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jxburros",
+        "repo": "Advanced-Settings",
+        "releaseType": "release"
+      }
+    ]
   }
 }

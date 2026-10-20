@@ -4,19 +4,21 @@ A playable, menu-driven incremental game set on a slightly suspicious company wo
 
 ## Play
 
-Requires Python 3 (or any static web server). No build or dependencies are needed.
+**Windows:** download `Advanced-Settings-Setup-<version>.exe` from the [latest release](https://github.com/jxburros/Advanced-Settings/releases/latest) and run it. The Windows edition updates itself and installs DLC from Software Update (logo menu, or System Settings › About). The installer isn't code-signed yet, so Windows may ask you to confirm ("More info › Run anyway").
+
+**In a browser:** requires Python 3 (or any static web server). No build or dependencies are needed.
 
 ```sh
 python3 -m http.server 8000
 ```
 
-Open **http://localhost:8000**. `npm start` runs the same server. Keep these files together: `index.html`, `style.css`, `app.js`, `game.js`, `stories.js` and `assets/`. Do not open the HTML as a `file://` URL; the browser needs HTTP to load JavaScript modules.
+Open **http://localhost:8000**. `npm start` runs the same server. Keep these files together: `index.html`, `style.css`, `app.js`, `game.js`, `tasks.js`, `stories.js`, `sound.js` and `assets/`. Do not open the HTML as a `file://` URL; the browser needs HTTP to load JavaScript modules.
 
-You are a new developer at **Stillwater Systems**, a company that sells calm. The game is a desktop operating system, Stillwater OS: drag, resize, minimize and zoom windows, switch tabs, read notifications, and open programs from the dock. It is meant to be a **difficult puzzle game**: most of what matters is hidden, and the hints are small.
+You are a new developer at **Stillwater Systems**, a company that sells calm. The game is a desktop operating system, Stillwater OS: drag, resize, minimize and zoom windows; open menus from the menu bar; right-click the desktop; select icons with a click or a selection box and open them with a double-click; drag files to the Trash; search with Ctrl+K; check the calendar, Wi-Fi and sound from the menu bar; lock the screen; and let the screensaver take over when you step away. It is meant to be a **difficult puzzle game**: most of what matters is hidden, and the hints are small.
 
 | Program | What it does |
 | --- | --- |
-| Workbench | One tab per project: choose a feature, write, test, debug, ship. Each project behaves differently. |
+| Workbench | One tab per project: choose a feature, write, test, debug, perform the release task, ship. Each project behaves differently. |
 | Toolshed | Spend budget on languages, tools, hardware and AI help. |
 | Library | Read the documentation for knowledge while other jobs run. |
 | Conductor | The release pipeline and the AI assistant's assignment. |
@@ -27,21 +29,30 @@ You are a new developer at **Stillwater Systems**, a company that sells calm. Th
 | Ripple | Instant messages from coworkers. Answer with choices, or type when you need to remember something. |
 | Notes | Sticky notes left by the previous user, found as you go deeper. |
 | Files | Discoveries and downloads. |
-| System Settings | Appearance and settings that go much deeper than they look. |
+| System Settings | Appearance, sound and settings that go much deeper than they look. |
+| Murmur | A music player. It plays your tracks from `assets/music` (see the README there) and some built-in hold music. |
+| Help Desk | Help › Help Desk: escalating hints for whatever you're stuck on. |
+| Software Update | Checks GitHub for newer editions (and installs them in the Windows edition), and lists downloadable content. |
 
-- **Work:** five projects, three features, nine upgrades, five ranks. Career tracks change how you work. Lunchboard earns while it runs, Archive Index reveals records, and Quiet Monitor shows what is watching you.
+- **Work:** five projects, three features, nine upgrades, five ranks (at 3, 7, 12 and 18 releases). Before most versions ship there is a release task, and each project has its own kinds: code review and bug triage (Pocket Notes), deploying between lunch rushes (Lunchboard), ordering a data migration (Archive Index), tuning a probe (Quiet Monitor) and decoding legacy notes (Workspace Zero). Tasks grow with each project and each version, and the scheduler won't do them for you; an AI assistant assigned to development will, slowly. Each version of a project takes longer to write and test than the last, so new projects pay off. Career tracks change how you work. Lunchboard earns while it runs, Archive Index reveals records, and Quiet Monitor shows what is watching you.
 - **Puzzles:** a deep settings maze, conditional discoveries, duck corrections that need evidence from elsewhere, a credential you have to work out, and three mini games (a sudoku, a breaker panel and a packet trace).
 - **People:** Juno, a friend from QA, goes on a wellness retreat and comes back far too calm. Neil from Platform always wants to hear about your plans outside work, for reasons he can't say. Your parents have been sent Stillwater's undisclosed consumer products. Greg and the previous user each have a later chapter. Several of these stories connect to each other and to the puzzles.
 - **Short incidents:** an all-staff reply-all storm, birthday cake that disappears quickly, and an IT phishing test.
 - **Messing around:** shopping, blogging and gaming on a work computer, each behind its own way past the filter. Personal use lowers your Calm Index.
-- **Losing:** there are two ways to lose, and both come with warnings. Only a player who ignores those warnings will lose this way.
-- **Secret Tracker:** after your first win or loss, a tracker of every secret and ending you've found appears in the dock. It persists across new workstations.
-- **Returning:** closing the game and coming back has a small effect each time, and it adds up.
-- Automatic local saves (older saves are migrated), JSON backup/import, up to two hours of offline job progress (offline time can never lose you the game), phone layout, keyboard controls and reduced motion.
+- **Losing:** there are two ways to lose, and both come with warnings. Only a player who ignores those warnings will lose this way. Browsing too much gets you a Calm Improvement Plan first; only a second offence ends the workstation.
+- **Help Desk:** Help › Help Desk takes a ticket for any open problem. The first answer is vague; better answers unlock after a few minutes, and the last one is the solution.
+- **Secret Tracker:** after your first win or loss, a tracker appears in the dock. It lists every story moment (58, of which those marked “needed for probation” are required and many are optional or rule each other out), every secret (46) and every ending. It persists across new workstations.
+- **Sound:** interface sounds (clicks, chimes, windows, alerts, a startup chord) are synthesized in the browser and can be switched off in the menu bar or System Settings › Sound.
+- **Returning:** closing the game and coming back (or leaving it in the background for 20 minutes) has a small effect each time, and it adds up.
+- Automatic local saves (older saves are migrated), JSON backup/import, up to two hours of offline job progress (time away, including a background tab, can never lose you the game), phone layout, keyboard controls and reduced motion.
 
-Everything runs locally with no accounts, paid APIs or real AI calls; the web is simulated. Optional Google Fonts fall back to system fonts. The watercolor wallpapers in `assets/wallpapers` were painted with [Vixl](https://github.com/jxburros/Vixl); `tools/make-wallpapers.py` regenerates them. Icons are inline SVG.
+Everything runs locally with no accounts, paid APIs or real AI calls; the web is simulated. Optional Google Fonts fall back to system fonts. The watercolor wallpapers in `assets/wallpapers` were painted with [Vixl](https://github.com/jxburros/Vixl); `tools/make-wallpapers.py` regenerates them, and `tools/make-cover.py` paints Murmur's cover art. Sounds and hold music are synthesized with Web Audio; there are no audio files unless you add music. Icons are inline SVG.
 
 Full solutions are in [docs/SECRETS.md](docs/SECRETS.md). **It contains spoilers.**
+
+## Releases, updates and DLC
+
+Pushing a tag like `v1.2.0` builds and publishes a release: tests, a self-updating Windows installer, a web-edition zip, and notes from [CHANGELOG.md](CHANGELOG.md). Pushing `dlc-<id>-v1.0.0` publishes a DLC pack from `dlc/packs/<id>` and adds it to the catalog. The details, including signing and local builds, are in [docs/RELEASING.md](docs/RELEASING.md); the pack format is in [dlc/README.md](dlc/README.md). The Windows edition is an Electron shell (`desktop/`) around the same files the web edition serves; the game itself still needs no build.
 
 ## Validation
 
@@ -51,7 +62,7 @@ Node.js 20+:
 npm test
 ```
 
-The engine tests cover release gating, resource sharing, career tracks, the filter and its workarounds, every mini game (including sudoku uniqueness and breaker solvability), both losses, the cross-play archive, returns, every story ending, and save restoration and migration. Optional real-browser smoke tests (with the server running):
+The engine tests cover release gating, every kind of release task (and that every generated task is solvable), story moments, resource sharing, career tracks, the filter and its workarounds, every mini game (including sudoku uniqueness and breaker solvability), both losses, the cross-play archive, returns, every story ending, and save restoration and migration. Optional real-browser smoke tests (with the server running):
 
 ```sh
 python -m pip install playwright
@@ -61,6 +72,6 @@ python tests/browser.py
 
 ## Implementation decisions
 
-The concept deliberately leaves platforms, timing, economy, characters, and endings open. This implementation uses dependency-free browser modules, short tasks (8–22 seconds before modifiers), permanent knowledge requirements, and spendable budget. Mara Chen and Stillwater Systems are original names supplied for the playable story. All paths remain available regardless of career direction; the promotion choice is narrative, not a separate skill tree. There is a completion message after all four stories, followed by unlimited free play. Losing ends the workstation; a new one starts from scratch, but the Secret Tracker remembers. There is no backend.
+The concept deliberately leaves platforms, timing, economy, characters, and endings open. This implementation uses dependency-free browser modules, short tasks (8–22 seconds before modifiers, growing 40% per version written), permanent knowledge requirements, and spendable budget. Mara Chen and Stillwater Systems are original names supplied for the playable story. All paths remain available regardless of career direction; the promotion choice is narrative, not a separate skill tree. There is a completion message after all four stories, followed by unlimited free play. Losing ends the workstation (the browsing loss only after one Calm Improvement Plan); a new one starts from scratch, but the Secret Tracker remembers. There is no backend.
 
-Game rules live in `game.js`, conversation scripts and incidents live in `stories.js`, the desktop, windows, story moments and browser storage live in `app.js`. Window layout and appearance preferences are stored separately from the game save, so a save file never depends on screen size. The Secret Tracker has its own storage key, so starting a new workstation never clears it. A return counts once per browser session, so reloading the page does not count. See [desktop preview](docs/desktop.png) and [mobile preview](docs/mobile.png).
+Game rules live in `game.js`, release tasks in `tasks.js`, conversation scripts and incidents in `stories.js`, sounds and the music player in `sound.js`, and the desktop, windows, story moments and browser storage in `app.js`. Window layout and appearance preferences are stored separately from the game save, so a save file never depends on screen size. The Secret Tracker has its own storage key, so starting a new workstation never clears it. A return counts once per browser session, so reloading the page does not count. See [desktop preview](docs/desktop.png) and [mobile preview](docs/mobile.png).
