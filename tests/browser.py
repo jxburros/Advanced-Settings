@@ -6,6 +6,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 DOCS = Path(__file__).resolve().parents[1] / "docs"
+SOLUTION = "417396825852417369396852471173968542968524137524173986739685214241739658685241793"
 
 
 def no_overflow(page, label):
@@ -15,9 +16,16 @@ def no_overflow(page, label):
     ), label
 
 
+def go(page, url):
+    address = page.locator("#address")
+    address.fill(url)
+    address.press("Enter")
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, executable_path=os.environ.get("CHROMIUM") or None)
-    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    context = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.on("console", lambda m: m.type == "error" and errors.append(m.text))
@@ -64,20 +72,97 @@ with sync_playwright() as p:
     expect(page.get_by_role("heading", name="A workspace disguised as a theme.")).to_be_visible()
     expect(page.locator("#icons").get_by_role("button", name="Workspace Zero")).to_be_visible()
 
+    # Developer options hide behind the build number.
+    dock.get_by_role("button", name="System Settings").click()
+    settings.get_by_role("button", name="About").click()
+    for _ in range(7):
+        settings.get_by_role("button", name="Build 9.4.17 (Tide)").click()
+    expect(settings.get_by_role("heading", name="Developer")).to_be_visible()
+    settings.locator("#installs").select_option("identified")
+
+    # The web: blocked, translated, and the classroom route to a game store.
+    dock.get_by_role("button", name="Wayfinder").click()
+    web = page.locator("#win-browser")
+    go(page, "tidepool.games")
+    expect(web.get_by_text("This page is not part of a calm workday.")).to_be_visible()
+    go(page, "learn.tidepool.games")
+    web.get_by_role("button", name="Download Tidepool Classroom").click()
+    dock.get_by_role("button", name="Files").click()
+    page.locator("#win-files").get_by_role("tab", name="Downloads").click()
+    page.get_by_role("button", name="Open installer").click()
+    tide = page.locator("#win-tidepool")
+    expect(tide).to_be_visible()
+    tide.get_by_role("button", name="Get").click()
+    tide.get_by_role("button", name="Play").click()
+    for i, (given, digit) in enumerate(zip(page.evaluate("import('./game.js').then(g => g.SUDOKU.givens)"), SOLUTION)):
+        if given == "0":
+            page.locator(f"#su-{i}").fill(digit)
+    expect(page.locator("#win-sudoku").get_by_text("Solved.")).to_be_visible()
+    dock.get_by_role("button", name="Tidepool").click()
+    tide.get_by_role("tab", name="Community").click()
+    expect(tide.get_by_text("quillpost.blog/marachen")).to_be_visible()
+
+    # Mara's blog, through Translate.
+    dock.get_by_role("button", name="Wayfinder").click()
+    go(page, "quillpost.blog/marachen")
+    expect(web.get_by_text("Blogs & social")).to_be_visible()
+    go(page, "translate.stillwater")
+    page.locator("#translate-url").fill("quillpost.blog/marachen")
+    page.locator("#translate-url").press("Enter")
+    page.locator("#blogpw").fill(SOLUTION[:9])
+    page.locator("#blogpw").press("Enter")
+    expect(web.get_by_text("Things I left on WS-0417")).to_be_visible()
+    go(page, "ws-0417.local")
+    expect(web.get_by_role("heading", name="Where the duck will be.")).to_be_visible()
+
+    # The duck desk rejects a wrong correction and closes for a minute.
+    dock.get_by_role("button", name="The Daily Current").click()
+    news = page.locator("#win-news")
+    news.get_by_text("It is nesting under the lobby ficus.").click()
+    news.get_by_role("button", name="File correction").click()
+    expect(news.get_by_role("button", name="The desk is not taking questions right now")).to_be_visible()
+
+    # Leaving and returning slowly changes the desk.
+    for _ in range(4):
+        page.close()
+        page = context.new_page()
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.clock.install()
+        page.goto("http://127.0.0.1:8000")
+    dock = page.locator("#dock")
+    web = page.locator("#win-browser")
+    expect(page.locator("#icons").get_by_role("button", name="Welcome (2).pdf")).to_be_visible()
+    expect(page.get_by_role("heading", name="Gentle Sudoku · leaderboard")).to_be_attached()
+
+    # Personal use catches up with you: a loss unlocks the Secret Tracker, which survives a new desk.
+    page.evaluate(
+        "() => { const s = JSON.parse(localStorage.getItem('stillwater-workstation')); s.suspicion = 99; s.warned = 2;"
+        " localStorage.setItem('stillwater-workstation', JSON.stringify(s)); Storage.prototype.setItem = () => {}; }"
+    )
     page.reload()
-    expect(page.get_by_role("heading", name="A workspace disguised as a theme.")).to_be_visible()
+    dock.get_by_role("button", name="Wayfinder").click()
+    go(page, "somewhere.shop")
+    expect(page.get_by_role("heading", name="Your role has been released.")).to_be_visible()
+    page.get_by_role("button", name="Open Secret Tracker").click()
+    tracker = page.locator("#win-tracker")
+    expect(tracker.get_by_text("Released to the community")).to_be_visible()
+    expect(tracker.get_by_text("Gentle solver")).to_be_visible()
+    page.locator("#widgets").get_by_role("button", name="Start again").click()
+    expect(page.get_by_role("heading", name="Welcome to Stillwater.")).to_be_visible()
+    expect(dock.get_by_role("button", name="Secret Tracker")).to_be_visible()
 
     page.set_viewport_size({"width": 390, "height": 844})
-    no_overflow(page, "files")
     for name in ["Workbench", "Toolshed", "Library", "Conductor", "Mail", "Activity Monitor",
-                 "The Daily Current", "Notes", "Files", "System Settings"]:
+                 "The Daily Current", "Wayfinder", "Notes", "Files", "Secret Tracker", "System Settings"]:
         dock.get_by_role("button", name=name, exact=True).click()
         expect(page.locator(f".window.focused[aria-label='{name}']")).to_be_visible()
         no_overflow(page, name)
     dock.get_by_role("button", name="Workbench", exact=True).click()
+    page.clock.run_for(7000)
     page.wait_for_timeout(500)
     page.screenshot(path=str(DOCS / "mobile.png"))
     assert not errors, errors
     browser.close()
-    print("PASS: release cycle, notifications, pause, deep settings with decoys, Workspace Zero story moment, "
-          "bookmark, persistence, every app on mobile; no JS errors.")
+    print("PASS: release cycle, deep settings, Workspace Zero, developer options, filter and Translate, "
+          "game store install, sudoku, Mara's blog, duck dashboard, duck desk lockout, returns, "
+          "firing, Secret Tracker across workstations, every app on mobile; no JS errors.")
