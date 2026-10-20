@@ -25,6 +25,12 @@ def go(page, url):
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, executable_path=os.environ.get("CHROMIUM") or None)
     context = browser.new_context(viewport={"width": 1440, "height": 900})
+    # No real network: GitHub answers with a pretend newer release and an empty DLC catalog.
+    release = {"tag_name": "v9.9.9", "html_url": "https://github.com/jxburros/Advanced-Settings/releases/tag/v9.9.9",
+               "body": "## 9.9.9\n- **Ducks.** More of them.", "assets": [{"name": "Advanced-Settings-Setup-9.9.9.exe",
+               "browser_download_url": "https://github.com/jxburros/Advanced-Settings/releases/download/v9.9.9/Advanced-Settings-Setup-9.9.9.exe"}]}
+    context.route("https://api.github.com/**", lambda route: route.fulfill(json=release))
+    context.route("https://raw.githubusercontent.com/**", lambda route: route.fulfill(json=[]))
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -176,6 +182,16 @@ with sync_playwright() as p:
     for sid in ["undo", "calendar", "search", "quiet", "quack", "mchen"]:
         assert sid in found, sid
 
+    # Software Update found the pretend release when the game started.
+    page.locator(".menubar").get_by_role("button", name="Stillwater menu").click()
+    page.locator("#pop").get_by_role("menuitem", name="Software Update… · 1 update").click()
+    updates = page.locator("#win-updates")
+    expect(updates.get_by_text("Advanced Settings 9.9.9 is available")).to_be_visible()
+    expect(updates.get_by_role("link", name="Download the Windows installer")).to_have_attribute("href", release["assets"][0]["browser_download_url"])
+    updates.get_by_role("tab", name="DLC").click()
+    expect(updates.get_by_text("No downloadable content yet", exact=False)).to_be_visible()
+    updates.get_by_role("button", name="Close Software Update").click()
+
     # The Help Desk answers vaguely at first, and better answers take a while.
     page.locator(".menubar").get_by_role("button", name="Help").click()
     page.locator("#pop").get_by_role("menuitem", name="Help Desk").click()
@@ -243,4 +259,4 @@ with sync_playwright() as p:
     browser.close()
     print("PASS: release cycle, deep settings, Workspace Zero, developer options, filter and Translate, "
           "game store install, sudoku, Mara's blog, IM and family mail, pilots page, duck dashboard, duck desk lockout, returns, "
-          "menus, calendar, search, sound settings, Murmur, lock screen, Help Desk, the improvement plan, story moments, firing, Secret Tracker across workstations, every app on mobile; no JS errors.")
+          "Software Update and DLC, menus, calendar, search, sound settings, Murmur, lock screen, Help Desk, the improvement plan, story moments, firing, Secret Tracker across workstations, every app on mobile; no JS errors.")

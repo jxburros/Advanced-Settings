@@ -1,0 +1,10 @@
+{
+  "id": "example",
+  "name": "Example Pack",
+  "version": "1.0.0",
+  "minGame": "1.1.0",
+  "description": "A template showing everything a pack can add. Not meant to be published.",
+  "notes": [{ "text": "If you can read this, the example pack is installed. Delete me before shipping a real pack.", "by": "— the pack author" }],
+  "headlines": ["Example headline: duck seen reading the DLC documentation."],
+  "module": "pack.js"
+}

@@ -1,5 +1,6 @@
 import * as G from "./game.js";
 import * as S from "./sound.js";
+import * as U from "./updates.js";
 const KEY = "stillwater-workstation";
 const UIKEY = "stillwater-desktop";
 const ARCHIVEKEY = "stillwater-archive";
@@ -42,6 +43,8 @@ const UI_DEFAULT = {
   startup: true,
   music: 0.7,
   dial: {},
+  autoUpdate: true,
+  lastCheck: 0,
 };
 let ui = structuredClone(UI_DEFAULT);
 try {
@@ -102,6 +105,7 @@ const GLYPHS = {
   download: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/>',
   ripple: '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01"/>',
 
+  update: '<path d="M12 3v11M7.5 9.5L12 14l4.5-4.5"/><path d="M4 15.5v2A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-2"/>',
   help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.6M12 16.8h.01"/>',
   music: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
   search: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
@@ -158,6 +162,13 @@ const DUCKWATCH = [
   "Door log, secure wing: opened 6× today with no badge. Each time: one object, 1.3 kg, moving with purpose.",
   "Directory sync tonight: 1 new public entry, “Duck”, title “Board member”, created by mchen (test). I really should delete that.",
 ];
+/* Wallpapers by id. DLC packs can add more. */
+const WALLPAPERS = {
+  stillwater: ["Stillwater", "assets/wallpapers/stillwater.jpg"],
+  dusk: ["Dusk", "assets/wallpapers/dusk.jpg"],
+  shallows: ["Shallows", "assets/wallpapers/shallows.jpg"],
+};
+const wallpaperURL = () => (WALLPAPERS[ui.wallpaper] ?? WALLPAPERS.stillwater)[1];
 const ALSO_NEWS = [
   "Stillwater Assure wins “Most Reassuring Dashboard” for the ninth consecutive year.",
   "Weather: overcast, on brand.",
@@ -630,7 +641,7 @@ function settings() {
   const cur = tabOf("settings", sections.map((x) => x[0]));
   let body = "";
   if (cur === "appearance")
-    body = `<h2>Appearance</h2><div class="setting-row"><div><strong>Wallpaper</strong><p>Hand-painted by a watercolor process that also does not exist.</p></div></div><div class="swatches">${["stillwater", "dusk", "shallows"].map((w) => `<button class="wall ${ui.wallpaper === w ? "on" : ""}" data-action="wallpaper" data-id="${w}" aria-label="${w} wallpaper" style="background-image:url(assets/wallpapers/${w}.jpg)"><span>${w[0].toUpperCase() + w.slice(1)}</span></button>`).join("")}</div><div class="setting-row"><div><strong>Window transparency</strong><p>How much of the calm shows through.</p></div><input type="range" id="glass" min="0.2" max="0.9" step="0.05" value="${1.1 - ui.glass}" aria-label="Window transparency" /></div><div class="setting-row"><div><strong>Accent</strong><p>Both are on brand. One is slightly more on brand.</p></div><div class="row">${["blue", "pink", "lilac"].map((a) => `<button class="accent-dot a-${a} ${ui.accent === a ? "on" : ""}" data-action="accent" data-id="${a}" aria-label="${a} accent"></button>`).join("")}</div></div>${toggle("Reduce motion", "Fewer animations. Story moments still happen, just more politely.", "still", ui.still, false, "pref")}`;
+    body = `<h2>Appearance</h2><div class="setting-row"><div><strong>Wallpaper</strong><p>Hand-painted by a watercolor process that also does not exist.</p></div></div><div class="swatches">${Object.entries(WALLPAPERS).map(([w, [name, url]]) => `<button class="wall ${ui.wallpaper === w ? "on" : ""}" data-action="wallpaper" data-id="${esc(w)}" aria-label="${esc(name)} wallpaper" style="background-image:url('${esc(url)}')"><span>${esc(name)}</span></button>`).join("")}</div><div class="setting-row"><div><strong>Window transparency</strong><p>How much of the calm shows through.</p></div><input type="range" id="glass" min="0.2" max="0.9" step="0.05" value="${1.1 - ui.glass}" aria-label="Window transparency" /></div><div class="setting-row"><div><strong>Accent</strong><p>Both are on brand. One is slightly more on brand.</p></div><div class="row">${["blue", "pink", "lilac"].map((a) => `<button class="accent-dot a-${a} ${ui.accent === a ? "on" : ""}" data-action="accent" data-id="${a}" aria-label="${a} accent"></button>`).join("")}</div></div>${toggle("Reduce motion", "Fewer animations. Story moments still happen, just more politely.", "still", ui.still, false, "pref")}`;
   else if (cur === "development")
     body = `<h2>Development</h2>${toggle("Safe development mode", "Careful writing means fewer defects. Turn it off to write 30% faster and add two defects to every new feature. Bold.", "safe", s.settings.safe)}`;
   else if (cur === "sound")
@@ -651,7 +662,7 @@ function settings() {
   else if (cur === "storage")
     body = `<h2>Storage</h2><p class="lede">Progress saves itself in this browser. Running jobs keep going for up to two hours while you’re away. Export a backup to move desks. Clearing browser data clears the desk.</p><div class="row">${button("Export save", "export", "", false, "ghost")}${button("Import save", "import", "", false, "ghost")}${button("New workstation", "reset", "", false, "danger")}</div>${saveError ? `<p class="warn">${saveError}</p>` : ""}`;
   else
-    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: ${s.secrets.includes("redacted") ? "<b>Mara Chen</b>" : `<button class="redact" data-action="redact" aria-label="Redacted name">Mara Chen</button>`}${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings is a game. All the work is simulated. The satisfaction is not.</p></div>`;
+    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: ${s.secrets.includes("redacted") ? "<b>Mara Chen</b>" : `<button class="redact" data-action="redact" aria-label="Redacted name">Mara Chen</button>`}${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings ${U.VERSION} · ${U.desktop ? "Windows edition" : "web edition"}${U.state.dlc.installed.length ? ` · ${U.state.dlc.installed.length} DLC pack${U.state.dlc.installed.length === 1 ? "" : "s"}` : ""}</p>${button("Software Update…", "open", "updates", false, "ghost")}<p class="fine">Advanced Settings is a game. All the work is simulated. The satisfaction is not.</p></div>`;
   return `<div class="split"><nav class="sidebar">${sections.map(([id, l]) => `<button class="side ${cur === id ? "on" : ""}" data-action="tab" data-app="settings" data-id="${id}" ${cur === id ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</nav><div class="pane">${body}</div></div>`;
 }
 function explorer() {
@@ -816,6 +827,102 @@ function tracker() {
   return tabs("tracker", [["moments", `Story · ${seen.size}/${G.MOMENTS.length}`], ["secrets", `Secrets · ${found.size}/${G.SECRETS.length}`], ["endings", `Endings · ${archive.endings.length}/${G.ENDINGS.length}`]], cur) + `<div class="pane">${eyebrow(`Secret Tracker · ${archive.plays} workstation${archive.plays === 1 ? "" : "s"}`)}<h2>What you’ve found, across every desk.</h2><p class="lede">This record survives new workstations.</p>${body}</div>`;
 }
 const HINT_FROM = ["Knowledge base article", "Reply from a human", "Reply from someone who has been here too long"];
+/* Release notes arrive as Markdown; show headings, bullets and paragraphs, nothing else. */
+function notesHTML(md) {
+  const out = [];
+  let list = false;
+  for (const raw of String(md || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    const bullet = /^[-*] /.test(line);
+    if (list && !bullet) out.push("</ul>"), (list = false);
+    if (!line) continue;
+    const text = esc(line.replace(/^#+ |^[-*] /, "")).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
+    if (bullet) out.push((list ? "" : ((list = true), "<ul>")) + `<li>${text}</li>`);
+    else if (/^#/.test(line)) out.push(`<h4>${text}</h4>`);
+    else out.push(`<p>${text}</p>`);
+  }
+  if (list) out.push("</ul>");
+  return out.join("");
+}
+const ext = (url, text, cls = "ghost") => `<a class="button ${cls}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+let catalogAsked = false;
+function updatesApp() {
+  const cur = tabOf("updates", ["update", "dlc"]);
+  const u = U.state.update;
+  const d = U.state.dlc;
+  if (cur === "dlc" && d.catalog === null && !catalogAsked) {
+    catalogAsked = true;
+    U.loadCatalog();
+  }
+  let body;
+  if (cur === "update") {
+    const edition = U.desktop ? "Windows edition" : "web edition";
+    let status;
+    if (u.state === "dev") status = `<p class="fine">This copy is running from source, so it can’t update itself. Installed copies update from GitHub Releases.</p>`;
+    else if (u.state === "checking") status = `<p>Checking GitHub for a newer edition…</p>`;
+    else if (u.state === "current") status = `<p><b>You have the newest edition.</b></p>`;
+    else if (u.state === "error") status = `<p class="warn">${esc(u.error || "The update check failed.")}</p>${button("Try again", "checkupdate", "", false, "ghost")}`;
+    else if (["available", "downloading", "ready"].includes(u.state)) {
+      const actions = U.desktop
+        ? u.state === "available"
+          ? button(`Download ${esc(u.version)}`, "downloadupdate", "", false, "primary")
+          : u.state === "downloading"
+            ? `<div class="progress-label"><span>Downloading ${esc(u.version)}</span><b>${u.percent ?? 0}%</b></div><progress max="100" value="${u.percent ?? 0}"></progress>`
+            : `${button("Restart and install", "installupdate", "", false, "primary")}<p class="fine">Your progress is saved first. The installer replaces the game and opens it again.</p>`
+        : `<div class="row">${u.installer ? ext(u.installer, "Download the Windows installer", "primary") : ""}${u.page ? ext(u.page, "Release page") : ""}</div><p class="fine">The web edition updates when the site it’s served from is updated: reload the page after that. Your save stays in this browser either way.</p>`;
+      status = `${card(`${eyebrow(`Advanced Settings ${esc(u.version)} is available`)}<div class="notes">${notesHTML(u.notes) || "<p>No release notes.</p>"}</div>${actions}`)}`;
+    } else status = "";
+    const canCheck = !["checking", "downloading", "dev"].includes(u.state);
+    body = `${eyebrow("Stillwater Software Update")}<h2>Advanced Settings ${U.VERSION}</h2><p class="lede">${edition}. New editions are published on GitHub.</p>${status}<div class="row">${canCheck && u.state !== "error" ? button("Check for updates", "checkupdate", "", false, u.state === "available" ? "ghost" : "primary") : ""}${ext(`https://github.com/${U.REPO}/releases`, "All releases")}</div>${toggle("Check automatically", "Once a day, when the game starts. Nothing is downloaded without asking.", "autoUpdate", ui.autoUpdate, false, "pref")}${U.desktop ? "" : `<p class="fine">Prefer an app? The Windows edition installs like any other program and updates itself.</p>`}`;
+  } else {
+    const installed = new Map(d.installed.map((m) => [m.id, m]));
+    const rows = (d.catalog ?? [])
+      .map((e) => {
+        const have = installed.get(e.id);
+        const old = e.minGame && U.compare(U.VERSION, e.minGame) < 0;
+        const busy = d.busy === e.id;
+        const action = !U.desktop
+          ? `<span class="pill">Windows edition</span>`
+          : busy
+            ? `<span class="pill">${d.percent ? d.percent + "%" : "Working…"}</span>`
+            : old
+              ? `<span class="pill">Needs ${esc(e.minGame)}</span>`
+              : have && U.compare(have.version, e.version) >= 0
+                ? `${button("Remove", "dlcremove", e.id, !!d.busy, "ghost", `aria-label="Remove ${esc(e.name)}"`)}`
+                : button(have ? `Update to ${esc(e.version)}` : "Install", "dlcinstall", e.id, !!d.busy, "primary", `aria-label="${have ? "Update" : "Install"} ${esc(e.name)}"`);
+        return `<div class="shelf ${have ? "owned" : ""}"><div><strong>${esc(e.name)}</strong><p>${esc(e.description || "")}</p><small class="muted">v${esc(e.version)} · ${e.size >= 1048576 ? Math.round(e.size / 1048576) + " MB" : Math.max(1, Math.round(e.size / 1024)) + " KB"}${have ? ` · installed v${esc(have.version)}` : ""}</small></div>${action}</div>`;
+      })
+      .join("");
+    const local = d.installed.filter((m) => !(d.catalog ?? []).some((e) => e.id === m.id));
+    body = `${eyebrow("Downloadable content")}<h2>Expansions for WS-0417.</h2><p class="lede">DLC packs add wallpapers, music, notes, headlines and sometimes whole programs. ${U.desktop ? "Packs are checked against the official catalog before they’re installed." : "Packs install in the Windows edition."}</p>${d.error ? `<p class="warn">${esc(d.error)}</p>` : ""}${d.catalog === null ? `<p class="fine">Loading the catalog…</p>` : rows || `<div class="empty">No downloadable content yet. When there is, it appears here.</div>`}${local.length ? `<h3>Installed</h3>${local.map((m) => `<div class="shelf owned"><div><strong>${esc(m.name)}</strong><p>${esc(m.description || "")}</p><small class="muted">v${esc(m.version)}${m.preview ? " · preview from dlc/packs" : ""}</small></div>${U.desktop && !m.preview ? button("Remove", "dlcremove", m.id, !!d.busy, "ghost") : ""}</div>`).join("")}` : ""}<div class="row">${button("Refresh catalog", "dlcload", "", d.catalog === null, "ghost")}</div><p class="fine">Changes to installed packs take effect after a restart.</p>`;
+  }
+  return tabs("updates", [["update", "Updates", ["available", "ready"].includes(u.state) ? '<i class="badge">1</i>' : ""], ["dlc", "DLC"]], cur) + `<div class="pane">${body}</div>`;
+}
+/* Applies an installed DLC pack to this session. */
+const packURL = (m, f) => m.base + f.split("/").map(encodeURIComponent).join("/");
+async function applyPack(m) {
+  for (const w of m.wallpapers ?? []) WALLPAPERS[`${m.id}-${w.id}`] = [String(w.name).slice(0, 40), packURL(m, w.file)];
+  if (m.music?.length) S.addTracks(m.music.map((t) => ({ ...t, file: packURL(m, t.file) })));
+  for (const n of m.notes ?? []) NOTES.push([() => true, esc(n.text), esc(n.by ?? "— " + m.name)]);
+  for (const h of m.headlines ?? []) ALSO_NEWS.push(esc(h));
+  if (!m.module) return;
+  try {
+    const mod = await import(packURL(m, m.module));
+    await mod.default?.({
+      version: U.VERSION,
+      esc,
+      notify: (text) => notify(String(text), "updates"),
+      // A pack may add a program. Its render() returns HTML; the pack is responsible for escaping.
+      addApp: (id, def) => {
+        const key = `dlc-${m.id}-${String(id).replace(/[^a-z0-9-]/g, "")}`;
+        if (def.glyph) GLYPHS[key] = String(def.glyph);
+        APPS[key] = { title: String(def.title || m.name).slice(0, 40), glyph: def.glyph ? key : "update", tone: def.tone || "lilac", size: def.size || [520, 480], render: () => String(def.render?.() ?? ""), dock: true };
+      },
+    });
+  } catch (e) {
+    notify(`The DLC pack “${m.name}” couldn’t start its program: ${String(e?.message ?? e).slice(0, 120)}`, "updates");
+  }
+}
 const mmss = (t) => (Number.isFinite(t) && t > 0 ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}` : "0:00");
 function music() {
   const P = S.player;
@@ -883,6 +990,7 @@ const APPS = {
   important: { title: "probably important.txt", glyph: "important", tone: "ink", size: [360, 300], render: important },
   sudoku: { title: "Gentle Sudoku", glyph: "sudoku", tone: "blue", size: [440, 560], render: sudoku },
   trace: { title: "Trace", glyph: "trace", tone: "ink", size: [520, 560], render: trace },
+  updates: { title: "Software Update", glyph: "update", tone: "mint", size: [580, 620], render: updatesApp, dock: () => ["available", "downloading", "ready"].includes(U.state.update.state) },
   music: { title: "Murmur", glyph: "music", tone: "lilac", size: [420, 600], render: music, dock: true },
   help: { title: "Help Desk", glyph: "help", tone: "mint", size: [560, 600], render: helpdesk },
   deskduck: { title: "duck", glyph: "duckling", tone: "peach", size: [380, 320], render: deskduck },
@@ -1005,7 +1113,7 @@ function renderChrome() {
   document.body.classList.toggle("still", ui.still);
   document.documentElement.style.setProperty("--glass", ui.glass);
   document.documentElement.style.setProperty("--fade", Math.max(0.45, 1 - Math.max(0, s.returns - 5) * 0.06));
-  $("wallpaper").style.backgroundImage = `url(assets/wallpapers/${ui.wallpaper}.jpg)`;
+  $("wallpaper").style.backgroundImage = `url("${wallpaperURL()}")`;
   const reported = s.stories.employee === 3;
   $("stats").innerHTML = [
     ["Budget", money(s.money)],
@@ -1250,7 +1358,7 @@ function nav(url) {
 }
 
 /* ---------- input ---------- */
-const PLAY = ["open", "close", "min", "max", "tab", "menu", "calm", "wallpaper", "accent", "pref", "path", "deeper", "decoy", "moment", "replay", "export", "import", "reset", "back", "pause", "icon", "popover", "launcher", "lock", "unlock", "switchuser", "signout", "shutdown", "minall", "front", "shortcuts", "oshelp", "selectall", "sorticons", "getinfo", "iconinfo", "trashicon", "network", "calday", "music", "hit", "newfolder"];
+const PLAY = ["checkupdate", "downloadupdate", "installupdate", "dlcload", "dlcinstall", "dlcremove", "open", "close", "min", "max", "tab", "menu", "calm", "wallpaper", "accent", "pref", "path", "deeper", "decoy", "moment", "replay", "export", "import", "reset", "back", "pause", "icon", "popover", "launcher", "lock", "unlock", "switchuser", "signout", "shutdown", "minall", "front", "shortcuts", "oshelp", "selectall", "sorticons", "getinfo", "iconinfo", "trashicon", "network", "calday", "music", "hit", "newfolder"];
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-action]");
   if (!b || b.disabled) return;
@@ -1361,6 +1469,27 @@ document.addEventListener("click", (e) => {
       break;
     case "music":
       musicAction(id);
+      break;
+    case "checkupdate":
+      ui.lastCheck = Date.now();
+      U.checkForUpdate();
+      break;
+    case "downloadupdate":
+      U.downloadUpdate();
+      break;
+    case "installupdate":
+      persist();
+      U.installUpdate();
+      break;
+    case "dlcload":
+      U.state.dlc.catalog = null;
+      U.loadCatalog();
+      break;
+    case "dlcinstall":
+      U.installDlc(id);
+      break;
+    case "dlcremove":
+      U.removeDlc(id);
       break;
     case "pat": {
       const n = G.count(s, "pat", 5, "pat");
@@ -1803,7 +1932,7 @@ let pop = null,
 function menuItems(id) {
   const top = topWindow();
   if (id === "logo")
-    return [["About This Workstation", "open", "settings", false, 'data-tab="about"'], ["System Settings…", "open", "settings"], "-", ["Lock Screen", "lock", "", false, "", "Ctrl Shift L"], ["Shut Down…", "shutdown"]];
+    return [["About This Workstation", "open", "settings", false, 'data-tab="about"'], ["System Settings…", "open", "settings"], [`Software Update…${U.state.update.state === "available" || U.state.update.state === "ready" ? " · 1 update" : ""}`, "open", "updates"], "-", ["Lock Screen", "lock", "", false, "", "Ctrl Shift L"], ["Shut Down…", "shutdown"]];
   if (id === "file")
     return [["New Folder", "newfolder", "", s.rank < 4], ["Open…", "launcher", "", false, "", "Ctrl K"], "-", ["Close Window", "close", top ?? "", !top], ["Minimize Window", "min", top ?? "", !top], "-", ["Export Save…", "export"]];
   if (id === "edit") return [["Undo", "undo"], ["Redo", "", "", true], "-", ["Cut", "", "", true], ["Copy", "", "", true], ["Paste", "", "", true], "-", ["Select All Icons", "selectall"]];
@@ -1969,7 +2098,7 @@ function searchHits(q) {
   q = q.trim().toLowerCase();
   if (!q) return [];
   const out = [];
-  for (const [id, a] of Object.entries(APPS)) if ((docked(a) || ["help", "trash", "welcome"].includes(id)) && a.title.toLowerCase().includes(q)) out.push({ title: a.title, sub: "Application", run: () => openApp(id) });
+  for (const [id, a] of Object.entries(APPS)) if ((docked(a) || ["help", "trash", "welcome", "updates"].includes(id)) && a.title.toLowerCase().includes(q)) out.push({ title: a.title, sub: "Application", run: () => openApp(id) });
   for (const [id, l] of [["appearance", "Appearance"], ["development", "Development"], ["notifications", "Notifications"], ["sound", "Sound"], ["network", "Network"], ["privacy", "Privacy"], ["advanced", "Advanced"], ["storage", "Storage"], ["about", "About"]])
     if (l.toLowerCase().includes(q) || "settings".includes(q)) out.push({ title: `System Settings › ${l}`, sub: "Setting", run: () => openApp("settings", id) });
   for (const u of G.OPEN_SITES.filter((u) => u !== "ws-0417.local" && u !== "learn.tidepool.games")) if (u.includes(q)) out.push({ title: u, sub: "Website", run: () => nav(u) });
@@ -2091,6 +2220,29 @@ S.onMusic(() => {
   if (ui.win.music?.open) renderWindows();
 });
 S.loadTracks();
+
+/* updates and DLC */
+let announced = "";
+U.onUpdates((what) => {
+  const u = U.state.update;
+  if (u.state === "available" && announced !== u.version) {
+    announced = u.version;
+    notify(`Advanced Settings ${u.version} is available. Open Software Update to see what’s new.`, "updates");
+  }
+  if (what === "dlc-installed") notify(U.state.dlc.error ? U.state.dlc.error : "DLC changes take effect after a restart.", "updates");
+  renderChrome();
+  if (ui.win.updates?.open) renderWindows();
+});
+async function startUpdates() {
+  const packs = await U.installedPacks();
+  for (const m of packs) await applyPack(m);
+  if (packs.length) render();
+  if (ui.autoUpdate && Date.now() - (ui.lastCheck || 0) > 864e5) {
+    ui.lastCheck = Date.now();
+    saveUI();
+    U.checkForUpdate();
+  }
+}
 
 /* dragging and resizing */
 let drag = null;
@@ -2229,3 +2381,4 @@ render();
 announce();
 if (saveError) notify(saveError, "settings");
 if (s.over) moment(s.over);
+startUpdates();

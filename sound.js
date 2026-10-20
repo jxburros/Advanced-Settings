@@ -108,11 +108,25 @@ export async function loadTracks() {
       .filter((t) => t && typeof t.file === "string" && /^[\w ./()&'-]+$/.test(t.file) && !t.file.includes(".."))
       .slice(0, 200)
       .map((t) => ({ title: String(t.title || t.file).slice(0, 80), artist: String(t.artist || "").slice(0, 80), file: "assets/music/" + t.file }));
-    player.tracks = [...valid, HOLD];
+    own = valid;
   } catch {
-    player.tracks = [HOLD];
+    own = [];
   }
+  rebuild();
   player.loaded = true;
+  onChange();
+}
+let own = [],
+  extra = [];
+function rebuild() {
+  const playing = player.tracks[player.index];
+  player.tracks = [...own, ...extra, HOLD];
+  player.index = Math.max(0, player.tracks.indexOf(playing));
+}
+/* Tracks from installed DLC packs, with full URLs. */
+export function addTracks(list) {
+  extra.push(...list.map((t) => ({ title: String(t.title).slice(0, 80), artist: String(t.artist || "").slice(0, 80), file: t.file })));
+  rebuild();
   onChange();
 }
 const current = () => player.tracks[player.index];

@@ -1,0 +1,67 @@
+# Push a tag like v1.2.0 to publish that version: tests, a Windows installer that updates
+# itself, a zip of the web edition, and release notes from CHANGELOG.md.
+name: Release
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - id: v
+        name: Tag, package.json and version.js agree
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          js=$(node -e "import('./version.js').then(m => console.log(m.VERSION))")
+          if [ "$tag" != "$pkg" ] || [ "$tag" != "$js" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME, package.json ($pkg) and version.js ($js) must match."
+            exit 1
+          fi
+          node tools/release-notes.mjs "$tag" > /dev/null
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+
+  windows:
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Builds the NSIS installer and publishes it, latest.yml (what installed copies check)
+      # and the blockmap to the GitHub release for this tag.
+      - run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  web:
+    needs: [check, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Release notes and the web edition
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          node tools/release-notes.mjs "$VERSION" > notes.md
+          zip -r "Advanced-Settings-web-$VERSION.zip" index.html style.css app.js game.js tasks.js stories.js sound.js updates.js version.js assets README.md
+          gh release edit "$GITHUB_REF_NAME" --title "Advanced Settings $VERSION" --notes-file notes.md --latest
+          gh release upload "$GITHUB_REF_NAME" "Advanced-Settings-web-$VERSION.zip" --clobber

@@ -4,7 +4,9 @@ A playable, menu-driven incremental game set on a slightly suspicious company wo
 
 ## Play
 
-Requires Python 3 (or any static web server). No build or dependencies are needed.
+**Windows:** download `Advanced-Settings-Setup-<version>.exe` from the [latest release](https://github.com/jxburros/Advanced-Settings/releases/latest) and run it. The Windows edition updates itself and installs DLC from Software Update (logo menu, or System Settings › About). The installer isn't code-signed yet, so Windows may ask you to confirm ("More info › Run anyway").
+
+**In a browser:** requires Python 3 (or any static web server). No build or dependencies are needed.
 
 ```sh
 python3 -m http.server 8000
@@ -30,6 +32,7 @@ You are a new developer at **Stillwater Systems**, a company that sells calm. Th
 | System Settings | Appearance, sound and settings that go much deeper than they look. |
 | Murmur | A music player. It plays your tracks from `assets/music` (see the README there) and some built-in hold music. |
 | Help Desk | Help › Help Desk: escalating hints for whatever you're stuck on. |
+| Software Update | Checks GitHub for newer editions (and installs them in the Windows edition), and lists downloadable content. |
 
 - **Work:** five projects, three features, nine upgrades, five ranks (at 3, 7, 12 and 18 releases). Before most versions ship there is a release task, and each project has its own kinds: code review and bug triage (Pocket Notes), deploying between lunch rushes (Lunchboard), ordering a data migration (Archive Index), tuning a probe (Quiet Monitor) and decoding legacy notes (Workspace Zero). Tasks grow with each project and each version, and the scheduler won't do them for you; an AI assistant assigned to development will, slowly. Each version of a project takes longer to write and test than the last, so new projects pay off. Career tracks change how you work. Lunchboard earns while it runs, Archive Index reveals records, and Quiet Monitor shows what is watching you.
 - **Puzzles:** a deep settings maze, conditional discoveries, duck corrections that need evidence from elsewhere, a credential you have to work out, and three mini games (a sudoku, a breaker panel and a packet trace).
@@ -46,6 +49,10 @@ You are a new developer at **Stillwater Systems**, a company that sells calm. Th
 Everything runs locally with no accounts, paid APIs or real AI calls; the web is simulated. Optional Google Fonts fall back to system fonts. The watercolor wallpapers in `assets/wallpapers` were painted with [Vixl](https://github.com/jxburros/Vixl); `tools/make-wallpapers.py` regenerates them, and `tools/make-cover.py` paints Murmur's cover art. Sounds and hold music are synthesized with Web Audio; there are no audio files unless you add music. Icons are inline SVG.
 
 Full solutions are in [docs/SECRETS.md](docs/SECRETS.md). **It contains spoilers.**
+
+## Releases, updates and DLC
+
+Pushing a tag like `v1.2.0` builds and publishes a release: tests, a self-updating Windows installer, a web-edition zip, and notes from [CHANGELOG.md](CHANGELOG.md). Pushing `dlc-<id>-v1.0.0` publishes a DLC pack from `dlc/packs/<id>` and adds it to the catalog. The details, including signing and local builds, are in [docs/RELEASING.md](docs/RELEASING.md); the pack format is in [dlc/README.md](dlc/README.md). The Windows edition is an Electron shell (`desktop/`) around the same files the web edition serves; the game itself still needs no build.
 
 ## Validation
 
