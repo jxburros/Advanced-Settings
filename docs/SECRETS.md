@@ -35,6 +35,25 @@ The Secret Tracker unlocks in the dock after the first ending of any kind, and i
 | Appendix H | Library: “See Appendix H for what time means here” | Complete 6 reading sessions and return to the game at least 3 times. |
 | The desk remembers | Trash count, the renamed Welcome file, a fading wallpaper, the falling Calm Index | Return 12 times. Each new browser session after the first counts as a return. |
 
+| Herself again | Juno’s own words before she leaves: “if i come back weird, remind me who i am”; Notes: “Remind them of something silly.” | When Juno returns very calm, the preset replies get nowhere. Type a message mentioning the **Furnace of Thursdays**, the nickname she taught you for Greg’s heater. |
+| Out of office | Neil’s questions; the directory (“last badge-out: never”); facilities (sleeping pod 4); Mara’s guest message | Archive Index box 5 is Neil’s retention agreement: he stays “until Stillwater Assure reports that it is fully calm”. Once you have Channel 04 (Mara’s audit), a new reply appears: send him the audit. The condition is impossible, so the clause is void, and he leaves. |
+| Return to sender | Mom: “see intranet.stillwater/pilots” | Answers are on the hidden intranet.stillwater/pilots page: hold the Hearth dial for ten seconds; say “I am calm” three times to the Serene TV. For the Pantry fridge, the truthful reply appears only after Channel 04. The corporate script also ends the thread, but without the secret. |
+| Part of the problem | — | Press Reply all on the fridge-cleanout thread. Six more people reply all to agree with you. |
+| There was cake | A toast: “CAKE in kitchen 3!!” | After the reply-all storm ends (from 4 releases), cake is announced. You have 45 seconds to click Go to kitchen 3. |
+| Not today | The sender is `it-securlty@stillwater.co` | Report the “password expires” email (from 5 releases). Clicking it closes Wayfinder for 90 seconds and dents the Calm Index. |
+
+## Conversations
+
+| Thread | Where | Arc |
+| --- | --- | --- |
+| Juno Park (QA) | Ripple, after the first release | Jokes about tests that always pass and teaches you “the Furnace of Thursdays”. She files a bug at 3 releases and is sent to the Wellness Wing; your message isn’t delivered. Three releases and three minutes later she returns very calm, and only the shared joke brings her back. Afterwards she refiles the bug with your logs. |
+| Neil Ashby (Platform) | Ripple, after 2 releases | He asks about your weekend, a bakery on Fifth, and what time you leave. His badge only opens inward. He hints at an archive document, then asks about “the weather”. Sending the audit frees him, and he writes from a bench with your duck. |
+| Mom & Dad | Mail › Personal, after the first release | Three pilot products, each fixed with an answer from the hidden pilots page. The last one asks you to choose between the script and the truth. |
+| Greg Okafor | Ripple, after you revoke the credential | His heater’s smart plug used the contractor account, so the “hacker” was partly a heater. He has a later note once Panel B is fixed. |
+| mchen (guest) | Ripple, after Mara’s blog and Channel 04 | Mara says hello, then asks you to help Neil, or thanks you if you already have. |
+
+Shipping Workspace Zero recovers one of Mara’s notes per version (v1–v4). These mention Juno, Neil and the consumer pilots.
+
 ## The duck corrections
 
 The newsletter’s headlines arrive at 0, 2, 5 and 8 releases. A wrong correction closes the desk for 60 seconds. Every option is mundane on purpose, so the right one needs evidence.

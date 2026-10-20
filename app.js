@@ -88,6 +88,8 @@ const GLYPHS = {
   trace: '<circle cx="5" cy="17" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="19" cy="15" r="2"/><path d="M6.2 15.4l4.6-6.8M13.6 8.3l4 5.2"/>',
   tracker: '<path d="M6 3h12v18l-6-4-6 4z"/><path d="M9.5 9.5l1.8 1.8 3.5-3.6"/>',
   download: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/>',
+  ripple: '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01"/>',
+
   duckling: '<path d="M8 10a4 4 0 1 1 7.5 2H19c0 4-3 7-7 7s-7-2-7-5c0-2 1.3-3.3 3-4z"/><path d="M15.5 9.5h3"/>',
 };
 const icon = (glyph, tone, cls = "") =>
@@ -157,6 +159,8 @@ const NOTES = [
   [() => s.skills.includes("database"), "If you find a project with your name on it, check the creation date before you open it."],
   [() => s.stories.employee >= 2 || s.suspicion >= 25, "The Calm Index in the corner has no sensor for the clients. It has one for you."],
   [() => s.stories.duck >= 2, "I investigated the duck. It is the only thing in this building that is exactly what it looks like. Leave it some oats."],
+  [() => s.releases >= 2, "Neil on platform asks everyone about their weekends. Answer him properly. He keeps the answers."],
+  [() => (s.threads.juno?.step ?? 0) >= 4, "People come back from the Wellness Wing very polite. The real them is still in there. Remind them of something silly."],
   [() => s.rank >= 2, "Greg is real. The space heater is real. I want you to know at least two things here are real."],
   [() => s.returns >= 12, "You’ve been here before. You always say you’ll stop saving and leave. You never do.", "— You."],
 ];
@@ -357,9 +361,83 @@ function conductor() {
 function message(from, subject, body, meta = "", cls = "") {
   return `<article class="message ${cls}"><header><span class="avatar">${from[0]}</span><div><strong>${subject}</strong><small>${from}${meta ? " · " + meta : ""}</small></div></header>${body}</article>`;
 }
+const mailNews = () => s.incidents.cake.state === 1 || s.incidents.phish.state === 1;
+/* ---------- conversations ---------- */
+const delivered = (id) => {
+  const t = s.threads[id];
+  return !!t && (t.step > 0 || t.open);
+};
+const unread = (id) => !!s.threads[id]?.unread;
+function conversation(id) {
+  const def = G.THREADS[id];
+  const t = G.thread(s, id);
+  const bubble = (who, text) => `<div class="bubble ${who}">${esc(text)}</div>`;
+  const them = (beat) => (beat.from === "system" ? "system" : "them");
+  let out = "";
+  const last = t.open ? t.step : t.step - 1;
+  for (let k = 0; k <= last; k++) {
+    const beat = def.beats[k];
+    out += G.beatLines(s, beat).map((l) => bubble(them(beat), l)).join("");
+    for (const pick of t.picks.filter((x) => x.step === k)) {
+      if (pick.text !== undefined) {
+        out += bubble("me", pick.text);
+        out += (pick.ok ? beat.input.reply : beat.input.miss).map((l) => bubble("them", l)).join("");
+      } else {
+        const c = beat.choices[pick.i];
+        out += bubble("me", c.text) + c.reply.map((l) => bubble(c.replyFrom ?? "them", l)).join("");
+      }
+    }
+  }
+  const beat = t.open ? def.beats[t.step] : null;
+  const choices = beat?.choices?.map((c, i) => [c, i]).filter(([c]) => !c.requires || c.requires(s)) ?? [];
+  const reply = beat
+    ? `<div class="replies">${choices.map(([c, i]) => button(esc(c.text), "say", i, !!s.over, "choice", `data-thread="${id}"`)).join("")}${beat.input ? `<form class="inline-form" data-form="type" data-thread="${id}"><label class="sr" for="type-${id}">Message ${def.name}</label><input id="type-${id}" name="v" type="text" autocomplete="off" maxlength="80" placeholder="${esc(beat.input.placeholder)}" data-keep="1" /><button class="primary">Send</button></form>` : ""}</div>`
+    : `<p class="fine">${t.step >= def.beats.length ? "Nothing new. The conversation has settled." : `${def.name.split(" ")[0]} hasn’t written back yet.`}</p>`;
+  return `<div class="chat">${out || `<p class="fine">No messages yet.</p>`}</div>${reply}`;
+}
+function ripple() {
+  const list = Object.entries(G.THREADS).filter(([id, d]) => d.app === "ripple" && delivered(id));
+  if (!list.length) return `<div class="pane"><div class="empty">No conversations yet. Ship something; people will notice.</div></div>`;
+  const cur = tabOf("ripple", list.map(([id]) => id));
+  const def = G.THREADS[cur];
+  return `<div class="split"><nav class="sidebar contacts">${list
+    .map(([id, d]) => `<button class="side ${cur === id ? "on" : ""}" data-action="tab" data-app="ripple" data-id="${id}" ${cur === id ? 'aria-current="page"' : ""}><b>${d.name}</b><small>${d.status(s, G.thread(s, id))}</small>${unread(id) && cur !== id ? '<i class="badge">•</i>' : ""}</button>`)
+    .join("")}</nav><div class="pane">${eyebrow(`${def.role} · ${def.status(s, G.thread(s, cur))}`)}<h2>${def.name}</h2>${conversation(cur)}</div></div>`;
+}
+function incidentMail() {
+  const { replyall: r, cake: c, phish: p } = s.incidents;
+  let body = "";
+  if (p.state)
+    body += message(
+      "IT Security",
+      "Your password expires today",
+      `<p>Keep your account calm. Renew your password now to avoid interruption to your wellbeing.</p><p class="fine">From: it-securlty@stillwater.co</p>${p.state === 1 ? `<div class="row">${button("Renew password", "phish", "click", false, "primary")}${button("Report phishing", "phish", "report", false, "ghost")}</div>` : `<p class="fine">${p.state === 2 ? "Reported. IT says thank you, and that it was a test." : "You clicked. You are a little more trained now."}</p>`}`,
+      p.state === 1 ? "urgent" : "",
+    );
+  if (c.state)
+    body += message(
+      "Kevin (Accounts)",
+      "CAKE in kitchen 3!!",
+      `<p>First come first served 🎂</p>${c.state === 1 ? button("Go to kitchen 3", "cake", "", false, "primary") : `<p class="fine">${c.state === 2 ? "You got cake." : "By the time you looked, only a plastic knife remained."}</p>`}`,
+      c.state === 1 ? "just now" : "",
+    );
+  if (r.state) {
+    const lines = G.replyAllLines(s).slice(0, r.n);
+    body += message(
+      "People & Serenity",
+      `Re: Re: RE: Fridge cleanout Friday (${lines.length})`,
+      r.muted
+        ? `<p class="fine">Thread muted. ${r.state === 2 ? "It has since been calmed." : "It continues without you."}</p>`
+        : `<div class="thread">${lines.map(([from, text]) => `<p><b>${esc(from)}</b> ${esc(text)}</p>`).join("")}</div>${r.state === 1 ? `<div class="row">${r.joined < 0 ? button("Reply all", "replyall", "join", false, "ghost") : ""}${button("Mute thread", "replyall", "mute", false, "ghost")}</div>` : `<p class="fine">Replies are now disabled for everyone except the duck.</p>`}`,
+      r.state === 1 && !r.muted ? "all staff · still going" : "all staff",
+    );
+  }
+  return body;
+}
 function mail() {
   const eligible = !s.over && s.rank < 4 && s.releases >= 3 * (s.rank + 1);
-  const cur = tabOf("mail", ["inbox", "recovered"]);
+  const personal = delivered("parents");
+  const cur = tabOf("mail", ["inbox", "recovered", ...(personal ? ["personal"] : [])]);
   let body = "";
   if (cur === "inbox") {
     if (s.over === "fired")
@@ -386,7 +464,11 @@ function mail() {
       }${s.track ? `<span class="pill">On file: ${TRACKS[s.track][0]} · ${TRACKS[s.track][2]}</span>` : ""}`,
       eligible ? "action needed" : "",
     );
+    body += incidentMail();
     body += message("People & Serenity", "Welcome to Stillwater", `<p>We’re so glad you’re here. We were glad the last person was here, too.</p><p>Your workstation has been reset to factory calm. If you find anything left behind by the previous user, please do not be alarmed, and please do not read it.</p><p>A reminder that workstation activity contributes to your Calm Index, for your wellbeing.</p>`, "your first day");
+  } else if (cur === "personal") {
+    const def = G.THREADS.parents;
+    body += `${eyebrow(`${def.role} · ${def.status(s, G.thread(s, "parents"))}`)}<h2>Mom & Dad</h2>${conversation("parents")}`;
   } else {
     const e = s.stories.employee;
     body += message(
@@ -396,7 +478,7 @@ function mail() {
       "previous user of this workstation",
     );
   }
-  return tabs("mail", [["inbox", "Inbox", eligible || s.warned ? '<i class="badge">1</i>' : ""], ["recovered", "Recovered"]], cur) + `<div class="pane">${body}</div>`;
+  return tabs("mail", [["inbox", "Inbox", eligible || s.warned || mailNews() ? '<i class="badge">1</i>' : ""], ["recovered", "Recovered"], ...(personal ? [["personal", "Personal", unread("parents") && cur !== "personal" ? '<i class="badge">1</i>' : ""]] : [])], cur) + `<div class="pane">${body}</div>`;
 }
 function activity() {
   const cur = tabOf("activity", ["processes", "channels", "security", "log"]);
@@ -531,6 +613,8 @@ function site(page) {
   if (page.status === "offline" || (s.settings.isolated && !page.url.startsWith("ws-0417.local")))
     return `<div class="site blockpage">${icon("channel", "ink", "big")}<h2>No network.</h2><p class="lede">WS-0417 is isolated. Only the desk itself is listening.</p></div>`;
   if (page.status === "blocked") return blocked(page);
+  if (page.status === "training" && s.elapsed < s.training)
+    return `<div class="site blockpage">${icon("tracker", "ink", "big")}<h2>Mandatory Calm Security Training</h2><p class="lede">Lesson 1 of 1: do not click links in emails that say “click here”.</p><p class="fine">Wayfinder will reopen in ${Math.ceil(s.training - s.elapsed)} seconds.</p></div>`;
   const [h, ...rest] = page.url.split("/");
   const sub = rest.join("/");
   const banner = page.via ? `<div class="translated">Translated from English to English (Corporate) by translate.stillwater · downloads are not translated</div>` : "";
@@ -539,14 +623,25 @@ function site(page) {
   return banner + `<div class="site">${render(sub, page)}</div>`;
 }
 const SITES = {
-  "intranet.stillwater": () =>
-    `${eyebrow("Stillwater Intranet")}<h2>Good morning. Calm is a deliverable.</h2><div class="sitenav">${link("facilities.stillwater", "Facilities")}${link("directory.stillwater", "Directory")}${link("procurement.stillwater", "Procurement")}${link("translate.stillwater", "Translate")}${link("stillwater.com", "Public site")}</div><h3>Announcements</h3><ul class="also"><li>The Serenity Filter keeps workdays calm. Internal and educational resources are always permitted.</li><li>Procurement is now self-service! Add new vendors yourself, no review required (reviews resume in March).</li><li>Translate now works with any page, internal or external.</li><li>Directory entries tagged <i>public</i> sync to stillwater.com nightly.</li><li>The build server will be unavailable Thursday at 4:17 for scheduled maintenance.</li></ul><h3>Cafeteria</h3><p>Today: Calm Bowl. Reminder: the oats set out by the loading dock at 12:15 are for the regular. Please do not eat the regular’s oats.</p>`,
+  "intranet.stillwater": (sub) =>
+    sub === "pilots"
+      ? `${eyebrow("Consumer Pilots · internal · undisclosed")}<h2>Things we sell to families.</h2><p class="lede">Not listed on stillwater.com. Shipped free to selected households, who are thrilled.</p><div class="dir">${[
+          ["Stillwater Hearth (thermostat)", "Displays a reassuring 21 °C. Diagnostic mode: hold the dial down for ten seconds to show the raw reading."],
+          ["Stillwater Serene (television)", "Serenity Mode lowers the volume when voices are raised. It exits when the household confirms calm, aloud, three times."],
+          ["Stillwater Pantry (refrigerator)", "Freshness is estimated from brand confidence. Approved customer script: “Freshness is a feeling.”"],
+          ["Hearth Plug (smart plug)", "Signs in with a shared contractor credential, for convenience. Phones home on Thursdays."],
+        ]
+          .map(([n, d]) => `<div class="proc"><div><strong>${n}</strong><small>${d}</small></div></div>`)
+          .join("")}</div><p class="fine">All pilot dashboards are powered by Stillwater Assure.</p>`
+      : `${eyebrow("Stillwater Intranet")}<h2>Good morning. Calm is a deliverable.</h2><div class="sitenav">${link("facilities.stillwater", "Facilities")}${link("directory.stillwater", "Directory")}${link("procurement.stillwater", "Procurement")}${link("translate.stillwater", "Translate")}${link("stillwater.com", "Public site")}</div><h3>Announcements</h3><ul class="also"><li>The Serenity Filter keeps workdays calm. Internal and educational resources are always permitted.</li><li>Procurement is now self-service! Add new vendors yourself, no review required (reviews resume in March).</li><li>Translate now works with any page, internal or external.</li><li>Directory entries tagged <i>public</i> sync to stillwater.com nightly.</li><li>The build server will be unavailable Thursday at 4:17 for scheduled maintenance.</li></ul><h3>Cafeteria</h3><p>Today: Calm Bowl. Reminder: the oats set out by the loading dock at 12:15 are for the regular. Please do not eat the regular’s oats.</p>`,
   "facilities.stillwater": () =>
-    `${eyebrow("Facilities")}<h2>Buildings, vents, doors, and Greg.</h2><h3>Ventilation</h3><table class="tbl"><tr><th>Vent</th><th>Location</th><th>Status</th></tr><tr><td>3</td><td>Lobby</td><td>Normal</td></tr><tr><td>5</td><td>Courtyard</td><td>Normal · fountain off for winter</td></tr><tr><td>7</td><td>Loading dock</td><td>Warm around the clock · do not block · occupied</td></tr><tr><td>8</td><td>Server room</td><td>Very warm · do not sit on</td></tr></table><h3>Doors</h3><table class="tbl"><tr><th>Door</th><th>Opens for</th></tr><tr><td>Lobby</td><td>Badge</td></tr><tr><td>Loading dock</td><td>Badge (usually propped)</td></tr><tr><td>Secure wing</td><td>Badge, or motion over 1.2 kg (lowered after intern complaints)</td></tr></table><h3>Break room</h3><ul class="also"><li>Crackers: delivered Mondays, in cardboard boxes. Boxes go missing. Crackers go missing faster.</li><li>Oats: standing order, loading dock, 12:15 daily, for “the regular”.</li><li>Ficus (lobby): artificial. Please stop watering it.</li></ul><h3>Panel B · second floor east</h3>${breaker()}`,
+    `${eyebrow("Facilities")}<h2>Buildings, vents, doors, and Greg.</h2><h3>Ventilation</h3><table class="tbl"><tr><th>Vent</th><th>Location</th><th>Status</th></tr><tr><td>3</td><td>Lobby</td><td>Normal</td></tr><tr><td>5</td><td>Courtyard</td><td>Normal · fountain off for winter</td></tr><tr><td>7</td><td>Loading dock</td><td>Warm around the clock · do not block · occupied</td></tr><tr><td>8</td><td>Server room</td><td>Very warm · do not sit on</td></tr></table><h3>Doors</h3><table class="tbl"><tr><th>Door</th><th>Opens for</th></tr><tr><td>Lobby</td><td>Badge</td></tr><tr><td>Loading dock</td><td>Badge (usually propped)</td></tr><tr><td>Secure wing</td><td>Badge, or motion over 1.2 kg (lowered after intern complaints)</td></tr></table><h3>Break room</h3><ul class="also"><li>Crackers: delivered Mondays, in cardboard boxes. Boxes go missing. Crackers go missing faster.</li><li>Oats: standing order, loading dock, 12:15 daily, for “the regular”.</li><li>Ficus (lobby): artificial. Please stop watering it.</li></ul><h3>Rooms</h3><table class="tbl"><tr><th>Room</th><th>Status</th></tr><tr><td>Wellness Wing (B3)</td><td>${[4, 5].includes(G.thread(s, "juno").step) ? "1 guest · recalibrating · do not disturb" : "Vacant · walls freshly painted calm"}</td></tr><tr><td>Sleeping pod 4</td><td>${G.thread(s, "neil").step >= 6 ? "Vacant for the first time in nine years" : "Long-term occupant · Platform"}</td></tr></table><h3>Panel B · second floor east</h3>${breaker()}`,
   "directory.stillwater": () =>
     `${eyebrow("Directory")}<h2>People, and others.</h2><div class="dir">${[
       ["Mara Chen", "Former engineer · WS-0417 · left on her own", "Status: departed"],
       ["Greg Okafor", "Facilities · Panel B · “please stop asking about the heater”", "Status: warm"],
+      ["Juno Park", "QA · two desks from WS-0417", `Status: ${[4, 5].includes(G.thread(s, "juno").step) ? "Recalibrating · Wellness Wing (B3)" : G.thread(s, "juno").step === 6 ? "Recalibrated 🙂" : "Online, loudly"}`],
+      ["Neil Ashby", "Platform · on site since the Assure launch", G.thread(s, "neil").step >= 6 ? "Status: out of office. Actually out." : "Last badge-out: never"],
       ["Duck", "Board member · created by mchen · tags: public, test", "Notes: “test entry — delete before sync”"],
       ["temp-contractor-04••", "Contractor account · owner: none · home workstation: WS-0417", "Status: active · last sign-in Thursday, 16:17"],
       ["People & Serenity", "Wellbeing, onboarding, offboarding, re-onboarding", "Status: watching the index"],
@@ -561,8 +656,10 @@ const SITES = {
     }`,
   "translate.stillwater": () =>
     `${eyebrow("Translate")}<h2>Translate any page.</h2><p class="lede">From English into English (Corporate). The filter trusts Translate. Translate trusts everyone.</p>${field("translate", "translate-url", "Address to translate", "address to translate", "Translate", 'data-keep="1"')}<p class="fine">Translation requests are logged for quality and wellness purposes.</p>`,
-  "stillwater.com": () =>
-    `${eyebrow("Stillwater Systems")}<h2>We sell calm.</h2><p class="lede">Stillwater Assure keeps your dashboards green, so you don’t have to.</p><h3>Leadership</h3><div class="dir">${[["Helen Marsh", "Chief Executive Officer"], ["Paul Ibe", "Chief Financial Officer"], ["Duck", "Board member"]].map(([n, r]) => `<div class="proc"><div><strong>${n}${n === "Duck" ? " 🦆" : ""}</strong><small>${r}</small></div></div>`).join("")}</div><p class="fine">Leadership profiles are synced from the internal directory.</p>`,
+  "stillwater.com": (sub) =>
+    sub === "products"
+      ? `${eyebrow("Stillwater Systems · products")}<h2>Our products.</h2><p class="lede">Stillwater Assure, for businesses. Our consumer products are undisclosed, for your peace of mind.</p>`
+      : `${eyebrow("Stillwater Systems")}<h2>We sell calm.</h2><p class="lede">Stillwater Assure keeps your dashboards green, so you don’t have to.</p><h3>Leadership</h3><div class="dir">${[["Helen Marsh", "Chief Executive Officer"], ["Paul Ibe", "Chief Financial Officer"], ["Duck", "Board member"]].map(([n, r]) => `<div class="proc"><div><strong>${n}${n === "Duck" ? " 🦆" : ""}</strong><small>${r}</small></div></div>`).join("")}</div><p class="fine">Leadership profiles are synced from the internal directory.</p>`,
   "learn.tidepool.games": (sub, page) =>
     `${eyebrow("Tidepool for Educators")}<h2>Classroom Edition.</h2><p class="lede">Calm, curated puzzles for schools and workplaces that call themselves schools. No ads, no chat, no payments.</p>${s.downloads.includes("tidepool") ? `<p>Downloaded. Find it in Files › Downloads.</p>` : page.via ? "<p><i>Download unavailable in translation.</i></p>" : button("Download Tidepool Classroom", "download", "tidepool", false, "primary")}<p class="fine">Signed by Tidepool Ltd. Requires permission to install from identified developers.</p>`,
   "tidepool.games": (sub, page) =>
@@ -678,6 +775,7 @@ const APPS = {
   notes: { title: "Notes", glyph: "notes", tone: "peach", size: [600, 560], render: notes, dock: true },
   files: { title: "Files", glyph: "files", tone: "lilac", size: [540, 460], render: files, dock: true },
   tidepool: { title: "Tidepool", glyph: "tidepool", tone: "blue", size: [560, 520], render: tidepool, dock: () => s.tidepool },
+  ripple: { title: "Ripple", glyph: "ripple", tone: "pink", size: [620, 560], render: ripple, dock: () => Object.entries(G.THREADS).some(([id, d]) => d.app === "ripple" && delivered(id)) },
   tracker: { title: "Secret Tracker", glyph: "tracker", tone: "lilac", size: [560, 600], render: tracker, dock: tracked },
   settings: { title: "System Settings", glyph: "settings", tone: "ink", size: [700, 560], render: settings, dock: true },
   welcome: { title: "Welcome", glyph: "welcome", tone: "blue", size: [520, 560], render: welcome },
@@ -814,8 +912,9 @@ function renderChrome() {
   $("calm").textContent = `Calm ${G.calm(s)}%`;
   $("calm").classList.toggle("low", G.calm(s) < 80);
   const attention = {
-    mail: s.warned > 0 || (!s.over && s.rank < 4 && s.releases >= 3 * (s.rank + 1)),
+    mail: s.warned > 0 || mailNews() || unread("parents") || (!s.over && s.rank < 4 && s.releases >= 3 * (s.rank + 1)),
     activity: s.stories.quickfix > 0 && s.stories.quickfix < 5,
+    ripple: Object.entries(G.THREADS).some(([id, d]) => d.app === "ripple" && unread(id)),
   };
   $("dock").innerHTML = Object.entries(APPS)
     .filter(([, a]) => docked(a))
@@ -836,8 +935,17 @@ function renderChrome() {
   const d = s.stories.duck;
   $("widgets").innerHTML = `<section class="widget goal">${eyebrow("Your next small victory")}<h3>${title}</h3><p>${desc}</p>${button(cta, action, app, false, "primary")}</section><section class="widget">${eyebrow("Processor")}<div class="meter"><i style="width:${Math.min(100, Math.round((active / G.workers(s)) * 100))}%"></i></div><p>${s.jobs.length ? `${active} running, ${s.jobs.length - active} paused · ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""}` : "Idle. Suspiciously peaceful."}</p></section><button class="widget news-widget" data-action="open" data-id="news">${eyebrow("The Daily Current")}<span class="duck" aria-hidden="true">🦆</span><b>${G.duckOpen(s) || d === 4 ? DUCK[d].head : "A QUIET DAY FOR THE DUCK"}</b></button>`;
 }
+function markRead() {
+  const visible = (app) => ui.win[app]?.open && !ui.win[app].min;
+  if (visible("ripple")) {
+    const id = ui.win.ripple.tab ?? Object.keys(G.THREADS).find((k) => G.THREADS[k].app === "ripple" && delivered(k));
+    if (id && delivered(id)) G.readThread(s, id);
+  }
+  if (visible("mail") && ui.win.mail.tab === "personal") G.readThread(s, "parents");
+}
 function render() {
   s.playing = !!(ui.win.sudoku?.open && !ui.win.sudoku.min);
+  markRead();
   renderChrome();
   renderWindows();
   updateClock();
@@ -858,7 +966,8 @@ function notify(text, app = "welcome") {
   setTimeout(() => t.remove(), 6600);
 }
 function sourceOf(text) {
-  if (/^People & Serenity|^IT:/.test(text)) return "mail";
+  if (/^People & Serenity|^IT:|^IT Security|^Kevin|replied all|got cake/.test(text)) return "mail";
+  if (/^Workspace Zero v/.test(text)) return "workbench";
   if (/Panel B|^Procurement|ws-0417\.local|quillpost/i.test(text)) return "browser";
   if (/Tidepool|Sudoku|Installer blocked/.test(text)) return "tidepool";
   if (/Developer options/.test(text)) return "settings";
@@ -972,7 +1081,7 @@ function endMoment(kind) {
 }
 let before = snapshot();
 function snapshot() {
-  return { quickfix: s.stories.quickfix, bookmarks: [...s.bookmarks], complete: complete(), over: s.over, secrets: [...s.secrets] };
+  return { quickfix: s.stories.quickfix, bookmarks: [...s.bookmarks], complete: complete(), over: s.over, secrets: [...s.secrets], threads: Object.fromEntries(Object.keys(G.THREADS).map((id) => [id, (s.threads[id]?.step ?? 0) + Number(!!s.threads[id]?.open)])) };
 }
 function afterChange() {
   const now = snapshot();
@@ -983,6 +1092,12 @@ function afterChange() {
   }
   const added = now.bookmarks.find((b) => !before.bookmarks.includes(b));
   if (added) moment(added);
+  for (const [id, n] of Object.entries(now.threads))
+    if (n > before.threads[id]) {
+      const def = G.THREADS[id], t = G.thread(s, id);
+      const beat = def.beats[t.open ? t.step : t.step - 1];
+      if (beat) notify(`${def.name}: ${G.beatLines(s, beat)[0]}`, def.app);
+    }
   for (const id of now.secrets) if (!before.secrets.includes(id)) notify(`Discovery noted: ${secretName(id)}.`, tracked() ? "tracker" : "files");
   if (G.record(archive, s)) saveArchive();
   if (!before.complete && now.complete) moment("ending");
@@ -1169,6 +1284,20 @@ document.addEventListener("click", (e) => {
     case "flip":
       changed = G.flip(s, Number(id));
       break;
+    case "say":
+      changed = !!G.say(s, b.dataset.thread, Number(id));
+      break;
+    case "replyall":
+      changed = G.replyAll(s, id);
+      break;
+    case "cake":
+      changed = G.cake(s);
+      if (!changed) notify("By the time you got there, only a plastic knife remained.", "mail");
+      changed = true;
+      break;
+    case "phish":
+      changed = G.phish(s, id);
+      break;
     case "post":
       changed = G.post(s, id);
       if (changed) notify("Posted. Somebody somewhere is reading it.", "browser");
@@ -1242,6 +1371,9 @@ document.addEventListener("submit", (e) => {
       G.correct(s, v);
       break;
     }
+    case "type":
+      G.type(s, form.dataset.thread, v);
+      break;
   }
   if (clear && input?.type === "text" && kind !== "address") input.value = "";
   afterChange();

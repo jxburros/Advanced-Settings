@@ -1,3 +1,6 @@
+import { THREADS, REPLY_ALL, REPLY_ALL_PILE } from "./stories.js";
+export { THREADS, REPLY_ALL, REPLY_ALL_PILE };
+
 export const SKILLS = [
   {
     id: "web",
@@ -148,7 +151,16 @@ export const ARCHIVE = [
   "Memo · Security: “Secure-wing door sensitivity lowered to 1.2 kg after interns reported being ignored by it.”",
   "Sync job · Web: “Directory entries tagged public copy to stillwater.com nightly.” Last entry created: “Duck”, by mchen, tagged public (test).",
   "Accounts · IT: “temp-contractor-0417 — owner: none — home workstation: WS-0417 — status: active.”",
-  "Box 5 is empty except for a sticky note: “Some records were never filed. Ask the desk.”",
+  "HR · retention agreement, N. Ashby (Platform): “Employee remains on site until Stillwater Assure reports that it is fully calm.” Signed nine years ago. Countersigned by a smiley face.",
+  "Consumer pilots · IT: “Hearth smart plugs sign in with a shared contractor credential, for convenience.” Credential: temp-contractor-0417.",
+  "Box 7 is empty except for a sticky note: “Some records were never filed. Ask the desk.”",
+];
+/* Notes recovered by shipping Workspace Zero, one per version. */
+export const WORKSPACE_NOTES = [
+  "Workspace Zero v1.0 notes: “Day 3. Every test passes. I wrote a test that should fail. It passed.”",
+  "Workspace Zero v2.0 notes: “Juno in QA noticed too. Told her to stay quiet. She won’t. I like her.”",
+  "Workspace Zero v3.0 notes: “Neil asked about my weekend again. I gave him every detail. He wrote them down.”",
+  "Workspace Zero v4.0 notes: “The consumer pilots use the same dashboards. Somebody’s parents are going to buy a fridge that guesses.”",
 ];
 
 /* Duck corrections: the answer has to be found elsewhere; every option is mundane. */
@@ -276,6 +288,12 @@ export const SECRETS = [
   ["citizen", "Citizen journalist", "Write about what you actually know."],
   ["appendix", "Appendix H", "Keep reading. Keep coming back."],
   ["returns", "The desk remembers", "Leave and return. Often."],
+  ["furnace", "Herself again", "Remind a friend of something only the two of you know."],
+  ["outofoffice", "Out of office", "An impossible condition is no condition at all."],
+  ["returned", "Return to sender", "Tell your parents the truth."],
+  ["partofproblem", "Part of the problem", "Reply all. Just once."],
+  ["cake", "There was cake", "Some emails expire faster than others."],
+  ["phish", "Not today", "Read who it’s really from."],
 ].map(([id, name, hint]) => ({ id, name, hint }));
 export const ENDINGS = [
   { id: "probation", name: "End of probation", hint: "Finish every story." },
@@ -292,7 +310,7 @@ const GAMES = ["sudoku"];
 
 export function fresh(now = Date.now()) {
   return {
-    version: 2,
+    version: 3,
     money: 40,
     knowledge: 0,
     users: 0,
@@ -339,6 +357,13 @@ export function fresh(now = Date.now()) {
     blog: { posts: [], readers: 0, mara: false },
     private: false,
     playing: false,
+    threads: {},
+    incidents: {
+      replyall: { state: 0, n: 0, at: 0, joined: -1, muted: false },
+      cake: { state: 0, at: 0 },
+      phish: { state: 0, at: 0 },
+    },
+    training: 0,
   };
 }
 export function log(s, text) {
@@ -429,6 +454,8 @@ export function release(s, id) {
     s,
     `${def.name} v${p.version}.0 shipped. +$${money}. Every test passed on the first run, as they always do.`,
   );
+  if (id === "workspace" && p.version <= WORKSPACE_NOTES.length)
+    log(s, WORKSPACE_NOTES[p.version - 1]);
   if (id === "archive" && p.version <= ARCHIVE.length)
     log(s, `Archive Index · box ${p.version}: ${ARCHIVE[p.version - 1]}`);
   if (id === "monitor" && s.breach > 0) {
@@ -664,6 +691,7 @@ export function visit(s, url) {
   const h = host(u);
   if (s.settings.isolated && h !== "ws-0417.local")
     return { url: u, status: "offline" };
+  if (s.elapsed < s.training) return { url: u, status: "training" };
   if (h === "ws-0417.local") {
     if (secret(s, "dashboard"))
       log(s, "ws-0417.local answered. Someone left a server running on this desk, and it only talks about the duck.");
@@ -816,6 +844,133 @@ export function welcomeBack(s) {
     log(s, "People & Serenity: onboarding materials for WS-0417’s next user are ready. They mention you, as “the previous user”.");
 }
 
+/* ---------- conversations ---------- */
+export function thread(s, id) {
+  return (s.threads[id] ??= { step: 0, open: false, at: 0, rel: 0, picks: [], unread: false });
+}
+export function beatLines(s, beat) {
+  return typeof beat.lines === "function" ? beat.lines(s) : beat.lines;
+}
+const interactive = (beat) => !!(beat.choices || beat.input);
+function advance(s, t) {
+  t.step++;
+  t.open = false;
+  t.at = s.elapsed;
+  t.rel = s.releases;
+}
+function deliver(s) {
+  for (const [id, def] of Object.entries(THREADS)) {
+    const t = thread(s, id);
+    const beat = def.beats[t.step];
+    if (!beat || t.open || !beat.when(s, t)) continue;
+    t.open = true;
+    t.unread = true;
+    if (!interactive(beat)) advance(s, t);
+  }
+}
+/* Pick a reply. Returns false if it isn't available, "retry" if it doesn't move things on. */
+export function say(s, id, i) {
+  const def = THREADS[id];
+  const t = def && thread(s, id);
+  const beat = t && def.beats[t.step];
+  const c = beat?.choices?.[i];
+  if (s.over || !t.open || !c || (c.requires && !c.requires(s))) return false;
+  t.picks.push({ step: t.step, i });
+  t.picks = t.picks.slice(-60);
+  if (c.secret) secret(s, c.secret);
+  if (c.retry) return "retry";
+  advance(s, t);
+  return true;
+}
+/* Free-text reply, for beats that need you to remember something. */
+export function type(s, id, text) {
+  const def = THREADS[id];
+  const t = def && thread(s, id);
+  const beat = t && def.beats[t.step];
+  text = String(text).trim().slice(0, 80);
+  if (s.over || !t.open || !beat?.input || !text) return false;
+  const ok = beat.input.match.test(text);
+  t.picks.push({ step: t.step, text, ok });
+  t.picks = t.picks.slice(-60);
+  if (!ok) return "retry";
+  if (beat.input.secret) secret(s, beat.input.secret);
+  advance(s, t);
+  return true;
+}
+export function readThread(s, id) {
+  if (!THREADS[id]) return false;
+  thread(s, id).unread = false;
+  return true;
+}
+
+/* ---------- small incidents ---------- */
+export function replyAllLines(s) {
+  const r = s.incidents.replyall;
+  if (r.joined < 0) return REPLY_ALL;
+  return [...REPLY_ALL.slice(0, r.joined), ["You", "Please stop replying all."], ...REPLY_ALL_PILE, ...REPLY_ALL.slice(r.joined)];
+}
+export function replyAll(s, action) {
+  const r = s.incidents.replyall;
+  if (s.over || r.state !== 1) return false;
+  if (action === "mute") {
+    if (r.muted) return false;
+    r.muted = true;
+    return true;
+  }
+  if (action !== "join" || r.joined >= 0) return false;
+  r.joined = r.n;
+  r.n++;
+  secret(s, "partofproblem");
+  log(s, "You replied all. Within seconds, six more people replied all to say they agreed with you.");
+  return true;
+}
+export function cake(s) {
+  const c = s.incidents.cake;
+  if (s.over || c.state !== 1) return false;
+  c.state = 2;
+  s.knowledge += 5;
+  secret(s, "cake");
+  log(s, "You got cake. It was Kevin’s birthday. Kevin seemed confused, but pleased. +5 knowledge (sugar).");
+  return true;
+}
+export function phish(s, action) {
+  const p = s.incidents.phish;
+  if (s.over || p.state !== 1 || !["click", "report"].includes(action)) return false;
+  if (action === "report") {
+    p.state = 2;
+    secret(s, "phish");
+    log(s, "IT: thanks for reporting! That was a test. You passed. Most people don’t. Juno reported it nine times.");
+  } else {
+    p.state = 3;
+    s.training = s.elapsed + 90;
+    flag(s, 5);
+    log(s, "IT: you have been enrolled in Mandatory Calm Security Training. Wayfinder is closed for 90 seconds, for your safety.");
+  }
+  return true;
+}
+function incidents(s) {
+  const { replyall: r, cake: c, phish: p } = s.incidents;
+  if (r.state === 0 && s.releases >= 3) {
+    Object.assign(r, { state: 1, n: 1, at: s.elapsed });
+    log(s, "People & Serenity (all staff): the fridge in kitchen 3 will be cleaned out Friday. Label your calm.");
+  } else if (r.state === 1 && s.elapsed >= r.at + 15) {
+    r.n++;
+    r.at = s.elapsed;
+    if (r.n >= replyAllLines(s).length) {
+      r.state = 2;
+      log(s, "People & Serenity has calmed the all-staff thread. Replying all is now disabled for everyone except the duck.");
+    }
+  }
+  if (c.state === 0 && s.releases >= 4 && r.state === 2) {
+    Object.assign(c, { state: 1, at: s.elapsed });
+    log(s, "Kevin (Accounts): CAKE in kitchen 3!! First come first served 🎂");
+  } else if (c.state === 1 && s.elapsed > c.at + 45) c.state = 3;
+  if (p.state === 0 && s.releases >= 5) {
+    Object.assign(p, { state: 1, at: s.elapsed });
+    log(s, "IT Security <it-securlty@stillwater.co>: Your password expires today. Keep it calm: click here to renew.");
+  }
+}
+
 export function tick(s, seconds, offline = false) {
   seconds = Math.min(Math.max(seconds, 0), 7200);
   if (s.over) return s;
@@ -889,6 +1044,8 @@ export function tick(s, seconds, offline = false) {
         } else story(s, "quarantine");
       }
     }
+    deliver(s);
+    incidents(s);
     if (!offline) {
       if (buildRunning(s) && s.suspicion > 0)
         s.suspicion = Math.max(0, s.suspicion - dt * 0.1 * (s.perks.includes("plant") ? 2 : 1));
@@ -949,11 +1106,11 @@ export function complete(s) {
 }
 
 function migrate(s) {
-  if (s?.version !== 1) return s;
+  if (![1, 2].includes(s?.version)) return s;
   const base = fresh(s.last);
   for (const k of Object.keys(base)) if (!(k in s)) s[k] = base[k];
-  s.version = 2;
-  s.secrets = [...s.bookmarks];
+  if (s.version === 1) s.secrets = [...s.bookmarks];
+  s.version = 3;
   return s;
 }
 const bad = (msg) => {
@@ -966,7 +1123,7 @@ export function restore(raw, now = Date.now()) {
   s = migrate(s);
   if (
     !s ||
-    s.version !== 2 ||
+    s.version !== 3 ||
     !s.projects ||
     !Array.isArray(s.jobs) ||
     !Array.isArray(s.skills) ||
@@ -1050,6 +1207,38 @@ export function restore(raw, now = Date.now()) {
     typeof s.blog.mara !== "boolean"
   )
     bad("Invalid workstation extras.");
+  const int = (x, lo, hi) => Number.isInteger(x) && x >= lo && x <= hi;
+  const { replyall: r, cake: c, phish: p } = s.incidents ?? {};
+  if (
+    !s.threads ||
+    typeof s.threads !== "object" ||
+    Object.entries(s.threads).some(
+      ([id, t]) =>
+        !THREADS[id] ||
+        !int(t?.step, 0, THREADS[id].beats.length) ||
+        typeof t.open !== "boolean" ||
+        typeof t.unread !== "boolean" ||
+        !Number.isFinite(t.at) ||
+        !num(t.rel) ||
+        !Array.isArray(t.picks) ||
+        t.picks.length > 60 ||
+        t.picks.some((k) => !int(k?.step, 0, THREADS[id].beats.length - 1) || (k.i === undefined ? typeof k.text !== "string" || k.text.length > 80 : !int(k.i, 0, 9))),
+    ) ||
+    !r ||
+    !int(r.state, 0, 2) ||
+    !int(r.n, 0, 40) ||
+    !int(r.joined, -1, 40) ||
+    typeof r.muted !== "boolean" ||
+    !Number.isFinite(r.at) ||
+    !c ||
+    !int(c.state, 0, 3) ||
+    !Number.isFinite(c.at) ||
+    !p ||
+    !int(p.state, 0, 3) ||
+    !Number.isFinite(p.at) ||
+    !Number.isFinite(s.training)
+  )
+    bad("Invalid conversations.");
   if (
     s.logs.length > 40 ||
     s.logs.some((l) => !l || typeof l.text !== "string" || l.text.length > 2000 || !Number.isFinite(l.time))

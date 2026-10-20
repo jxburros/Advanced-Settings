@@ -45,6 +45,21 @@ with sync_playwright() as p:
     expect(page.locator("#stats")).to_contain_text("$85")
     expect(page.locator(".toast").first).to_contain_text("Pocket Notes v1.0 shipped")
 
+    # A work friend and your parents get in touch.
+    page.clock.run_for(32000)
+    dock.get_by_role("button", name="Ripple").click()
+    chat = page.locator("#win-ripple")
+    expect(chat.get_by_text("juno, QA, two desks over", exact=False)).to_be_visible()
+    chat.get_by_role("button", name="I noticed that too.").click()
+    expect(chat.get_by_text("FINALLY. a person with eyes.")).to_be_visible()
+    dock.get_by_role("button", name="Mail").click()
+    mail = page.locator("#win-mail")
+    mail.get_by_role("tab", name="Personal").click()
+    mail.get_by_role("button", name="What pilot program?").click()
+    expect(mail.get_by_text("intranet.stillwater/pilots", exact=False)).to_be_visible()
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(DOCS / "ripple.png"))
+
     dock.get_by_role("button", name="Library").click()
     page.get_by_role("button", name="Read the documentation").click()
     dock.get_by_role("button", name="Activity Monitor").click()
@@ -112,6 +127,8 @@ with sync_playwright() as p:
     page.locator("#blogpw").fill(SOLUTION[:9])
     page.locator("#blogpw").press("Enter")
     expect(web.get_by_text("Things I left on WS-0417")).to_be_visible()
+    go(page, "intranet.stillwater/pilots")
+    expect(web.get_by_text("Hold the dial down for ten seconds", exact=False)).to_be_visible()
     go(page, "ws-0417.local")
     expect(web.get_by_role("heading", name="Where the duck will be.")).to_be_visible()
 
@@ -164,5 +181,5 @@ with sync_playwright() as p:
     assert not errors, errors
     browser.close()
     print("PASS: release cycle, deep settings, Workspace Zero, developer options, filter and Translate, "
-          "game store install, sudoku, Mara's blog, duck dashboard, duck desk lockout, returns, "
+          "game store install, sudoku, Mara's blog, IM and family mail, pilots page, duck dashboard, duck desk lockout, returns, "
           "firing, Secret Tracker across workstations, every app on mobile; no JS errors.")

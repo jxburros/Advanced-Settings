@@ -10,7 +10,7 @@ Requires Python 3 (or any static web server). No build or dependencies are neede
 python3 -m http.server 8000
 ```
 
-Open **http://localhost:8000**. `npm start` runs the same server. Keep these files together: `index.html`, `style.css`, `app.js`, `game.js` and `assets/`. Do not open the HTML as a `file://` URL; the browser needs HTTP to load JavaScript modules.
+Open **http://localhost:8000**. `npm start` runs the same server. Keep these files together: `index.html`, `style.css`, `app.js`, `game.js`, `stories.js` and `assets/`. Do not open the HTML as a `file://` URL; the browser needs HTTP to load JavaScript modules.
 
 You are a new developer at **Stillwater Systems**, a company that sells calm. The game is a desktop operating system, Stillwater OS: drag, resize, minimize and zoom windows, switch tabs, read notifications, and open programs from the dock. It is meant to be a **difficult puzzle game**: most of what matters is hidden, and the hints are small.
 
@@ -20,16 +20,19 @@ You are a new developer at **Stillwater Systems**, a company that sells calm. Th
 | Toolshed | Spend budget on languages, tools, hardware and AI help. |
 | Library | Read the documentation for knowledge while other jobs run. |
 | Conductor | The release pipeline and the AI assistant's assignment. |
-| Mail | Promotions, warnings from People & Serenity, and recovered mail from the previous user. |
+| Mail | Promotions, warnings, office incidents, recovered mail from the previous user, and a Personal tab where your parents have somehow found your work address. |
 | Activity Monitor | Processes, diagnostic channels, security incidents, the event log. |
 | The Daily Current | Duck headlines, and a corrections desk that only accepts the true explanation. |
 | Wayfinder | A web browser behind a company filter that blocks nearly everything. A few sites can be reached anyway. |
+| Ripple | Instant messages from coworkers. Answer with choices, or type when you need to remember something. |
 | Notes | Sticky notes left by the previous user, found as you go deeper. |
 | Files | Discoveries and downloads. |
 | System Settings | Appearance and settings that go much deeper than they look. |
 
 - **Work:** five projects, three features, nine upgrades, five ranks. Career tracks change how you work. Lunchboard earns while it runs, Archive Index reveals records, and Quiet Monitor shows what is watching you.
 - **Puzzles:** a deep settings maze, conditional discoveries, duck corrections that need evidence from elsewhere, a credential you have to work out, and three mini games (a sudoku, a breaker panel and a packet trace).
+- **People:** Juno, a friend from QA, goes on a wellness retreat and comes back far too calm. Neil from Platform always wants to hear about your plans outside work, for reasons he can't say. Your parents have been sent Stillwater's undisclosed consumer products. Greg and the previous user each have a later chapter. Several of these stories connect to each other and to the puzzles.
+- **Short incidents:** an all-staff reply-all storm, birthday cake that disappears quickly, and an IT phishing test.
 - **Messing around:** shopping, blogging and gaming on a work computer, each behind its own way past the filter. Personal use lowers your Calm Index.
 - **Losing:** there are two ways to lose, and both come with warnings. Only a player who ignores those warnings will lose this way.
 - **Secret Tracker:** after your first win or loss, a tracker of every secret and ending you've found appears in the dock. It persists across new workstations.
@@ -60,4 +63,4 @@ python tests/browser.py
 
 The concept deliberately leaves platforms, timing, economy, characters, and endings open. This implementation uses dependency-free browser modules, short tasks (8–22 seconds before modifiers), permanent knowledge requirements, and spendable budget. Mara Chen and Stillwater Systems are original names supplied for the playable story. All paths remain available regardless of career direction; the promotion choice is narrative, not a separate skill tree. There is a completion message after all four stories, followed by unlimited free play. Losing ends the workstation; a new one starts from scratch, but the Secret Tracker remembers. There is no backend.
 
-Game rules live in `game.js`; the desktop, windows, story moments and browser storage live in `app.js`. Window layout and appearance preferences are stored separately from the game save, so a save file never depends on screen size. The Secret Tracker has its own storage key, so starting a new workstation never clears it. A return counts once per browser session, so reloading the page does not count. See [desktop preview](docs/desktop.png) and [mobile preview](docs/mobile.png).
+Game rules live in `game.js`, conversation scripts and incidents live in `stories.js`, the desktop, windows, story moments and browser storage live in `app.js`. Window layout and appearance preferences are stored separately from the game save, so a save file never depends on screen size. The Secret Tracker has its own storage key, so starting a new workstation never clears it. A return counts once per browser session, so reloading the page does not count. See [desktop preview](docs/desktop.png) and [mobile preview](docs/mobile.png).
