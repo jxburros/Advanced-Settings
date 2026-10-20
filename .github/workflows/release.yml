@@ -1,141 +1,141 @@
-# Publishes a version of the game: tests, a Windows installer that updates itself, a zip of the
-# web edition, and release notes from CHANGELOG.md.
-#
-# From the website: Actions › Release › Run workflow. Enter a version (like 1.2.0) to release it;
-# the workflow writes the version into the files, commits, tags and publishes. Leave the version
-# empty to build a test installer only, downloadable from the run's page.
-# From a terminal: push a tag like v1.2.0 whose version already matches the files.
 name: Release
-on:
-  push:
-    tags: ["v*.*.*"]
+'on':
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version to release, like 1.2.0. Leave empty to build a test installer without releasing."
-        required: false
-        default: ""
-      notes:
-        description: "Release notes, only used if CHANGELOG.md has no section for this version. Separate points with semicolons."
-        required: false
-        default: ""
+      channel:
+        description: Release channel
+        type: choice
+        options:
+        - stable
+        - preview
+        default: stable
+      dry_run:
+        description: Build and verify without publishing
+        type: boolean
+        default: true
+      app:
+        description: Optional app ID; empty selects every advanced app
+        type: string
+        default: ''
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: release
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.v.outputs.version }}
-      tag: ${{ steps.v.outputs.tag }}
-      publish: ${{ steps.v.outputs.publish }}
-      ref: ${{ steps.v.outputs.ref }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - id: v
-        name: Work out the version
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
-          INPUT_NOTES: ${{ inputs.notes }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-          current=$(node -p "require('./package.json').version")
-          publish=true
-          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            version="${GITHUB_REF_NAME#v}"
-          elif [ -z "$INPUT_VERSION" ]; then
-            version="$current"
-            publish=false
-          else
-            version="${INPUT_VERSION#v}"
-            version="${version// /}"
-            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::“$INPUT_VERSION” isn’t a version. Use three numbers, like 1.2.0."; exit 1
-            fi
-            if [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
-              echo "::error::Releases are made from $DEFAULT_BRANCH. Choose it in the “Use workflow from” list."; exit 1
-            fi
-            if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
-              echo "::error::v$version has already been released. Pick a higher version than $current."; exit 1
-            fi
-            if [ "$(node -e "const [a,b]=process.argv.slice(1).map(v=>v.split('.').map(Number));console.log(a[0]-b[0]||a[1]-b[1]||a[2]-b[2])" "$version" "$current")" -lt 0 ]; then
-              echo "::error::$version is older than the current version, $current."; exit 1
-            fi
-            node tools/set-version.mjs "$version" "$INPUT_NOTES"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package.json package-lock.json version.js CHANGELOG.md
-            git diff --cached --quiet || git commit -m "Release v$version"
-            git tag "v$version"
-            git push origin HEAD "v$version"
-          fi
-          pkg=$(node -p "require('./package.json').version")
-          js=$(node -e "import('./version.js').then(m => console.log(m.VERSION))")
-          if [ "$version" != "$pkg" ] || [ "$version" != "$js" ]; then
-            echo "::error::Version $version, package.json ($pkg) and version.js ($js) must match."; exit 1
-          fi
-          node tools/release-notes.mjs "$version" > /dev/null
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - run: npm test
-
+  plan:
+    uses: JX-Holdings-LLC/release-infrastructure/.github/workflows/plan.yml@e219396d4dcab9a14c9d7ee1730320fc94006dcc
+    with:
+      toolkit-ref: e219396d4dcab9a14c9d7ee1730320fc94006dcc
+      channel: ${{ inputs.channel }}
+      app: ${{ inputs.app }}
   windows:
-    needs: prepare
+    needs:
+    - plan
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare.outputs.ref }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # Publishing uploads the installer, its blockmap and latest.yml (what installed copies
-      # check for updates) to the GitHub release for the tag.
-      - name: Build and publish the installer
-        if: needs.prepare.outputs.publish == 'true'
-        run: npx electron-builder --win --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build a test installer
-        if: needs.prepare.outputs.publish != 'true'
-        run: npx electron-builder --win --publish never
-      - name: Attach the test installer to this run
-        if: needs.prepare.outputs.publish != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Advanced-Settings-Setup-${{ needs.prepare.outputs.version }}-test
-          path: dist/*.exe
-          retention-days: 14
-
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        ref: ${{ needs.plan.outputs.sha }}
+        persist-credentials: false
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - run: npm test
+    - name: Build installer and update metadata without publication
+      run: npx electron-builder --win --publish never
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: windows
+        path: |-
+          dist/*.exe
+          dist/*.blockmap
+          dist/latest.yml
+        if-no-files-found: error
+    if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['advanced-settings'].selected
+    env:
+      RELEASE_TAG: ${{ fromJSON(needs.plan.outputs.apps)['advanced-settings'].tag }}
+      RELEASE_VERSION: ${{ fromJSON(needs.plan.outputs.apps)['advanced-settings'].version }}
+      RELEASE_SOURCE_SHA: ${{ needs.plan.outputs.sha }}
+    permissions:
+      contents: read
   web:
-    needs: [prepare, windows]
-    if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    needs:
+    - plan
+    if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['advanced-settings'].selected
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare.outputs.ref }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Release notes and the web edition
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-          TAG: ${{ needs.prepare.outputs.tag }}
-        run: |
-          node tools/release-notes.mjs "$VERSION" > notes.md
-          zip -r "Advanced-Settings-web-$VERSION.zip" index.html style.css app.js game.js tasks.js stories.js sound.js updates.js version.js assets README.md
-          gh release edit "$TAG" --title "Advanced Settings $VERSION" --notes-file notes.md --draft=false --latest
-          gh release upload "$TAG" "Advanced-Settings-web-$VERSION.zip" --clobber
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        ref: ${{ needs.plan.outputs.sha }}
+        persist-credentials: false
+        fetch-depth: 0
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 24
+    - name: Build web edition
+      shell: bash
+      env:
+        VERSION: ${{ fromJSON(needs.plan.outputs.apps)['advanced-settings'].version }}
+      run: zip -r "Advanced-Settings-web-$VERSION.zip" index.html style.css app.js game.js tasks.js stories.js sound.js
+        updates.js version.js assets README.md
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: web
+        path: Advanced-Settings-web-*.zip
+        if-no-files-found: error
+  assemble:
+    runs-on: ubuntu-latest
+    needs:
+    - plan
+    - windows
+    - web
+    if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['advanced-settings'].selected
+    env:
+      RELEASE_SOURCE_SHA: ${{ needs.plan.outputs.sha }}
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        ref: ${{ needs.plan.outputs.sha }}
+        persist-credentials: false
+        fetch-depth: 0
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        path: artifacts
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        repository: JX-Holdings-LLC/release-infrastructure
+        ref: e219396d4dcab9a14c9d7ee1730320fc94006dcc
+        path: .toolkit
+        persist-credentials: false
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 24
+    - name: Stage the complete configured release inventory
+      shell: bash
+      env:
+        RELEASE_APP: advanced-settings
+      run: node .toolkit/src/release.mjs stage --app "$RELEASE_APP" --from artifacts --bundle unified-bundle --sha
+        "$RELEASE_SOURCE_SHA"
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: bundle-advanced-settings
+        path: unified-bundle
+        if-no-files-found: error
+  publish-advanced-settings:
+    needs:
+    - plan
+    - assemble
+    if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['advanced-settings'].selected
+    uses: JX-Holdings-LLC/release-infrastructure/.github/workflows/finish.yml@e219396d4dcab9a14c9d7ee1730320fc94006dcc
+    permissions:
+      contents: write
+    with:
+      toolkit-ref: e219396d4dcab9a14c9d7ee1730320fc94006dcc
+      source-sha: ${{ needs.plan.outputs.sha }}
+      app: advanced-settings
+      security: standard
+      artifact: bundle-advanced-settings
+      dry-run: ${{ inputs.dry_run }}
