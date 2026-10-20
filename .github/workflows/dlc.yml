@@ -1,9 +1,18 @@
-# Push a tag like dlc-thursday-v1.0.0 to publish dlc/packs/thursday at version 1.0.0: the pack
-# is zipped, released under that tag, and added to dlc/catalog.json on the default branch.
+# Publishes a DLC pack from dlc/packs/<id>: zips it, releases it, and adds it to
+# dlc/catalog.json on the default branch.
+#
+# From the website: Actions › DLC › Run workflow, and enter the pack's folder name. The version
+# comes from the pack's manifest.json.
+# From a terminal: push a tag like dlc-thursday-v1.0.0.
 name: DLC
 on:
   push:
     tags: ["dlc-*-v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: "The pack's folder name in dlc/packs, like thursday"
+        required: true
 permissions:
   contents: write
 concurrency:
@@ -23,29 +32,51 @@ jobs:
       - run: npm ci --omit=dev --ignore-scripts
       - name: Pack
         id: pack
+        env:
+          INPUT_PACK: ${{ inputs.pack }}
         run: |
-          tag="$GITHUB_REF_NAME"
-          rest="${tag#dlc-}"
-          id="${rest%-v*}"
-          version="${rest##*-v}"
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            tag="$GITHUB_REF_NAME"
+            rest="${tag#dlc-}"
+            id="${rest%-v*}"
+            version="${rest##*-v}"
+            target=$(git rev-list -n 1 "$tag")
+            # Pack the folder as it was at the tag.
+            git checkout "$tag" -- "dlc/packs/$id"
+          else
+            id="${INPUT_PACK// /}"
+            if [ ! -f "dlc/packs/$id/manifest.json" ]; then
+              echo "::error::There is no dlc/packs/$id/manifest.json on the default branch."; exit 1
+            fi
+            version=$(node -p "require('./dlc/packs/$id/manifest.json').version")
+            tag="dlc-$id-v$version"
+            target=$(git rev-parse HEAD)
+            if git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+              echo "::error::$id $version has already been published. Raise the version in dlc/packs/$id/manifest.json first."; exit 1
+            fi
+          fi
           if [ "$id" = "example" ]; then echo "::error::The example pack is a template and is never published."; exit 1; fi
-          git checkout "$tag" -- "dlc/packs/$id"
-          pkgver=$(node -p "require('./dlc/packs/$id/manifest.json').version")
-          if [ "$pkgver" != "$version" ]; then echo "::error::Tag says $version but the manifest says $pkgver."; exit 1; fi
+          manifest=$(node -p "require('./dlc/packs/$id/manifest.json').version")
+          if [ "$manifest" != "$version" ]; then echo "::error::Tag says $version but the manifest says $manifest."; exit 1; fi
           node tools/pack-dlc.mjs "$id"
           # Only the catalog is committed: put the pack folder back as the default branch has it.
           git reset -q -- "dlc/packs/$id"
           git checkout -q HEAD -- "dlc/packs/$id" 2>/dev/null || rm -rf "dlc/packs/$id"
           echo "id=$id" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
       - name: Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ID: ${{ steps.pack.outputs.id }}
           VERSION: ${{ steps.pack.outputs.version }}
+          TAG: ${{ steps.pack.outputs.tag }}
+          TARGET: ${{ steps.pack.outputs.target }}
         run: |
           name=$(node -p "require('./dlc/catalog.json').find(e => e.id === process.env.ID).name")
-          gh release create "$GITHUB_REF_NAME" "dist/dlc-$ID-$VERSION.zip" --title "DLC: $name $VERSION" --notes "Downloadable content for Advanced Settings. Install it from Software Update › DLC in the Windows edition." --latest=false
+          gh release create "$TAG" "dist/dlc-$ID-$VERSION.zip" --target "$TARGET" --title "DLC: $name $VERSION" --notes "Downloadable content for Advanced Settings. Install it from Software Update › DLC in the Windows edition." --latest=false
       - name: Update the catalog
         env:
           ID: ${{ steps.pack.outputs.id }}

@@ -52,7 +52,7 @@ Full solutions are in [docs/SECRETS.md](docs/SECRETS.md). **It contains spoilers
 
 ## Releases, updates and DLC
 
-Pushing a tag like `v1.2.0` builds and publishes a release: tests, a self-updating Windows installer, a web-edition zip, and notes from [CHANGELOG.md](CHANGELOG.md). Pushing `dlc-<id>-v1.0.0` publishes a DLC pack from `dlc/packs/<id>` and adds it to the catalog. The details, including signing and local builds, are in [docs/RELEASING.md](docs/RELEASING.md); the pack format is in [dlc/README.md](dlc/README.md). The Windows edition is an Electron shell (`desktop/`) around the same files the web edition serves; the game itself still needs no build.
+On github.com, **Actions › Release › Run workflow** with a version (or no version, for a test installer) builds and publishes a release without a terminal; [docs/RELEASING.md](docs/RELEASING.md#from-the-github-website-no-terminal) walks through it click by click. From a terminal, pushing a tag like `v1.2.0` does the same: tests, a self-updating Windows installer, a web-edition zip, and notes from [CHANGELOG.md](CHANGELOG.md). Pushing `dlc-<id>-v1.0.0` publishes a DLC pack from `dlc/packs/<id>` and adds it to the catalog. The details, including signing and local builds, are in [docs/RELEASING.md](docs/RELEASING.md); the pack format is in [dlc/README.md](dlc/README.md). The Windows edition is an Electron shell (`desktop/`) around the same files the web edition serves; the game itself still needs no build.
 
 ## Validation
 
