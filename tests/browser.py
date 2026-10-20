@@ -139,6 +139,14 @@ with sync_playwright() as p:
     news.get_by_role("button", name="File correction").click()
     expect(news.get_by_role("button", name="The desk is not taking questions right now")).to_be_visible()
 
+    # The Help Desk answers vaguely at first, and better answers take a while.
+    page.locator(".menubar").get_by_role("button", name="Help").click()
+    help_desk = page.locator("#win-help")
+    help_desk.get_by_role("button", name="Open a ticket about The duck story").click()
+    expect(help_desk.get_by_text("One of them is never empty", exact=False)).to_be_visible()
+    expect(help_desk.get_by_role("button", name="Next answer in about 3 min")).to_be_disabled()
+    help_desk.get_by_role("button", name="Close Help Desk").click()
+
     # Leaving and returning slowly changes the desk.
     for _ in range(4):
         page.close()
@@ -151,14 +159,25 @@ with sync_playwright() as p:
     expect(page.locator("#icons").get_by_role("button", name="Welcome (2).pdf")).to_be_visible()
     expect(page.get_by_role("heading", name="Gentle Sudoku · leaderboard")).to_be_attached()
 
-    # Personal use catches up with you: a loss unlocks the Secret Tracker, which survives a new desk.
-    page.evaluate(
-        "() => { const s = JSON.parse(localStorage.getItem('stillwater-workstation')); s.suspicion = 99; s.warned = 2;"
-        " localStorage.setItem('stillwater-workstation', JSON.stringify(s)); Storage.prototype.setItem = () => {}; }"
-    )
-    page.reload()
-    dock.get_by_role("button", name="Wayfinder").click()
-    go(page, "somewhere.shop")
+    # Personal use catches up with you: first a plan, then a loss that unlocks the Secret Tracker,
+    # which survives a new desk.
+    def concern(warned):
+        page.evaluate(
+            "w => { const s = JSON.parse(localStorage.getItem('stillwater-workstation')); s.suspicion = 99; s.warned = w; s.training = 0;"
+            " localStorage.setItem('stillwater-workstation', JSON.stringify(s)); Storage.prototype.setItem = () => {}; }",
+            warned,
+        )
+        page.reload()
+        dock.get_by_role("button", name="Wayfinder").click()
+        go(page, "somewhere.shop")
+
+    concern(2)
+    expect(web.get_by_role("heading", name="Mandatory Calm Security Training")).to_be_visible()
+    dock.get_by_role("button", name="Mail").click()
+    page.locator("#win-mail").get_by_role("tab", name="Inbox").click()
+    expect(page.locator("#win-mail").get_by_text("Your Calm Improvement Plan")).to_be_visible()
+    page.wait_for_timeout(1500)
+    concern(3)
     expect(page.get_by_role("heading", name="Your role has been released.")).to_be_visible()
     page.get_by_role("button", name="Open Secret Tracker").click()
     tracker = page.locator("#win-tracker")
@@ -182,4 +201,4 @@ with sync_playwright() as p:
     browser.close()
     print("PASS: release cycle, deep settings, Workspace Zero, developer options, filter and Translate, "
           "game store install, sudoku, Mara's blog, IM and family mail, pilots page, duck dashboard, duck desk lockout, returns, "
-          "firing, Secret Tracker across workstations, every app on mobile; no JS errors.")
+          "Help Desk, the improvement plan, firing, Secret Tracker across workstations, every app on mobile; no JS errors.")

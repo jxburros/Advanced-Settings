@@ -90,6 +90,7 @@ const GLYPHS = {
   download: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/>',
   ripple: '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01"/>',
 
+  help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.6M12 16.8h.01"/>',
   duckling: '<path d="M8 10a4 4 0 1 1 7.5 2H19c0 4-3 7-7 7s-7-2-7-5c0-2 1.3-3.3 3-4z"/><path d="M15.5 9.5h3"/>',
 };
 const icon = (glyph, tone, cls = "") =>
@@ -162,6 +163,7 @@ const NOTES = [
   [() => s.releases >= 2, "Neil on platform asks everyone about their weekends. Answer him properly. He keeps the answers."],
   [() => (s.threads.juno?.step ?? 0) >= 4, "People come back from the Wellness Wing very polite. The real them is still in there. Remind them of something silly."],
   [() => s.rank >= 2, "Greg is real. The space heater is real. I want you to know at least two things here are real."],
+  [() => s.returns >= 6, "The desk counts how often you come back. Leave for a while, close it, come back tomorrow. I stopped counting at twelve."],
   [() => s.returns >= 12, "You’ve been here before. You always say you’ll stop saving and leave. You never do.", "— You."],
 ];
 const READING = [
@@ -208,7 +210,6 @@ const DECOY = {
 const MENU = {
   file: "File › New is disabled during your probation period.",
   edit: "Undo is unavailable. Stillwater encourages forward momentum.",
-  help: "Help is available on Thursdays, from 4:15 to 4:19 p.m.",
 };
 const TRACKS = {
   specialist: ["Specialist", "The one who knows how it works.", "Every new feature starts with one fewer defect."],
@@ -254,7 +255,7 @@ function goal() {
     return [s.over === "fired" ? "You were let go" : "Your workstation was reimaged", "This workstation is finished. Something kept track of what you found. Start again whenever you like.", "settings", "Start again", "reset"];
   if (!s.releases)
     return ["Ship something", "Open Workbench, pick a feature for Pocket Notes, then write, test, fix and ship it. Nobody expects much. That’s the nice part.", "workbench", "Open Workbench"];
-  if (s.rank < 4 && s.releases >= 3 * (s.rank + 1))
+  if (G.promotionDue(s))
     return ["Your growth conversation is ready", "People & Serenity would like to discuss your trajectory. It’s in Mail.", "mail", "Open Mail"];
   if (s.stories.quickfix > 0 && s.stories.quickfix < 5)
     return ["Something is using your processor", "A plugin you didn’t install is helping. Activity Monitor has opinions about that.", "activity", "Open Activity Monitor"];
@@ -263,7 +264,9 @@ function goal() {
   if (!s.skills.includes("scheduler"))
     return ["Get your afternoons back", "The Task scheduler tests, fixes and ships on its own. Find it in Toolshed.", "toolshed", "Open Toolshed"];
   if (s.rank < 4)
-    return ["Build a reputation", `${3 * (s.rank + 1) - s.releases} more release${3 * (s.rank + 1) - s.releases === 1 ? "" : "s"} until your next growth conversation.`, "workbench", "Open Workbench"];
+    return ["Build a reputation", `${G.RANK_AT[s.rank + 1] - s.releases} more release${G.RANK_AT[s.rank + 1] - s.releases === 1 ? "" : "s"} until your next growth conversation. New projects ship faster than old ones.`, "workbench", "Open Workbench"];
+  if (!complete() && G.HINTS.some((h) => h.active(s)))
+    return ["Stuck on something?", "Finish the case files, read the notes, open the menus nobody opens. The Help Desk takes tickets, and answers them eventually.", "help", "Open Help Desk"];
   return ["The workstation is yours", "Finish the case files, read the notes, open the menus nobody opens. Keep building.", "notes", "Open Notes"];
 }
 
@@ -302,11 +305,11 @@ function projectView(def) {
   if (!open)
     control = `<div class="locked">This project needs <b>${esc(G.SKILLS.find((k) => k.id === def.skill)?.name ?? def.skill)}</b>. Toolshed has it, for a price.</div>${button("Open Toolshed →", "open", "toolshed", false, "ghost")}`;
   else if (p.stage === "plan")
-    control = `<label class="field-label" for="feature-${def.id}">Next feature</label><select id="feature-${def.id}">${G.FEATURES.map((f) => `<option value="${f.id}">${f.name} · ${f.time}s · ${f.bugs} expected defect${f.bugs === 1 ? "" : "s"} — ${f.desc}</option>`).join("")}</select>${button("Start development", "start", def.id, !!s.over, "primary wide")}`;
+    control = `<label class="field-label" for="feature-${def.id}">Next feature</label><select id="feature-${def.id}">${G.FEATURES.map((f) => `<option value="${f.id}">${f.name} · ${G.writeTime(s, p, f)}s · ${f.bugs} expected defect${f.bugs === 1 ? "" : "s"} — ${f.desc}</option>`).join("")}</select>${button("Start development", "start", def.id, !!s.over, "primary wide")}`;
   else if (j)
     control = `<div class="progress-label"><span>${{ write: "Writing the feature", test: "Running the test suite", debug: "Fixing what the tests found" }[j.kind]}${j.paused ? " · paused" : ""}</span><b data-jobpct="${j.id}">${pct(j)}</b></div>${jobBar(j)}<div class="row">${button(j.paused ? "Resume" : "Pause", "pause", j.id, false, "ghost", `aria-label="${j.paused ? "Resume" : "Pause"} ${def.name}"`)}<small class="muted">Sharing ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""} with everything else</small></div>`;
   else if (p.stage === "written")
-    control = `<div class="result">The feature is written. Whether it works is a separate question.</div>${button("Run tests · 8s", "test", def.id, false, "primary wide")}`;
+    control = `<div class="result">The feature is written. Whether it works is a separate question.</div>${button(`Run tests · ${8 + 2 * p.version}s`, "test", def.id, false, "primary wide")}`;
   else if (p.stage === "tested")
     control = p.bugs
       ? `<div class="result warn">${p.bugs} defect${p.bugs > 1 ? "s" : ""} found. The release gate is closed until they’re fixed.</div>${button("Debug feature", "debug", def.id, false, "primary wide")}`
@@ -316,7 +319,7 @@ function projectView(def) {
   const steps = ["Plan", "Write", "Test", "Debug", "Ship"]
     .map((n, i) => `<li class="${i < at ? "done" : i === at && open ? "now" : ""}">${n}</li>`)
     .join("");
-  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${card(control, "controls")}${projectExtra(def, p)}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room.</p>`;
+  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${card(control, "controls")}${projectExtra(def, p)}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test.</p>`;
 }
 function toolshed() {
   const groups = {
@@ -435,7 +438,7 @@ function incidentMail() {
   return body;
 }
 function mail() {
-  const eligible = !s.over && s.rank < 4 && s.releases >= 3 * (s.rank + 1);
+  const eligible = G.promotionDue(s);
   const personal = delivered("parents");
   const cur = tabOf("mail", ["inbox", "recovered", ...(personal ? ["personal"] : [])]);
   let body = "";
@@ -448,8 +451,10 @@ function mail() {
       body += message("People & Serenity", "End of probation", `<p>Congratulations. Your probation period has ended.</p><p>You shipped working software, secured your workstation, reconstructed a former colleague’s audit, and established that the duck is a duck. Stillwater remains committed to calm. Your corner of it is now also committed to accuracy. We have noted this, in a file.</p><p><b>All four stories are complete.</b> Free play continues.</p>`, "today", "ending");
     if (s.returns >= 12)
       body += message("People & Serenity", "Onboarding your successor", "<p>Please prepare WS-0417 for its next user. A short handover note would be appreciated. Previous users have left notes in drawers, margins and, once, a ceiling tile. Please don’t do that.</p>", "draft · not meant for you");
+    if (s.warned >= 3)
+      body += message("People & Serenity", "Your Calm Improvement Plan", "<p>Your Calm Index reached zero. Rather than release your role, we have placed you on a plan. The plan is: be calm.</p><p>Your Acceptable Use concern has been partly reset. If it reaches the limit again, there will be no second plan.</p>", "action needed", "alert");
     if (s.warned >= 2)
-      body += message("People & Serenity", "Final wellness reminder", "<p>Your workstation activity is now under review. Shopping, social media, blogging and games are wonderful parts of life, and none of them are part of this one.</p><p>We will contact you again if your Calm Index does not recover. We will not contact you a third time.</p>", "action needed", "alert");
+      body += message("People & Serenity", "Final wellness reminder", "<p>Your workstation activity is now under review. Shopping, social media, blogging and games are wonderful parts of life, and none of them are part of this one.</p><p>If your Calm Index does not recover, you will be placed on a Calm Improvement Plan. There is only ever one.</p>", "action needed", "alert");
     if (s.warned >= 1)
       body += message("People & Serenity", "A gentle note about acceptable use", "<p>Your Calm Index has dipped. This can happen when a workstation is used for personal browsing, shopping or play during core calm hours.</p><p>The index recovers naturally while you do real work. We are not watching. The index is watching. We read the index.</p>", "automated");
     body += message(
@@ -460,7 +465,7 @@ function mail() {
           ? "<p>There are no further promotions. There is a Distinguished Engineer title, but nobody has ever met one.</p>"
           : eligible
             ? `<p>You’ve shipped ${s.releases} releases. Leadership would like to recognise this by changing your title. How should your contribution be remembered?</p><div class="choices">${Object.entries(TRACKS).map(([id, [n, d, perk]]) => button(`<b>${n}</b><small>${d}</small><small class="perk">${perk}</small>`, "promote", id, false, "choice", `aria-label="Choose ${n}"`)).join("")}</div><p class="fine">Your most recent direction decides your working style. Every tool stays available, whatever you pick.</p>`
-            : `<p>Ship ${3 * (s.rank + 1)} releases in total for your next growth conversation. So far: ${s.releases}. Promotions come with budget, and a new email signature.</p>`
+            : `<p>Ship ${G.RANK_AT[s.rank + 1]} releases in total for your next growth conversation. So far: ${s.releases}. Promotions come with budget, and a new email signature.</p>`
       }${s.track ? `<span class="pill">On file: ${TRACKS[s.track][0]} · ${TRACKS[s.track][2]}</span>` : ""}`,
       eligible ? "action needed" : "",
     );
@@ -584,7 +589,7 @@ function settings() {
   else if (cur === "network")
     body = `<h2>Network</h2>${toggle("Isolate workstation", "Disconnect from the network. Local builds keep working. Monitoring keeps monitoring, mostly.", "isolated", s.settings.isolated)}<p class="fine">Status: ${s.settings.isolated ? "offline. It’s very quiet in here." : "connected to Stillwater HQ."}</p>`;
   else if (cur === "privacy")
-    body = `<h2>Privacy</h2><p class="lede">Stillwater respects your privacy. Here is everything that respect currently involves.</p>${toggle("Share calm metrics with leadership", "Required. Personal browsing, shopping, blogging and games all count toward your Calm Index.", "p1", true, true)}${toggle("Let leadership share calm metrics with you", "Not available in your region.", "p2", false, true)}${toggle("Private browsing", "Private windows keep no history. Private sessions are reviewed privately, by People & Serenity, with extra care.", "private", s.private)}${toggle("Store your progress in this browser only", "True, as it happens. Nothing here leaves your machine. It may be the only promise on this computer that is literally kept.", "p3", true, true)}`;
+    body = `<h2>Privacy</h2><p class="lede">Stillwater respects your privacy. Here is everything that respect currently involves.</p>${toggle("Share calm metrics with leadership", "Required. Personal browsing, shopping, blogging and games all count toward your Calm Index.", "p1", true, true)}${toggle("Let leadership share calm metrics with you", "Not available in your region.", "p2", false, true)}${toggle("Private browsing", "Private windows keep no history. Private sessions are flagged for extra review by People & Serenity, so they count for more, not less.", "private", s.private)}${toggle("Store your progress in this browser only", "True, as it happens. Nothing here leaves your machine. It may be the only promise on this computer that is literally kept.", "p3", true, true)}`;
   else if (cur === "advanced") body = explorer();
   else if (cur === "developer")
     body = `<h2>Developer</h2><p class="lede">You are now a developer. You were already a developer. Now the settings agree.</p><div class="setting-row"><div><strong>Install software from</strong><p>Toolshed only is safest. “Anywhere” is not recommended while unsigned software is running on this workstation.</p></div><select id="installs" aria-label="Install software from">${[["toolshed", "Toolshed only"], ["identified", "Toolshed and identified developers"], ["anywhere", "Anywhere"]].map(([v, l]) => `<option value="${v}" ${s.installs === v ? "selected" : ""}>${l}</option>`).join("")}</select></div><div class="setting-row"><div><strong>Wellness telemetry</strong><p>Managed by your organisation. Current Acceptable Use concern: ${Math.round(s.suspicion)}%. ${s.settings.isolated ? "Not reporting while isolated." : "Reporting."}</p></div><span class="pill">managed</span></div>`;
@@ -612,9 +617,9 @@ function blocked(page) {
 function site(page) {
   if (page.status === "offline" || (s.settings.isolated && !page.url.startsWith("ws-0417.local")))
     return `<div class="site blockpage">${icon("channel", "ink", "big")}<h2>No network.</h2><p class="lede">WS-0417 is isolated. Only the desk itself is listening.</p></div>`;
+  if (s.elapsed < s.training && !page.url.startsWith("ws-0417.local"))
+    return `<div class="site blockpage">${icon("tracker", "ink", "big")}<h2>Mandatory Calm Security Training</h2><p class="lede">${s.warned >= 3 ? "Module 2 of 2: calm is a choice. Please choose it." : "Lesson 1 of 1: do not click links in emails that say “click here”."}</p><p class="fine">Wayfinder will reopen in ${Math.ceil(s.training - s.elapsed)} seconds.</p></div>`;
   if (page.status === "blocked") return blocked(page);
-  if (page.status === "training" && s.elapsed < s.training)
-    return `<div class="site blockpage">${icon("tracker", "ink", "big")}<h2>Mandatory Calm Security Training</h2><p class="lede">Lesson 1 of 1: do not click links in emails that say “click here”.</p><p class="fine">Wayfinder will reopen in ${Math.ceil(s.training - s.elapsed)} seconds.</p></div>`;
   const [h, ...rest] = page.url.split("/");
   const sub = rest.join("/");
   const banner = page.via ? `<div class="translated">Translated from English to English (Corporate) by translate.stillwater · downloads are not translated</div>` : "";
@@ -684,7 +689,7 @@ function quillpost(sub) {
       return `${eyebrow("quillpost.blog/marachen")}<h2>This blog is protected.</h2><p class="lede">The author left a hint: “the top line of the gentle one.”</p>${field("blogpw", "blogpw", "Blog password", "password", "Unlock", 'data-keep="1"')}`;
     return `${eyebrow("quillpost.blog/marachen")}<h2>Mara, afterwards.</h2>${[
       ["Day 1 of not working there", "I’m fine. Better than fine. I sleep. I want that on the record, because Stillwater will make it sound like I vanished. I resigned. I even filled in the form."],
-      ["About the Calm Index", "It has no sensor for the clients. It has one for you. It falls whenever you do anything that isn’t work, and People & Serenity reads it. They send two warnings. There is no third. Do real work while you browse, or unplug: they can’t watch what isn’t connected."],
+      ["About the Calm Index", "It has no sensor for the clients. It has one for you. It falls whenever you do anything that isn’t work, and People & Serenity reads it. They send two warnings, then a plan. There is no second plan. Do real work while you browse, or unplug: they can’t watch what isn’t connected."],
       ["Things I left on WS-0417", "The duck dashboard is still running on the desk. It answers to ws-0417.local and nothing else, and it knows where the duck will be before the newsletter does. Also: never set the installer to “Anywhere” while anything unsigned is running. Ask me how I know."],
     ]
       .map(([t, b]) => `<article class="message"><header><span class="avatar">M</span><div><strong>${t}</strong><small>marachen · after her last day</small></div></header><p>${b}</p></article>`)
@@ -746,8 +751,31 @@ function tracker() {
   const row = (x, got, run) => `<div class="proc ${got ? "" : "unfound"}"><div><strong>${got ? x.name : "???"}</strong><small>${x.hint}</small></div>${run ? '<span class="pill">this run</span>' : ""}</div>`;
   return `<div class="pane">${eyebrow(`Secret Tracker · ${archive.plays} workstation${archive.plays === 1 ? "" : "s"}`)}<h2>What you’ve found, across every desk.</h2><p class="lede">${found.size} of ${G.SECRETS.length} secrets · ${archive.endings.length} of ${G.ENDINGS.length} endings. This record survives new workstations.</p><h3>Endings</h3>${G.ENDINGS.map((x) => row(x, archive.endings.includes(x.id), (s.over ?? (complete() ? "probation" : "")) === x.id)).join("")}<h3>Secrets</h3>${G.SECRETS.map((x) => row(x, found.has(x.id), s.secrets.includes(x.id))).join("")}</div>`;
 }
+const HINT_FROM = ["Knowledge base article", "Reply from a human", "Reply from someone who has been here too long"];
+function helpdesk() {
+  const open = G.HINTS.filter((h) => h.active(s));
+  const tickets = open
+    .map((h) => {
+      const st = G.hintState(s, h);
+      const steps = h.steps(s);
+      const wait = G.hintWait(s, h);
+      const answers = steps
+        .slice(0, st.tier)
+        .map((t, i) => `<div class="answer">${eyebrow(HINT_FROM[i])}<p>${esc(t)}</p></div>`)
+        .join("");
+      const cta =
+        wait < 0
+          ? `<p class="fine">That’s everything the Help Desk knows. Ticket closed, kindly.</p>`
+          : wait > 0
+            ? button(`Next answer in about ${Math.ceil(wait / 60)} min`, "", "", true, "ghost")
+            : button(st.tier ? "Still stuck · ask again" : "Open a ticket", "hint", h.id, false, st.tier ? "ghost" : "primary", `aria-label="${st.tier ? "Ask again about" : "Open a ticket about"} ${esc(h.title)}"`);
+      return card(`<strong>${esc(h.title)}</strong>${answers}<div class="row">${cta}</div>`, "ticket");
+    })
+    .join("");
+  return `<div class="pane">${eyebrow("Stillwater Help Desk · live help Thursdays, 4:15–4:19 p.m.")}<h2>How can we help?</h2><p class="lede">Open a ticket about anything you’re stuck on. The first answer is official and vague. Better answers come from people, and people take a few minutes.</p>${tickets || `<div class="empty">The Help Desk doesn’t recognise any open problems. That’s either very good news, or a very good secret.</div>`}<p class="fine">Asking is free. It isn’t counted against your Calm Index. We checked twice, because nobody believed us.</p></div>`;
+}
 function welcome() {
-  return `<div class="pane welcome">${icon("welcome", "blue", "big")}<h2>Welcome to Stillwater.</h2><p class="lede">We’re so glad you’re here. Calm is a deliverable.</p><p>Your job is to make software. You don’t need to know how; very few people here do. Pick a feature, write it, test it, fix what the tests find, then ship it. Shipping earns budget, knowledge and users. Spend the budget on better tools. Repeat until promoted, or until something else happens.</p><ul><li>Jobs share your processor. Pausing one gives the others room to breathe.</li><li>The settings go deeper than they look. That isn’t a warning. It’s a feature.</li><li>Personal use of this workstation is noted, for your wellbeing.</li><li>The duck is not a security concern. Please stop filing tickets about the duck.</li></ul><div class="row">${button("Open Workbench", "open", "workbench", false, "primary")}${button("Read later", "close", "welcome", false, "ghost")}</div><p class="fine">— People & Serenity${s.returns >= 6 ? " · revised for the " + (s.returns + 1) + "th time" : ""}</p></div>`;
+  return `<div class="pane welcome">${icon("welcome", "blue", "big")}<h2>Welcome to Stillwater.</h2><p class="lede">We’re so glad you’re here. Calm is a deliverable.</p><p>Your job is to make software. You don’t need to know how; very few people here do. Pick a feature, write it, test it, fix what the tests find, then ship it. Shipping earns budget, knowledge and users. Spend the budget on better tools. Repeat until promoted, or until something else happens.</p><ul><li>Jobs share your processor. Pausing one gives the others room to breathe.</li><li>The settings go deeper than they look. That isn’t a warning. It’s a feature.</li><li>Personal use of this workstation is noted, for your wellbeing.</li><li>Stuck? Help › Help Desk takes tickets. The duck is not a security concern. Please stop filing tickets about the duck.</li></ul><div class="row">${button("Open Workbench", "open", "workbench", false, "primary")}${button("Read later", "close", "welcome", false, "ghost")}</div><p class="fine">— People & Serenity${s.returns >= 6 ? " · revised for the " + (s.returns + 1) + "th time" : ""}</p></div>`;
 }
 function trash() {
   const items = [`<div class="proc"><div><strong>previous_user_profile</strong><small>partially removed · 3.1 GB · deleted ${11 + s.returns} times</small></div>${button("Restore", "decoy", "__restore", false, "ghost")}</div>`];
@@ -784,6 +812,7 @@ const APPS = {
   important: { title: "probably important.txt", glyph: "important", tone: "ink", size: [360, 300], render: important },
   sudoku: { title: "Gentle Sudoku", glyph: "sudoku", tone: "blue", size: [440, 560], render: sudoku },
   trace: { title: "Trace", glyph: "trace", tone: "ink", size: [520, 560], render: trace },
+  help: { title: "Help Desk", glyph: "help", tone: "mint", size: [560, 600], render: helpdesk },
   deskduck: { title: "duck", glyph: "duckling", tone: "peach", size: [380, 320], render: deskduck },
 };
 const docked = (a) => (typeof a.dock === "function" ? a.dock() : a.dock);
@@ -811,14 +840,16 @@ function persist() {
 function openApp(id, tab) {
   const a = APPS[id];
   if (!a) return;
-  const open = Object.values(ui.win).filter((w) => w.open).length;
   const w = (ui.win[id] ??= {});
   if (!w.w) {
+    // New windows walk diagonally across the space left of the widgets, so they don't pile up.
     const vw = innerWidth, vh = innerHeight;
+    const right = vw > 1100 ? 320 : 12;
+    const k = (ui.cascade = ((ui.cascade ?? -1) + 1) % 8);
     w.w = Math.min(a.size[0], vw - 40);
     w.h = Math.min(a.size[1], vh - 140);
-    w.x = Math.max(12, Math.min(vw - w.w - 12, 150 + (open % 6) * 34));
-    w.y = Math.max(44, Math.min(vh - w.h - 96, 56 + (open % 6) * 28));
+    w.x = Math.max(12, Math.min(vw - w.w - right, 130 + k * 44));
+    w.y = Math.max(44, Math.min(vh - w.h - 96, 52 + k * 30));
   }
   w.open = true;
   w.min = false;
@@ -912,7 +943,7 @@ function renderChrome() {
   $("calm").textContent = `Calm ${G.calm(s)}%`;
   $("calm").classList.toggle("low", G.calm(s) < 80);
   const attention = {
-    mail: s.warned > 0 || mailNews() || unread("parents") || (!s.over && s.rank < 4 && s.releases >= 3 * (s.rank + 1)),
+    mail: s.warned > 0 || mailNews() || unread("parents") || G.promotionDue(s),
     activity: s.stories.quickfix > 0 && s.stories.quickfix < 5,
     ripple: Object.entries(G.THREADS).some(([id, d]) => d.app === "ripple" && unread(id)),
   };
@@ -1150,7 +1181,8 @@ document.addEventListener("click", (e) => {
     case "menu":
       if (id === "window") {
         for (const w of Object.values(ui.win)) if (w.open) w.min = true;
-      } else notify(MENU[id], "settings");
+      } else if (id === "help") openApp("help");
+      else notify(MENU[id], "settings");
       break;
     case "calm":
       notify(s.stories.employee === 3 ? "The Calm Index has no sensor for the clients. It never did. It has one for you." : s.stories.employee === 2 ? "The Calm Index is calculated from proprietary signals. Mara says there’s no cable. You could check." : "The Calm Index is calculated from proprietary signals, some of them yours. You are doing great.", "settings");
@@ -1247,6 +1279,9 @@ document.addEventListener("click", (e) => {
     }
     case "appendix":
       changed = G.appendix(s);
+      break;
+    case "hint":
+      changed = G.hint(s, id);
       break;
     case "nav":
       nav(id);
@@ -1484,12 +1519,15 @@ document.addEventListener("dblclick", (e) => {
 /* ---------- clock ---------- */
 let last = Date.now(),
   saveClock = 0;
-const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time, s.over, s.trace, s.elapsed < s.duckLock]);
+const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time, s.over, s.trace, s.elapsed < s.duckLock, ui.win.help?.open && Math.floor(s.elapsed / 5)]);
 setInterval(() => {
   const now = Date.now();
   const was = sig();
   s.playing = !!(ui.win.sudoku?.open && !ui.win.sudoku.min && !document.hidden);
-  G.tick(s, (now - last) / 1000);
+  // A background tab, or a long gap after the browser froze it, counts as being away:
+  // jobs keep going, but nothing can lose you the game while you aren't looking.
+  const dt = (now - last) / 1000;
+  G.tick(s, dt, document.hidden || dt > 5);
   last = now;
   s.last = now;
   saveClock++;
@@ -1511,6 +1549,18 @@ setInterval(() => {
   if (saveClock % 5 === 0) persist();
 }, 500);
 window.addEventListener("pagehide", persist);
+// Leaving the desk for a long while counts as coming back, even without closing the tab.
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return void (hiddenAt = Date.now());
+  if (hiddenAt && Date.now() - hiddenAt >= 20 * 60 * 1000 && !s.over) {
+    G.welcomeBack(s);
+    afterChange();
+    persist();
+    render();
+  }
+  hiddenAt = 0;
+});
 window.addEventListener("hashchange", () => {
   const id = location.hash.slice(1);
   if (APPS[id]) {

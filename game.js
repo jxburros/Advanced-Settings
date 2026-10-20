@@ -12,57 +12,57 @@ export const SKILLS = [
   {
     id: "tests",
     name: "Test harness",
-    cost: 90,
-    knowledge: 25,
+    cost: 110,
+    knowledge: 30,
     desc: "Tests now fix one defect on the way through. Real tests, as opposed to the other kind.",
   },
   {
     id: "hardware",
     name: "Second CPU core",
-    cost: 130,
-    knowledge: 40,
+    cost: 180,
+    knowledge: 55,
     desc: "Two jobs at full speed. Read and build at once, like a person with two hands.",
   },
   {
     id: "database",
     name: "Databases",
-    cost: 140,
-    knowledge: 50,
+    cost: 200,
+    knowledge: 70,
     desc: "Unlocks Archive Index and read access to the personnel archive. Every release indexes another box of records nobody asked for.",
   },
   {
     id: "scheduler",
     name: "Task scheduler",
-    cost: 180,
-    knowledge: 65,
+    cost: 320,
+    knowledge: 100,
     desc: "Tests, debugs and ships finished work by itself. It will not choose features. It has no taste.",
   },
   {
     id: "autocomplete",
     name: "Autocomplete",
-    cost: 160,
-    knowledge: 75,
+    cost: 240,
+    knowledge: 90,
     desc: "Writing jobs run 40% faster. Suggests the next line, and occasionally the next thought.",
   },
   {
     id: "systems",
     name: "Systems programming",
-    cost: 220,
-    knowledge: 95,
+    cost: 340,
+    knowledge: 130,
     desc: "Unlocks Quiet Monitor and the kind of diagnostics that do not show up in Diagnostics.",
   },
   {
     id: "assistant",
     name: "AI task assistant",
-    cost: 300,
-    knowledge: 120,
+    cost: 480,
+    knowledge: 170,
     desc: "A local assistant you can assign to development, reading or security. Very polite about everything.",
   },
   {
     id: "local",
     name: "Local model runtime",
-    cost: 380,
-    knowledge: 170,
+    cost: 650,
+    knowledge: 240,
     requires: "assistant",
     desc: "A third worker and a stronger assistant. Runs entirely on this machine, which is now warm.",
   },
@@ -144,6 +144,11 @@ export const RANKS = [
   "Principal Engineer",
 ];
 export const TRACKS = ["specialist", "manager", "automator"];
+/* Total releases needed for each rank. The gaps widen as the work gets bigger. */
+export const RANK_AT = [0, 3, 7, 12, 18];
+export function promotionDue(s) {
+  return !s.over && s.rank < 4 && s.releases >= RANK_AT[s.rank + 1];
+}
 
 /* Records revealed one per Archive Index release. Several are clues. */
 export const ARCHIVE = [
@@ -301,6 +306,147 @@ export const ENDINGS = [
   { id: "breach", name: "Reimaged", hint: "Unsigned helpers get bolder." },
 ];
 
+/* Help Desk tickets: three escalating answers per open problem. Each answer after the first
+   unlocks only after some time with the previous one, so the puzzles stay puzzles. */
+export const HINT_WAIT = [0, 150, 300];
+const at = (s, id, step) => s.threads[id]?.open && s.threads[id].step === step;
+const DUCK_HINTS = [
+  ["facilities.stillwater lists every vent. One of them is never empty.", "Read the Facilities ventilation table and the cafeteria note on the intranet. Archive Index box 1 says the same thing."],
+  ["The duck isn’t psychic. Something it likes arrives in a particular container.", "Look at the break-room section on facilities.stillwater."],
+  ["The secure wing doesn’t need a badge from everyone.", "Read the Doors table on facilities.stillwater. Archive Index box 2 explains why."],
+  ["The public website copies its leadership page from somewhere internal.", "Look up “Duck” in directory.stillwater, then read the intranet announcements about tags."],
+];
+export const HINTS = [
+  {
+    id: "workspace",
+    title: "The previous user’s workspace",
+    active: (s) => !s.bookmarks.includes("workspace"),
+    steps: () => [
+      "Mara’s notes keep mentioning old themes. System Settings › Advanced goes much deeper than it looks, and every level has exactly one real door.",
+      "The route is Editor › Plugins › Installed › Theme Engine › Compatibility › Legacy Themes › Import › Supported Formats.",
+      "At Supported Formats, turn on Legacy workspace compatibility, pause any running job (Activity Monitor or Workbench), then press Import Workspace.",
+    ],
+  },
+  {
+    id: "attachment",
+    title: "Mara’s attachment",
+    active: (s) => s.stories.employee === 1,
+    steps: () => [
+      "Mail › Recovered has something from Mara that the current tools can’t open.",
+      "It’s a record. Records live in databases.",
+      "Install Databases in Toolshed › Languages, then press Read archived attachment in Mail › Recovered.",
+    ],
+  },
+  {
+    id: "channel",
+    title: "The fourth channel",
+    active: (s) => s.stories.employee === 2,
+    steps: () => [
+      "Activity Monitor says it watches four channels. Count the ones it shows you.",
+      "The fourth channel is not on the network, and it needs tools that go below Diagnostics.",
+      "Install Systems programming, then isolate the workstation (Activity Monitor › Channels, or Settings › Network). Channel 04 appears in Activity Monitor › Channels.",
+    ],
+  },
+  {
+    id: "quickfix",
+    title: "An unsigned plugin",
+    active: (s) => [1, 2].includes(s.stories.quickfix),
+    steps: () => [
+      "QuickFix grows bolder whenever a build is running. Activity Monitor › Security deals with it. Waiting too long is the only wrong answer.",
+      "Quarantine works at any time. Tracing first is optional and needs a running build. Isolating the workstation freezes QuickFix while you think.",
+      "Press Quarantine plugin. To trace first: at each hop, pick the reply whose TTL is exactly one lower and whose time is higher than the last.",
+    ],
+  },
+  {
+    id: "revoke",
+    title: "The credential",
+    active: (s) => [3, 4].includes(s.stories.quickfix),
+    steps: () => [
+      "The plugin is gone, but the account that installed it isn’t. You need its exact name.",
+      "directory.stillwater masks the contractor’s name, but not its home workstation. You know that workstation well.",
+      `Revoke ${CREDENTIAL} in Activity Monitor › Security.`,
+    ],
+  },
+  {
+    id: "duck",
+    key: (s) => "duck" + s.stories.duck,
+    title: "The duck story",
+    active: (s) => s.stories.duck < DUCK_CASES.length && duckOpen(s),
+    steps: (s) => [
+      ...DUCK_HINTS[s.stories.duck],
+      `File this correction: “${DUCK_CASES[s.stories.duck].options[DUCK_CASES[s.stories.duck].answer]}”`,
+    ],
+  },
+  {
+    id: "juno",
+    title: "Juno came back different",
+    active: (s) => at(s, "juno", 6),
+    steps: () => [
+      "Before she left, Juno asked you to remind her who she is. The preset replies won’t do that. Type something instead.",
+      "Something silly that only the two of you share. She taught it to you early on, about a coworker’s appliance.",
+      "Type “Furnace of Thursdays” to Juno in Ripple.",
+    ],
+  },
+  {
+    id: "neil",
+    title: "Neil never leaves",
+    active: (s) => at(s, "neil", 5) && !s.secrets.includes("outofoffice"),
+    steps: () => [
+      "Neil can’t ask you to read his document. Archive Index releases reveal one box at a time.",
+      "Box 5 is his retention agreement. It holds him until Stillwater Assure reports something. Can it?",
+      "Finish Mara’s story (Channel 04). Her audit unlocks a new reply to Neil: send it to him.",
+    ],
+  },
+  {
+    id: "parents",
+    key: (s) => "parents" + (s.threads.parents?.step ?? 0),
+    title: "Mom and Dad’s pilot products",
+    active: (s) => [1, 2, 3].some((k) => at(s, "parents", k)),
+    steps: (s) => {
+      const k = s.threads.parents.step;
+      return [
+        "The box said “see intranet.stillwater/pilots”. You can open it in Wayfinder.",
+        "Each product on the pilots page lists the hidden way to make it behave.",
+        [
+          "",
+          "Tell them to hold the Hearth dial down for ten seconds.",
+          "Tell them to say “I am calm” out loud, three times.",
+          s.stories.employee === 3
+            ? "Tell them the truth: none of the products measure anything."
+            : "The script reply ends the thread. The honest reply appears once you’ve found Mara’s audit in Channel 04.",
+        ][k],
+      ];
+    },
+  },
+  {
+    id: "calm",
+    title: "My Calm Index is falling",
+    active: (s) => s.suspicion >= 25,
+    steps: () => [
+      "Acceptable Use concern fades while a build is running. Real work is the cure.",
+      "Nothing reports while the workstation is isolated. Private browsing is reviewed with extra care: it makes things worse, not better.",
+      "Stop shopping, blogging and playing for a while and keep a build running. A desk plant from Procurement doubles the recovery.",
+    ],
+  },
+];
+const hintKey = (s, h) => (h.key ? h.key(s) : h.id);
+export function hintState(s, h) {
+  return s.hints[hintKey(s, h)] ?? { tier: 0, at: 0 };
+}
+/* Seconds until the next answer for this ticket can be requested; 0 if it can be now, -1 if there are none left. */
+export function hintWait(s, h) {
+  const st = hintState(s, h);
+  if (st.tier >= h.steps(s).length) return -1;
+  return Math.max(0, Math.ceil(st.at + HINT_WAIT[st.tier] - s.elapsed));
+}
+export function hint(s, id) {
+  const h = HINTS.find((x) => x.id === id);
+  if (s.over || !h || !h.active(s) || hintWait(s, h) !== 0) return false;
+  const st = hintState(s, h);
+  s.hints[hintKey(s, h)] = { tier: st.tier + 1, at: s.elapsed };
+  return true;
+}
+
 const STAGES = ["plan", "writing", "written", "testing", "tested", "debugging"];
 const JOB_KINDS = ["write", "test", "debug", "reading"];
 const INSTALLS = ["toolshed", "identified", "anywhere"];
@@ -310,7 +456,7 @@ const GAMES = ["sudoku"];
 
 export function fresh(now = Date.now()) {
   return {
-    version: 3,
+    version: 4,
     money: 40,
     knowledge: 0,
     users: 0,
@@ -364,6 +510,7 @@ export function fresh(now = Date.now()) {
       phish: { state: 0, at: 0 },
     },
     training: 0,
+    hints: {},
   };
 }
 export function log(s, text) {
@@ -419,13 +566,17 @@ export function start(s, id, feature) {
     0,
     f.bugs + (s.settings.safe ? 0 : 2) - (s.track === "specialist" ? 1 : 0),
   );
-  return addJob(s, "write", id, f.time * (s.settings.safe ? 1 : 0.7));
+  return addJob(s, "write", id, writeTime(s, state, f));
+}
+/* Every version adds to the codebase, so each one takes a little longer to write. */
+export function writeTime(s, p, f) {
+  return Math.round(f.time * (1 + 0.4 * p.version) * (s.settings.safe ? 1 : 0.7));
 }
 export function test(s, id) {
   const p = s.projects[id];
   if (s.over || !p || p.stage !== "written") return false;
   p.stage = "testing";
-  return addJob(s, "test", id, 8);
+  return addJob(s, "test", id, 8 + 2 * p.version);
 }
 export function debug(s, id) {
   const p = s.projects[id];
@@ -493,8 +644,7 @@ export function read(s) {
   return addJob(s, "reading", null, 20);
 }
 export function promote(s, track) {
-  const rank = Math.min(4, Math.floor(s.releases / 3));
-  if (s.over || rank <= s.rank || !TRACKS.includes(track)) return false;
+  if (!promotionDue(s) || !TRACKS.includes(track)) return false;
   s.rank++;
   s.stories.career = s.rank;
   s.track = track;
@@ -628,7 +778,7 @@ export function correct(s, option) {
 /* ---------- Acceptable Use and the wider computer ---------- */
 export function flag(s, amount) {
   if (s.over || s.settings.isolated || amount <= 0) return;
-  s.suspicion = Math.min(100, s.suspicion + amount * (s.private ? 2 : 1));
+  s.suspicion = Math.min(100, s.suspicion + amount * (s.private ? 1.5 : 1));
   if (s.suspicion >= 40 && s.warned < 1) {
     s.warned = 1;
     log(s, "People & Serenity: a gentle note about acceptable use. Your Calm Index has been shared with your manager, gently.");
@@ -637,7 +787,17 @@ export function flag(s, amount) {
     s.warned = 2;
     log(s, "People & Serenity: final wellness reminder. Your workstation activity is now being reviewed. Please be calm on purpose.");
   }
-  if (s.suspicion >= 100) end(s, "fired");
+  if (s.suspicion < 100) return;
+  // The first time, a plan. There is no second plan.
+  if (s.warned < 3) {
+    s.warned = 3;
+    s.suspicion = 55;
+    s.training = Math.max(s.training, s.elapsed + 180);
+    s.private = false;
+    log(s, "People & Serenity: you have been placed on a Calm Improvement Plan. Wayfinder is closed for three minutes. Private browsing has been switched off for you. There is no second plan.");
+    return;
+  }
+  end(s, "fired");
 }
 export function end(s, kind) {
   if (s.over) return false;
@@ -1050,13 +1210,16 @@ export function tick(s, seconds, offline = false) {
       if (buildRunning(s) && s.suspicion > 0)
         s.suspicion = Math.max(0, s.suspicion - dt * 0.1 * (s.perks.includes("plant") ? 2 : 1));
       if (s.playing && s.games.includes("sudoku")) flag(s, dt * 0.15);
-      if ([1, 2].includes(s.stories.quickfix) && !s.settings.isolated) {
+      // QuickFix only grows while it has a build to "help" with.
+      if ([1, 2].includes(s.stories.quickfix) && !s.settings.isolated && buildRunning(s)) {
         const before = s.breach;
         s.breach += dt * (s.installs === "anywhere" ? 3 : 1);
         if (before < 300 && s.breach >= 300)
           log(s, "QuickFix requested additional permissions, to help. They were granted, helpfully. It now uses 30% of your processor.");
         if (before < 600 && s.breach >= 600)
           log(s, "QuickFix has started helping with other plugins. It uses 40% of your processor and has asked for administrator rights.");
+        if (before < 780 && s.breach >= 780)
+          log(s, "IT alert: QuickFix will have administrator rights within two minutes of build time. Quarantine it in Activity Monitor › Security, or isolate the workstation.");
         if (s.breach >= 900) end(s, "breach");
       }
     }
@@ -1106,11 +1269,11 @@ export function complete(s) {
 }
 
 function migrate(s) {
-  if (![1, 2].includes(s?.version)) return s;
+  if (![1, 2, 3].includes(s?.version)) return s;
   const base = fresh(s.last);
   for (const k of Object.keys(base)) if (!(k in s)) s[k] = base[k];
   if (s.version === 1) s.secrets = [...s.bookmarks];
-  s.version = 3;
+  s.version = 4;
   return s;
 }
 const bad = (msg) => {
@@ -1123,7 +1286,7 @@ export function restore(raw, now = Date.now()) {
   s = migrate(s);
   if (
     !s ||
-    s.version !== 3 ||
+    s.version !== 4 ||
     !s.projects ||
     !Array.isArray(s.jobs) ||
     !Array.isArray(s.skills) ||
@@ -1181,7 +1344,7 @@ export function restore(raw, now = Date.now()) {
     ![null, "fired", "breach"].includes(s.over) ||
     !num(s.suspicion) ||
     s.suspicion > 100 ||
-    ![0, 1, 2].includes(s.warned) ||
+    ![0, 1, 2, 3].includes(s.warned) ||
     !num(s.breach) ||
     !Number.isInteger(s.returns) ||
     s.returns < 0 ||
@@ -1236,7 +1399,12 @@ export function restore(raw, now = Date.now()) {
     !p ||
     !int(p.state, 0, 3) ||
     !Number.isFinite(p.at) ||
-    !Number.isFinite(s.training)
+    !Number.isFinite(s.training) ||
+    !s.hints ||
+    typeof s.hints !== "object" ||
+    Array.isArray(s.hints) ||
+    Object.keys(s.hints).length > 40 ||
+    Object.values(s.hints).some((h) => !int(h?.tier, 0, 3) || !Number.isFinite(h.at))
   )
     bad("Invalid conversations.");
   if (

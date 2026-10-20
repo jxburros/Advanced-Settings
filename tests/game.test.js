@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import * as G from "../game.js";
 function ship(s, id = "pocket", feature = "search") {
   assert.ok(G.start(s, id, feature));
-  G.tick(s, 100);
+  G.tick(s, 400);
   assert.ok(G.test(s, id));
-  G.tick(s, 100);
+  G.tick(s, 400);
   if (s.projects[id].bugs) {
     assert.ok(G.debug(s, id));
-    G.tick(s, 100);
+    G.tick(s, 400);
   }
   assert.ok(G.release(s, id));
 }
@@ -275,6 +275,13 @@ test("personal use raises concern, warns twice, then gets you fired", () => {
   s.private = true;
   G.post(s, "job");
   assert.equal(s.warned, 2);
+  while (s.warned < 3) G.post(s, "job");
+  assert.equal(s.over, null, "the first time is a plan, not a firing");
+  assert.equal(s.warned, 3);
+  assert.equal(s.suspicion, 55);
+  assert.equal(s.private, false);
+  assert.equal(G.visit(s, "intranet.stillwater").status, "training");
+  G.post(s, "job");
   G.post(s, "job");
   assert.equal(s.over, "fired");
   assert.equal(G.start(s, "pocket", "search"), false);
@@ -283,6 +290,10 @@ test("personal use raises concern, warns twice, then gets you fired", () => {
 test("an ignored QuickFix escalates into a reimage, faster with installs from anywhere", () => {
   const s = G.fresh();
   s.stories.quickfix = 1;
+  G.tick(s, 600);
+  assert.equal(s.breach, 0, "QuickFix only grows while a build runs");
+  G.start(s, "pocket", "sync");
+  s.jobs[0].total = 1e6;
   G.tick(s, 299);
   assert.equal(G.quickfixLoad(s), 0.2);
   G.tick(s, 2);
@@ -296,6 +307,8 @@ test("an ignored QuickFix escalates into a reimage, faster with installs from an
   assert.equal(s.over, "breach");
   const quiet = G.fresh();
   quiet.stories.quickfix = 1;
+  G.start(quiet, "pocket", "sync");
+  quiet.jobs[0].total = 1e6;
   quiet.settings.isolated = true;
   G.tick(quiet, 2000);
   assert.equal(quiet.over, null);
@@ -312,13 +325,13 @@ test("AI security traces and quarantines, but you still revoke the credential", 
 });
 test("all storylines and final promotion are reachable, and the archive records the ending", () => {
   const s = G.fresh();
-  while (s.releases < 12) {
+  while (s.rank < 4) {
     if (s.stories.quickfix === 1) {
       trace(s);
       assert.ok(G.story(s, "quarantine"));
       assert.ok(G.revoke(s, G.CREDENTIAL));
     } else ship(s);
-    if (s.releases >= 3 * (s.rank + 1)) assert.ok(G.promote(s, "specialist"));
+    if (G.promotionDue(s)) assert.ok(G.promote(s, "specialist"));
   }
   assert.equal(s.rank, 4);
   assert.equal(G.promote(s, "specialist"), false);
@@ -382,9 +395,13 @@ test("save restoration handles offline time, migration, and malformed data", () 
   const old = { ...G.fresh(1000), version: 1, bookmarks: ["workspace"] };
   for (const k of ["secrets", "suspicion", "breach", "returns", "blog", "sudoku", "breaker", "aiClock"]) delete old[k];
   const migrated = G.restore(JSON.stringify(old), 2000);
-  assert.equal(migrated.version, 3);
+  assert.equal(migrated.version, 4);
   assert.deepEqual(migrated.secrets, ["workspace"]);
   assert.equal(migrated.sudoku, G.SUDOKU.givens);
+  const v3 = { ...G.fresh(1000), version: 3 };
+  delete v3.hints;
+  assert.deepEqual(G.restore(JSON.stringify(v3), 2000).hints, {});
+  assert.throws(() => G.restore({ ...s, hints: { workspace: { tier: 9, at: 0 } } }));
 });
 function play(s, id) {
   // deliver pending beats by waiting; returns the open beat
@@ -526,4 +543,39 @@ test("Workspace Zero releases recover Mara's notes, and conversations survive a 
   const back = G.restore(JSON.stringify(s), s.last + 1000);
   assert.equal(back.threads.juno.step, 1);
   assert.throws(() => G.restore({ ...s, threads: { stranger: { step: 0 } } }));
+});
+test("promotions need more releases each time, and later versions take longer", () => {
+  const s = G.fresh();
+  assert.deepEqual(G.RANK_AT, [0, 3, 7, 12, 18]);
+  for (let i = 0; i < 6; i++) ship(s);
+  assert.ok(G.promote(s, "manager"));
+  assert.equal(G.promote(s, "manager"), false, "one promotion at a time");
+  assert.equal(G.promotionDue(s), false);
+  ship(s);
+  assert.ok(G.promotionDue(s));
+  const f = G.FEATURES[0];
+  assert.ok(G.writeTime(s, { version: 5 }, f) > G.writeTime(s, { version: 0 }, f) * 2);
+});
+test("the Help Desk escalates hints slowly, and only for open problems", () => {
+  const s = G.fresh();
+  const ws = G.HINTS.find((h) => h.id === "workspace");
+  assert.equal(G.hint(s, "channel"), false, "no ticket for a problem you don't have");
+  assert.ok(G.hint(s, "workspace"));
+  assert.equal(G.hint(s, "workspace"), false, "the next answer has to wait");
+  assert.equal(G.hintWait(s, ws), G.HINT_WAIT[1]);
+  G.tick(s, G.HINT_WAIT[1]);
+  assert.ok(G.hint(s, "workspace"));
+  G.tick(s, G.HINT_WAIT[2]);
+  assert.ok(G.hint(s, "workspace"));
+  assert.equal(G.hintWait(s, ws), -1);
+  assert.match(ws.steps(s)[2], /Import Workspace/);
+  // Duck tickets follow the current case.
+  assert.ok(G.hint(s, "duck"));
+  G.correct(s, G.DUCK_CASES[0].answer);
+  s.releases = 2;
+  assert.equal(G.hintState(s, G.HINTS.find((h) => h.id === "duck")).tier, 0);
+  // Every hint has three answers whenever it is active.
+  s.suspicion = 50;
+  s.stories.quickfix = 3;
+  for (const h of G.HINTS) if (h.active(s)) assert.equal(h.steps(s).length, 3, h.id);
 });

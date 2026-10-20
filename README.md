@@ -29,15 +29,16 @@ You are a new developer at **Stillwater Systems**, a company that sells calm. Th
 | Files | Discoveries and downloads. |
 | System Settings | Appearance and settings that go much deeper than they look. |
 
-- **Work:** five projects, three features, nine upgrades, five ranks. Career tracks change how you work. Lunchboard earns while it runs, Archive Index reveals records, and Quiet Monitor shows what is watching you.
+- **Work:** five projects, three features, nine upgrades, five ranks (at 3, 7, 12 and 18 releases). Each version of a project takes longer to write and test than the last, so new projects pay off. Career tracks change how you work. Lunchboard earns while it runs, Archive Index reveals records, and Quiet Monitor shows what is watching you.
 - **Puzzles:** a deep settings maze, conditional discoveries, duck corrections that need evidence from elsewhere, a credential you have to work out, and three mini games (a sudoku, a breaker panel and a packet trace).
 - **People:** Juno, a friend from QA, goes on a wellness retreat and comes back far too calm. Neil from Platform always wants to hear about your plans outside work, for reasons he can't say. Your parents have been sent Stillwater's undisclosed consumer products. Greg and the previous user each have a later chapter. Several of these stories connect to each other and to the puzzles.
 - **Short incidents:** an all-staff reply-all storm, birthday cake that disappears quickly, and an IT phishing test.
 - **Messing around:** shopping, blogging and gaming on a work computer, each behind its own way past the filter. Personal use lowers your Calm Index.
-- **Losing:** there are two ways to lose, and both come with warnings. Only a player who ignores those warnings will lose this way.
+- **Losing:** there are two ways to lose, and both come with warnings. Only a player who ignores those warnings will lose this way. Browsing too much gets you a Calm Improvement Plan first; only a second offence ends the workstation.
+- **Help Desk:** Help › Help Desk takes a ticket for any open problem. The first answer is vague; better answers unlock after a few minutes, and the last one is the solution.
 - **Secret Tracker:** after your first win or loss, a tracker of every secret and ending you've found appears in the dock. It persists across new workstations.
-- **Returning:** closing the game and coming back has a small effect each time, and it adds up.
-- Automatic local saves (older saves are migrated), JSON backup/import, up to two hours of offline job progress (offline time can never lose you the game), phone layout, keyboard controls and reduced motion.
+- **Returning:** closing the game and coming back (or leaving it in the background for 20 minutes) has a small effect each time, and it adds up.
+- Automatic local saves (older saves are migrated), JSON backup/import, up to two hours of offline job progress (time away, including a background tab, can never lose you the game), phone layout, keyboard controls and reduced motion.
 
 Everything runs locally with no accounts, paid APIs or real AI calls; the web is simulated. Optional Google Fonts fall back to system fonts. The watercolor wallpapers in `assets/wallpapers` were painted with [Vixl](https://github.com/jxburros/Vixl); `tools/make-wallpapers.py` regenerates them. Icons are inline SVG.
 
@@ -61,6 +62,6 @@ python tests/browser.py
 
 ## Implementation decisions
 
-The concept deliberately leaves platforms, timing, economy, characters, and endings open. This implementation uses dependency-free browser modules, short tasks (8–22 seconds before modifiers), permanent knowledge requirements, and spendable budget. Mara Chen and Stillwater Systems are original names supplied for the playable story. All paths remain available regardless of career direction; the promotion choice is narrative, not a separate skill tree. There is a completion message after all four stories, followed by unlimited free play. Losing ends the workstation; a new one starts from scratch, but the Secret Tracker remembers. There is no backend.
+The concept deliberately leaves platforms, timing, economy, characters, and endings open. This implementation uses dependency-free browser modules, short tasks (8–22 seconds before modifiers, growing 40% per version written), permanent knowledge requirements, and spendable budget. Mara Chen and Stillwater Systems are original names supplied for the playable story. All paths remain available regardless of career direction; the promotion choice is narrative, not a separate skill tree. There is a completion message after all four stories, followed by unlimited free play. Losing ends the workstation (the browsing loss only after one Calm Improvement Plan); a new one starts from scratch, but the Secret Tracker remembers. There is no backend.
 
 Game rules live in `game.js`, conversation scripts and incidents live in `stories.js`, the desktop, windows, story moments and browser storage live in `app.js`. Window layout and appearance preferences are stored separately from the game save, so a save file never depends on screen size. The Secret Tracker has its own storage key, so starting a new workstation never clears it. A return counts once per browser session, so reloading the page does not count. See [desktop preview](docs/desktop.png) and [mobile preview](docs/mobile.png).

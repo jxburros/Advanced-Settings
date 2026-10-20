@@ -6,11 +6,15 @@
 
 | Ending | How |
 | --- | --- |
-| End of probation (win) | Reach Principal Engineer (12 releases) and finish all four stories: the previous user (Channel 04), QuickFix (credential revoked), and all four duck corrections. |
-| Released to the community (loss) | Acceptable Use concern reaches 100%. It rises with blocked sites (+1), translated or proxied personal pages, shopping (+4 to +10), blog posts (+6 to +26), and online sudoku play. **Private browsing doubles it.** Real work (a running build) lowers it, and nothing is reported while the workstation is isolated. Mail warns you at 40 and 70, and the Calm Index in the menu bar drops. |
-| Reimaged (loss) | Leave QuickFix unquarantined for about 15 minutes of online play (900 breach points). It speeds up 3× if Developer › Install from is set to “Anywhere”, and it pauses while isolated. Warnings arrive at 5 and 10 minutes, and its processor use grows from 20% to 30% to 40%. Quiet Monitor releases push it back. |
+| End of probation (win) | Reach Principal Engineer (18 releases; promotions at 3, 7, 12 and 18) and finish all four stories: the previous user (Channel 04), QuickFix (credential revoked), and all four duck corrections. |
+| Released to the community (loss) | Acceptable Use concern reaches 100% **twice**. It rises with blocked sites (+1), translated or proxied personal pages, shopping (+4 to +10), blog posts (+6 to +26), and online sudoku play. **Private browsing multiplies it by 1.5.** Real work (a running build) lowers it, and nothing is reported while the workstation is isolated. Mail warns you at 40 and 70, and the Calm Index in the menu bar drops. The first time it reaches 100 you get a Calm Improvement Plan instead: concern resets to 55, Wayfinder closes for three minutes and private browsing is switched off. |
+| Reimaged (loss) | Leave QuickFix unquarantined for about 15 minutes of build time (900 breach points). It only grows while a build is running and you're online and looking: it pauses while isolated, while nothing is building, and while the tab is in the background. It speeds up 3× if Developer › Install from is set to “Anywhere”. Warnings arrive at 5, 10 and 13 minutes of build time, and its processor use grows from 20% to 30% to 40%. Quiet Monitor releases push it back. |
 
 The Secret Tracker unlocks in the dock after the first ending of any kind, and it persists across new workstations.
+
+## Help Desk
+
+Help › Help Desk lists a ticket for every problem the player currently has: the workspace, Mara's attachment, Channel 04, QuickFix, the credential, the current duck case, Juno, Neil, the parents' current product, and a falling Calm Index. Each ticket has three answers: a vague one at once, a clearer one 2½ minutes later, and the solution 5 minutes after that. Hints don't affect anything else.
 
 ## Secrets
 
@@ -33,7 +37,7 @@ The Secret Tracker unlocks in the dock after the first ending of any kind, and i
 | Educated guess | Directory: `temp-contractor-04••`, home workstation WS-0417; Archive Index box 4; the 4:17 note | Quarantine without tracing, then revoke `temp-contractor-0417`. |
 | Citizen journalist | — | After solving two duck cases, write a Quillpost post about the duck. |
 | Appendix H | Library: “See Appendix H for what time means here” | Complete 6 reading sessions and return to the game at least 3 times. |
-| The desk remembers | Trash count, the renamed Welcome file, a fading wallpaper, the falling Calm Index | Return 12 times. Each new browser session after the first counts as a return. |
+| The desk remembers | Trash count, the renamed Welcome file, a fading wallpaper, the falling Calm Index; a note at 6 returns says “I stopped counting at twelve” | Return 12 times. Each new browser session after the first counts as a return, and so does coming back to a tab that was in the background for 20 minutes. |
 
 | Herself again | Juno’s own words before she leaves: “if i come back weird, remind me who i am”; Notes: “Remind them of something silly.” | When Juno returns very calm, the preset replies get nowhere. Type a message mentioning the **Furnace of Thursdays**, the nickname she taught you for Greg’s heater. |
 | Out of office | Neil’s questions; the directory (“last badge-out: never”); facilities (sleeping pod 4); Mara’s guest message | Archive Index box 5 is Neil’s retention agreement: he stays “until Stillwater Assure reports that it is fully calm”. Once you have Channel 04 (Mara’s audit), a new reply appears: send him the audit. The condition is impossible, so the clause is void, and he leaves. |
@@ -67,14 +71,14 @@ The newsletter’s headlines arrive at 0, 2, 5 and 8 releases. A wrong correctio
 
 ## Returning effects
 
-Each new browser session with an existing save counts as one return.
+Each new browser session with an existing save counts as one return, as does coming back after the tab was hidden for 20 minutes.
 
 | Returns | Effect |
 | --- | --- |
 | 1+ | “Welcome back” lines change; the Trash says the previous profile was deleted one more time. |
 | 3+ | Appendix H can open. |
 | 4+ | Welcome.pdf becomes “Welcome (2).pdf”, “Welcome (3).pdf”, and so on; the Calm Index starts to drop. |
-| 6+ | The wallpaper starts to fade; the Welcome window says it has been revised again. |
+| 6+ | The wallpaper starts to fade; the Welcome window says it has been revised again; a note says it takes twelve. |
 | 8+ | The Trash holds `current_user_profile`, scheduled for removal. |
 | 10+ | Settings › About lists you as a previous user. |
 | 12 | Secret; a Mail draft about onboarding your successor; a sticky note signed “— You.” |
