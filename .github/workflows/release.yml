@@ -1,67 +1,141 @@
-# Push a tag like v1.2.0 to publish that version: tests, a Windows installer that updates
-# itself, a zip of the web edition, and release notes from CHANGELOG.md.
+# Publishes a version of the game: tests, a Windows installer that updates itself, a zip of the
+# web edition, and release notes from CHANGELOG.md.
+#
+# From the website: Actions › Release › Run workflow. Enter a version (like 1.2.0) to release it;
+# the workflow writes the version into the files, commits, tags and publishes. Leave the version
+# empty to build a test installer only, downloadable from the run's page.
+# From a terminal: push a tag like v1.2.0 whose version already matches the files.
 name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, like 1.2.0. Leave empty to build a test installer without releasing."
+        required: false
+        default: ""
+      notes:
+        description: "Release notes, only used if CHANGELOG.md has no section for this version. Separate points with semicolons."
+        required: false
+        default: ""
 permissions:
   contents: write
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
 jobs:
-  check:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      publish: ${{ steps.v.outputs.publish }}
+      ref: ${{ steps.v.outputs.ref }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm test
       - id: v
-        name: Tag, package.json and version.js agree
+        name: Work out the version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_NOTES: ${{ inputs.notes }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          tag="${GITHUB_REF_NAME#v}"
+          set -euo pipefail
+          current=$(node -p "require('./package.json').version")
+          publish=true
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          elif [ -z "$INPUT_VERSION" ]; then
+            version="$current"
+            publish=false
+          else
+            version="${INPUT_VERSION#v}"
+            version="${version// /}"
+            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::“$INPUT_VERSION” isn’t a version. Use three numbers, like 1.2.0."; exit 1
+            fi
+            if [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
+              echo "::error::Releases are made from $DEFAULT_BRANCH. Choose it in the “Use workflow from” list."; exit 1
+            fi
+            if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+              echo "::error::v$version has already been released. Pick a higher version than $current."; exit 1
+            fi
+            if [ "$(node -e "const [a,b]=process.argv.slice(1).map(v=>v.split('.').map(Number));console.log(a[0]-b[0]||a[1]-b[1]||a[2]-b[2])" "$version" "$current")" -lt 0 ]; then
+              echo "::error::$version is older than the current version, $current."; exit 1
+            fi
+            node tools/set-version.mjs "$version" "$INPUT_NOTES"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json package-lock.json version.js CHANGELOG.md
+            git diff --cached --quiet || git commit -m "Release v$version"
+            git tag "v$version"
+            git push origin HEAD "v$version"
+          fi
           pkg=$(node -p "require('./package.json').version")
           js=$(node -e "import('./version.js').then(m => console.log(m.VERSION))")
-          if [ "$tag" != "$pkg" ] || [ "$tag" != "$js" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME, package.json ($pkg) and version.js ($js) must match."
-            exit 1
+          if [ "$version" != "$pkg" ] || [ "$version" != "$js" ]; then
+            echo "::error::Version $version, package.json ($pkg) and version.js ($js) must match."; exit 1
           fi
-          node tools/release-notes.mjs "$tag" > /dev/null
-          echo "version=$tag" >> "$GITHUB_OUTPUT"
+          node tools/release-notes.mjs "$version" > /dev/null
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - run: npm test
 
   windows:
-    needs: check
+    needs: prepare
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Builds the NSIS installer and publishes it, latest.yml (what installed copies check)
-      # and the blockmap to the GitHub release for this tag.
-      - run: npx electron-builder --win --publish always
+      # Publishing uploads the installer, its blockmap and latest.yml (what installed copies
+      # check for updates) to the GitHub release for the tag.
+      - name: Build and publish the installer
+        if: needs.prepare.outputs.publish == 'true'
+        run: npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build a test installer
+        if: needs.prepare.outputs.publish != 'true'
+        run: npx electron-builder --win --publish never
+      - name: Attach the test installer to this run
+        if: needs.prepare.outputs.publish != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Advanced-Settings-Setup-${{ needs.prepare.outputs.version }}-test
+          path: dist/*.exe
+          retention-days: 14
 
   web:
-    needs: [check, windows]
+    needs: [prepare, windows]
+    if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Release notes and the web edition
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.check.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           node tools/release-notes.mjs "$VERSION" > notes.md
           zip -r "Advanced-Settings-web-$VERSION.zip" index.html style.css app.js game.js tasks.js stories.js sound.js updates.js version.js assets README.md
-          gh release edit "$GITHUB_REF_NAME" --title "Advanced Settings $VERSION" --notes-file notes.md --latest
-          gh release upload "$GITHUB_REF_NAME" "Advanced-Settings-web-$VERSION.zip" --clobber
+          gh release edit "$TAG" --title "Advanced Settings $VERSION" --notes-file notes.md --draft=false --latest
+          gh release upload "$TAG" "Advanced-Settings-web-$VERSION.zip" --clobber

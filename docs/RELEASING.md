@@ -1,8 +1,45 @@
 # Releasing
 
-Advanced Settings ships three ways: the web edition (any static server), the Windows edition (an installer that updates itself), and DLC packs. All three are published from GitHub by pushing tags.
+Advanced Settings ships three ways: the web edition (any static server), the Windows edition (an installer that updates itself), and DLC packs. All three are published from GitHub, either with the **Run workflow** buttons on the website or by pushing tags.
 
-## A new version of the game
+## From the GitHub website (no terminal)
+
+Everything below can be done in a browser on github.com. The **Run workflow** buttons only appear once these workflow files are on `main`, so merge the pull request that adds them first.
+
+### Try a test installer
+
+1. Open the repository's **Actions** tab and choose **Release** in the list on the left.
+2. Click **Run workflow**, leave **Version** empty, and click the green **Run workflow** button.
+3. When the run finishes (about ten minutes; refresh the page), open it and scroll to **Artifacts**. Download **Advanced-Settings-Setup-…-test**, unzip it, and run the installer.
+
+Nothing is published, and players don't see it.
+
+### Release a new version
+
+1. Optional: write the release notes. Open `CHANGELOG.md`, click the pencil icon, add a section at the top like the ones already there (`## 1.2.0` and a few `- ` lines), and **Commit changes** to `main`. If you skip this, the notes you type in step 3 are used.
+2. **Actions** › **Release** › **Run workflow**. Keep **Use workflow from** on `main`.
+3. Type the new version in **Version** (three numbers, higher than the current one, for example `1.2.0`). Fill in **Release notes** if you skipped step 1, separating points with semicolons. Click **Run workflow**.
+
+The workflow writes the version into the files, commits that to `main`, tags it, runs the tests, builds the installer, and publishes the release. It appears under **Releases** on the repository's front page when it's done, and everyone with the Windows edition is offered the update. If something is wrong (a version that isn't higher, or tests failing), the run stops with a red ✗ and a message saying why; nothing is published.
+
+The very first release can use the version already in the files (`1.1.0`).
+
+### Add music before a release
+
+Open `assets/music`, click **Add file › Upload files**, drag in the audio files and commit. Then edit `assets/music/tracks.json` with the pencil icon to list them (the README in that folder shows the format). The next release includes them.
+
+### Publish a DLC pack
+
+1. Open `dlc/packs`, click **Add file › Upload files**, and drag in your pack's folder (it must contain `manifest.json`; see [dlc/README.md](../dlc/README.md)). Commit to `main`.
+2. **Actions** › **DLC** › **Run workflow**. Type the folder name (for example `thursday`) and click **Run workflow**.
+
+The version comes from the pack's `manifest.json`. To publish an update, edit the manifest, raise `version`, and run the workflow again.
+
+### If a run fails because it can't push to `main`
+
+Branch protection is stopping the workflow from committing. In **Settings › Rules** (or **Settings › Branches**), allow GitHub Actions to bypass the rule for `main`, then re-run the failed run from its page.
+
+## A new version of the game (with a terminal)
 
 1. Pick the version, for example `1.2.0`, and set it in **both** `package.json` (`version`) and `version.js` (`VERSION`).
 2. Add a `## 1.2.0` section at the top of `CHANGELOG.md`. It becomes the release notes, and Software Update shows it in the game.
