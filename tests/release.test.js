@@ -86,21 +86,24 @@ test("the packer builds a valid catalog entry", { skip: (() => { try { require.r
   assert.deepEqual(JSON.parse(fs.readFileSync("dlc/catalog.json", "utf8")), [], "--no-catalog leaves the catalog alone");
 });
 test("a release started from the website writes the version everywhere", () => {
+  // Versions well above whatever the game is at, so this keeps working after real releases.
+  const major = Number(JSON.parse(fs.readFileSync("package.json", "utf8")).version.split(".")[0]) + 100;
+  const [next, after] = [`${major}.0.0`, `${major}.1.0`];
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ver-"));
   for (const f of ["package.json", "package-lock.json", "version.js", "CHANGELOG.md"]) fs.copyFileSync(f, path.join(dir, f));
-  const run = (...args) => execFileSync(process.execPath, [path.resolve("tools/set-version.mjs"), ...args], { cwd: dir }).toString();
-  run("1.2.0", "More ducks; fewer heaters");
+  const run = (...args) => execFileSync(process.execPath, [path.resolve("tools/set-version.mjs"), ...args], { cwd: dir, stdio: "pipe" }).toString();
+  run(next, "More ducks; fewer heaters");
   const read = (f) => fs.readFileSync(path.join(dir, f), "utf8");
-  assert.equal(JSON.parse(read("package.json")).version, "1.2.0");
+  assert.equal(JSON.parse(read("package.json")).version, next);
   const lock = JSON.parse(read("package-lock.json"));
-  assert.deepEqual([lock.version, lock.packages[""].version], ["1.2.0", "1.2.0"]);
-  assert.match(read("version.js"), /VERSION = "1\.2\.0"/);
-  assert.match(read("CHANGELOG.md"), /## 1\.2\.0\n\n- More ducks\n- fewer heaters\n\n## 1\.1\.0/);
+  assert.deepEqual([lock.version, lock.packages[""].version], [next, next]);
+  assert.match(read("version.js"), new RegExp(`VERSION = "${next}"`));
+  assert.ok(read("CHANGELOG.md").includes(`## ${next}\n\n- More ducks\n- fewer heaters\n\n## `), "the new section goes above the others");
   const before = read("CHANGELOG.md");
-  run("1.2.0", "ignored");
+  run(next, "ignored");
   assert.equal(read("CHANGELOG.md"), before, "an existing section is kept as written");
-  run("1.3.0");
-  assert.match(read("CHANGELOG.md"), /## 1\.3\.0\n\n- Maintenance release\./);
+  run(after);
+  assert.ok(read("CHANGELOG.md").includes(`## ${after}\n\n- Maintenance release.`));
   assert.throws(() => run("one point two"));
   fs.rmSync(dir, { recursive: true, force: true });
 });

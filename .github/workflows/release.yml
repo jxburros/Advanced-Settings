@@ -38,12 +38,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Tests run before anything is changed, so a failure never leaves a half-made release.
+      - run: npm test
       - id: v
         name: Work out the version
         env:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_NOTES: ${{ inputs.notes }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           current=$(node -p "require('./package.json').version")
@@ -62,19 +65,26 @@ jobs:
             if [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
               echo "::error::Releases are made from $DEFAULT_BRANCH. Choose it in the “Use workflow from” list."; exit 1
             fi
-            if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+            if gh release view "v$version" > /dev/null 2>&1; then
               echo "::error::v$version has already been released. Pick a higher version than $current."; exit 1
             fi
-            if [ "$(node -e "const [a,b]=process.argv.slice(1).map(v=>v.split('.').map(Number));console.log(a[0]-b[0]||a[1]-b[1]||a[2]-b[2])" "$version" "$current")" -lt 0 ]; then
-              echo "::error::$version is older than the current version, $current."; exit 1
+            if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+              # Tagged by an earlier run that stopped before publishing: finish that release.
+              echo "v$version was tagged but never published. Finishing it."
+              git checkout -q "v$version"
+            else
+              if [ "$(node -e "const [a,b]=process.argv.slice(1).map(v=>v.split('.').map(Number));console.log(a[0]-b[0]||a[1]-b[1]||a[2]-b[2])" "$version" "$current")" -lt 0 ]; then
+                echo "::error::$version is older than the current version, $current."; exit 1
+              fi
+              node tools/set-version.mjs "$version" "$INPUT_NOTES"
+              npm test
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add package.json package-lock.json version.js CHANGELOG.md
+              git diff --cached --quiet || git commit -m "Release v$version"
+              git tag "v$version"
+              git push origin HEAD "v$version"
             fi
-            node tools/set-version.mjs "$version" "$INPUT_NOTES"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package.json package-lock.json version.js CHANGELOG.md
-            git diff --cached --quiet || git commit -m "Release v$version"
-            git tag "v$version"
-            git push origin HEAD "v$version"
           fi
           pkg=$(node -p "require('./package.json').version")
           js=$(node -e "import('./version.js').then(m => console.log(m.VERSION))")
@@ -86,7 +96,6 @@ jobs:
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - run: npm test
 
   windows:
     needs: prepare
