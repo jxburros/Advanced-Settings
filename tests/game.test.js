@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as G from "../game.js";
-function ship(s, id = "notes", feature = "search") {
+function ship(s, id = "pocket", feature = "search") {
   assert.ok(G.start(s, id, feature));
   G.tick(s, 100);
   assert.ok(G.test(s, id));
@@ -14,26 +14,26 @@ function ship(s, id = "notes", feature = "search") {
 }
 test("complete release cycle has gates and earns budget, knowledge, and users", () => {
   const s = G.fresh();
-  assert.equal(G.release(s, "notes"), false);
-  assert.ok(G.start(s, "notes", "sync"));
-  assert.equal(G.start(s, "notes", "search"), false);
+  assert.equal(G.release(s, "pocket"), false);
+  assert.ok(G.start(s, "pocket", "sync"));
+  assert.equal(G.start(s, "pocket", "search"), false);
   G.tick(s, 30);
-  assert.equal(G.release(s, "notes"), false);
-  G.test(s, "notes");
+  assert.equal(G.release(s, "pocket"), false);
+  G.test(s, "pocket");
   G.tick(s, 10);
-  assert.equal(G.release(s, "notes"), false);
-  G.debug(s, "notes");
+  assert.equal(G.release(s, "pocket"), false);
+  G.debug(s, "pocket");
   G.tick(s, 20);
-  assert.ok(G.release(s, "notes"));
+  assert.ok(G.release(s, "pocket"));
   assert.equal(s.releases, 1);
   assert.ok(s.money > 40);
   assert.ok(s.users > 0);
-  assert.ok(s.xp > 0);
+  assert.ok(s.knowledge > 0);
 });
-test("research shares CPU; paused jobs retain progress and release capacity", () => {
+test("reading shares CPU; paused jobs retain progress and release capacity", () => {
   const s = G.fresh();
-  G.start(s, "notes", "search");
-  G.research(s);
+  G.start(s, "pocket", "search");
+  G.read(s);
   G.tick(s, 4);
   assert.equal(s.jobs[0].done, 2);
   assert.equal(s.jobs[1].done, 2);
@@ -50,40 +50,40 @@ test("research shares CPU; paused jobs retain progress and release capacity", ()
 test("purchase respects money, knowledge, and dependency; languages unlock projects", () => {
   const s = G.fresh();
   assert.equal(G.buy(s, "web"), false);
-  assert.equal(G.start(s, "intranet", "search"), false);
+  assert.equal(G.start(s, "lunchboard", "search"), false);
   s.money = 1000;
-  s.xp = 1000;
+  s.knowledge = 1000;
   assert.equal(G.buy(s, "local"), false);
   assert.ok(G.buy(s, "web"));
   assert.equal(s.money, 930);
-  assert.equal(s.xp, 1000);
+  assert.equal(s.knowledge, 1000);
   assert.equal(G.buy(s, "web"), false);
-  assert.ok(G.start(s, "intranet", "search"));
+  assert.ok(G.start(s, "lunchboard", "search"));
 });
 test("scheduler completes a feature without choosing a new feature", () => {
   const s = G.fresh();
   s.skills.push("scheduler");
   s.auto = true;
-  G.start(s, "notes", "sync");
+  G.start(s, "pocket", "sync");
   G.tick(s, 150);
   assert.equal(s.releases, 1);
-  assert.equal(s.projects.notes.stage, "plan");
+  assert.equal(s.projects.pocket.stage, "plan");
   assert.equal(s.jobs.length, 0);
 });
 test("secrets require operational conditions and stay bookmarked", () => {
   const s = G.fresh();
-  assert.equal(G.discover(s, "legacy"), false);
+  assert.equal(G.discover(s, "workspace"), false);
   s.settings.legacy = true;
-  G.research(s);
+  G.read(s);
   s.jobs[0].paused = true;
-  assert.ok(G.discover(s, "legacy"));
+  assert.ok(G.discover(s, "workspace"));
   assert.ok(G.unlocked(s, G.PROJECTS[4]));
-  assert.equal(G.discover(s, "legacy"), false);
+  assert.equal(G.discover(s, "workspace"), false);
   s.skills.push("database");
-  assert.ok(G.story(s, "archive"));
+  assert.ok(G.story(s, "attachment"));
   assert.equal(G.discover(s, "channel"), false);
   s.skills.push("systems");
-  s.settings.offline = true;
+  s.settings.isolated = true;
   assert.ok(G.discover(s, "channel"));
   assert.equal(s.stories.employee, 3);
 });
@@ -97,36 +97,36 @@ test("all storylines and final promotion are reachable through ordinary progress
   assert.equal(G.promote(s, "specialist"), false);
   assert.ok(G.story(s, "observe"));
   assert.ok(G.story(s, "quarantine"));
-  assert.ok(G.story(s, "patch"));
-  assert.equal(s.stories.hacker, 5);
-  assert.equal(G.story(s, "patch"), false);
+  assert.ok(G.story(s, "sign"));
+  assert.equal(s.stories.quickfix, 5);
+  assert.equal(G.story(s, "sign"), false);
   for (let i = 0; i < 4; i++) assert.ok(G.story(s, "duck"));
   assert.equal(G.story(s, "duck"), false);
   assert.ok(G.buy(s, "database"));
   assert.ok(G.buy(s, "systems"));
   s.settings.legacy = true;
-  G.research(s);
+  G.read(s);
   s.jobs[0].paused = true;
-  G.discover(s, "legacy");
-  G.story(s, "archive");
-  s.settings.offline = true;
+  G.discover(s, "workspace");
+  G.story(s, "attachment");
+  s.settings.isolated = true;
   G.discover(s, "channel");
-  assert.deepEqual(s.stories, { employee: 3, hacker: 5, duck: 4, career: 4 });
+  assert.deepEqual(s.stories, { employee: 3, quickfix: 5, duck: 4, career: 4 });
 });
 test("AI security handles the threat and local model adds compute", () => {
   const s = G.fresh();
-  s.skills.push("agents", "local");
+  s.skills.push("assistant", "local");
   s.ai = "security";
-  s.stories.hacker = 1;
+  s.stories.quickfix = 1;
   G.tick(s, 40);
-  assert.equal(s.stories.hacker, 5);
+  assert.equal(s.stories.quickfix, 5);
   assert.equal(G.workers(s), 2);
 });
 test("save restoration handles offline time, paused jobs, and malformed data", () => {
   const s = G.fresh(1000);
-  G.research(s);
+  G.read(s);
   const resumed = G.restore(JSON.stringify(s), 61000);
-  assert.equal(resumed.xp, 8);
+  assert.equal(resumed.knowledge, 8);
   assert.equal(resumed.jobs.length, 0);
   s.jobs[0].paused = true;
   assert.equal(G.restore(s, 99999999).jobs[0].done, 0);

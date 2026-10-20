@@ -10,18 +10,31 @@ Requires Python 3 (or any static web server). No build or dependencies are neede
 python3 -m http.server 8000
 ```
 
-Open **http://localhost:8000**. `npm start` runs the same server. Keep these files together: `index.html`, `style.css`, `app.js`, and `game.js`. Do not open the HTML as a `file://` URL; the browser needs HTTP to load JavaScript modules.
+Open **http://localhost:8000**. `npm start` runs the same server. Keep these files together: `index.html`, `style.css`, `app.js`, `game.js` and `assets/`. Do not open the HTML as a `file://` URL; the browser needs HTTP to load JavaScript modules.
 
-Choose a feature in Pocket Notes, start development, test, debug, and release. Research earns knowledge while other jobs run. Spend release income on tools and languages. Every three releases earns a promotion review in the company inbox.
+You are a new developer at **Stillwater Systems**, a company that sells calm. The game is a desktop operating system, Stillwater OS: drag, resize, minimize and zoom windows, switch tabs, read notifications, and open programs from the dock.
 
-- Five projects, three feature choices, nine upgrades, and five career ranks.
-- Shared CPU capacity, pause/resume, safe/fast development, a release scheduler, and simulated local AI assignments.
-- Four complete story arcs: the previous employee, a hacker, promotions, and an ordinary duck.
-- Eight nested settings levels, two conditional discoveries, and permanent discovery bookmarks.
-- Automatic local saves, JSON backup/import, and up to two hours of offline job progress. Offline work only finishes jobs already selected; it does not invent new features.
-- Responsive desktop/mobile layouts, keyboard-operable controls, and reduced-motion support.
+| Program | What it does |
+| --- | --- |
+| Workbench | One tab per project: choose a feature, write, test, debug, ship. |
+| Toolshed | Spend budget on languages, tools, hardware and AI help. |
+| Library | Read the documentation for knowledge while other jobs run. |
+| Conductor | The release pipeline and the AI assistant's assignment. |
+| Mail | Promotions from People & Serenity; recovered mail from the previous user. |
+| Activity Monitor | Processes (pause and resume), diagnostic channels, security incidents, the event log. |
+| The Daily Current | The company newsletter's increasingly alarming duck coverage, and what actually happened. |
+| Notes | Sticky notes left by the previous user, found as you go deeper. |
+| Files | Discoveries, bookmarked automatically. |
+| System Settings | Wallpaper, transparency, accent, reduced motion, and settings that go much deeper than they look. |
 
-The game runs locally with no accounts, paid APIs, or real AI calls. Optional Google Fonts have system-font fallbacks. Graphics are CSS and text, so Vixl was not needed.
+- Five projects, three feature choices, nine upgrades, five career ranks.
+- Shared processor capacity, pause/resume, safe/fast development, a release scheduler, simulated local AI.
+- Four stories: the previous employee, an over-helpful plugin, promotions, and an ordinary duck. Three story moments interrupt the calm.
+- An eight-level settings explorer with decoy folders, two conditional discoveries, and permanent bookmarks.
+- Automatic local saves, JSON backup/import, and up to two hours of offline job progress.
+- Responsive desktop and phone layouts, keyboard-operable controls, and reduced-motion support.
+
+Everything runs locally with no accounts, paid APIs or real AI calls. Optional Google Fonts fall back to system fonts. The watercolor wallpapers in `assets/wallpapers` were painted with [Vixl](https://github.com/jxburros/Vixl); `tools/make-wallpapers.py` regenerates them. Icons are inline SVG.
 
 ## Validation
 
@@ -35,12 +48,12 @@ The engine tests cover release gating, resource sharing, progression requirement
 
 ```sh
 python -m pip install playwright
-python -m playwright install chromium
+python -m playwright install chromium   # or set CHROMIUM=/path/to/chrome
 python tests/browser.py
 ```
 
 ## Implementation decisions
 
-The concept deliberately leaves platforms, timing, economy, characters, and endings open. This implementation uses dependency-free browser modules, short tasks (8–22 seconds before modifiers), permanent knowledge requirements, and spendable budget. Mara Chen and Meridian are original names supplied for the playable story. All paths remain available regardless of career direction; the promotion choice is narrative, not a separate skill tree. There is a completion message after all four stories, followed by unlimited free play. There is no prestige reset or backend.
+The concept deliberately leaves platforms, timing, economy, characters, and endings open. This implementation uses dependency-free browser modules, short tasks (8–22 seconds before modifiers), permanent knowledge requirements, and spendable budget. Mara Chen and Stillwater Systems are original names supplied for the playable story. All paths remain available regardless of career direction; the promotion choice is narrative, not a separate skill tree. There is a completion message after all four stories, followed by unlimited free play. There is no prestige reset or backend.
 
-Game rules live in `game.js`; presentation and browser storage in `app.js`. See [desktop preview](docs/desktop.png) and [mobile preview](docs/mobile.png).
+Game rules live in `game.js`; the desktop, windows, story moments and browser storage live in `app.js`. Window layout and appearance preferences are stored separately from the game save, so a save file never depends on screen size. See [desktop preview](docs/desktop.png) and [mobile preview](docs/mobile.png).
