@@ -15,3 +15,5 @@ To bump locally, obtain the pinned toolkit at `.toolkit`, run `node .toolkit/src
 Validation for this migration: shared engine syntax/test suite and workflow lint; manifest/embedded-version validation is run against the prepared changes. Hosted/native consumer release dry runs and actual publication have not been performed from these unmerged branches. No release/tag was created by this migration.
 
 There are currently no real DLC packs in the catalog. The old tag/dispatch publisher is replaced by a read-only callable packaging adapter. Before adding a real pack, declare its own `dlc-ID` app/version/tagPrefix/assets/notes in the manifest/config, prepare its catalog entry in the reviewed version change, and call the adapter from the release graph; do not push catalog changes from the publisher.
+
+Hosted validation note (2026-10-20): GitHub reported that an Actions budget prevented some jobs from starting. Other repositories also reported dependency advisories in unchanged dependency graphs. These gates remain enforced; the migration does not claim an end-to-end native release where those checks are blocked.
