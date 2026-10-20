@@ -3,84 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#172d2b" />
-    <title>Advanced Settings — Meridian Workstation</title>
+    <meta name="theme-color" content="#eef0f8" />
+    <title>Advanced Settings — Stillwater OS</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236f97dc'/%3E%3Cstop offset='1' stop-color='%23e48cb0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M16 7c3 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-7 6-11z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="systembar">
-      <span
-        ><b class="mark">m</b> MERIDIAN
-        <span class="muted">/ employee workspace</span></span
-      ><span
-        ><span class="status-dot"></span> LOCAL SESSION <span id="clock"></span
-      ></span>
-    </div>
-    <div class="desktop">
-      <aside class="sidebar">
-        <a class="brand" href="#overview"
-          >Advanced<br />Settings<span>WORKSTATION OS · 04.17</span></a
-        >
-        <div class="profile">
-          <div class="avatar">JD</div>
-          <div><strong>You, probably</strong><small id="rank"></small></div>
-        </div>
-        <div class="nav-label">WORKSPACE</div>
-        <nav id="nav"></nav>
-        <div class="nav-label">PINNED DISCOVERIES</div>
-        <div id="pins"></div>
-        <div class="sidebar-bottom">
-          <span class="status-dot"></span> All work is simulated.<br /><span
-            class="muted"
-            >The satisfaction is real.</span
-          >
-        </div>
-      </aside>
-      <main>
-        <header class="page-header">
-          <div>
-            <div class="eyebrow" id="breadcrumb">WORKSPACE / OVERVIEW</div>
-            <h1 id="title">A little more capable.</h1>
-          </div>
-          <button data-action="navigate" data-id="settings" class="quiet">
-            ⚙ Preferences
-          </button>
-        </header>
-        <div id="stats" class="stats"></div>
-        <div id="content"></div>
-        <footer>
-          MERIDIAN SOFTWARE GROUP <span>Property of the company. Mostly.</span
-          ><span id="save-status">Saved locally</span>
-        </footer>
-      </main>
-      <aside class="activity">
-        <div class="activity-title">
-          SYSTEM ACTIVITY <span class="status-dot"></span>
-        </div>
-        <div class="monitor">
-          <div class="monitor-label">COMPUTE ALLOCATION <b id="cpu"></b></div>
-          <div class="cpu-bars" aria-hidden="true">
-            ▂ ▅ ▃ ▇ ▄ ▆ ▂ ▅ ▇ ▃ ▆ ▄ ▅ ▂ ▇ ▅ ▃
-          </div>
-          <small id="job-count"></small>
-        </div>
-        <div id="jobs"></div>
-        <div class="activity-title log-title">EVENT LOG</div>
-        <div id="logs"></div>
-        <div class="sticky-note">
-          IT reminder<br /><strong
-            >Do not delete files named<br />“probably important”.</strong
-          ><small>We have tried this.</small>
-        </div>
-      </aside>
-    </div>
-    <div id="toast" role="status" aria-live="polite"></div>
-    <input
-      type="file"
-      id="import-file"
-      accept="application/json,.json"
-      hidden
-    />
+    <div id="wallpaper" aria-hidden="true"></div>
+    <header class="menubar">
+      <div class="menus">
+        <button class="logo" data-action="open" data-id="settings" data-tab="about" aria-label="About this workstation">
+          <span class="logo-mark"></span>
+        </button>
+        <strong id="active-app">Desktop</strong>
+        <button class="menu" data-action="menu" data-id="file">File</button>
+        <button class="menu" data-action="menu" data-id="edit">Edit</button>
+        <button class="menu" data-action="menu" data-id="window">Window</button>
+        <button class="menu" data-action="menu" data-id="help">Help</button>
+      </div>
+      <div class="status">
+        <span id="stats" class="stats"></span>
+        <button id="calm" class="calm" data-action="calm" aria-label="Calm Index"></button>
+        <span id="clock"></span>
+      </div>
+    </header>
+    <main id="desktop">
+      <div id="icons" class="icons" aria-label="Desktop"></div>
+      <aside id="widgets" class="widgets" aria-label="Widgets"></aside>
+      <div id="windows"></div>
+    </main>
+    <nav id="dock" class="dock" aria-label="Dock"></nav>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+    <div id="moment" class="moment" hidden></div>
+    <input type="file" id="import-file" accept="application/json,.json" hidden />
     <script type="module" src="app.js"></script>
   </body>
 </html>

@@ -4,56 +4,56 @@ export const SKILLS = [
     name: "Web development",
     cost: 70,
     xp: 15,
-    desc: "Build services with larger audiences. Unlocks the company intranet.",
+    desc: "Make things for browsers. Unlocks Lunchboard, the lunch portal that is somehow mission-critical.",
   },
   {
     id: "tests",
     name: "Test harness",
     cost: 90,
     xp: 25,
-    desc: "Tests also fix one defect. Less time chasing semicolons.",
+    desc: "Tests now fix one defect on the way through. Real tests, as opposed to the other kind.",
   },
   {
     id: "hardware",
     name: "Second CPU core",
     cost: 130,
     xp: 40,
-    desc: "Two jobs run at full speed. Research and build at the same time.",
+    desc: "Two jobs at full speed. Read and build at once, like a person with two hands.",
   },
   {
     id: "database",
     name: "Databases",
     cost: 140,
     xp: 50,
-    desc: "Unlock data projects and read archived employee records.",
+    desc: "Unlocks Archive Index and read access to the personnel archive. Use responsibly, or at least quietly.",
   },
   {
     id: "scheduler",
     name: "Task scheduler",
     cost: 180,
     xp: 65,
-    desc: "Automatically test, debug, and release completed work. You choose the next features.",
+    desc: "Tests, debugs and ships finished work by itself. It will not choose features. It has no taste.",
   },
   {
     id: "autocomplete",
     name: "Autocomplete",
     cost: 160,
     xp: 75,
-    desc: "Writing tasks run 40% faster.",
+    desc: "Writing jobs run 40% faster. Suggests the next line, and occasionally the next thought.",
   },
   {
     id: "systems",
     name: "Systems programming",
     cost: 220,
     xp: 95,
-    desc: "Build system tools and inspect the hidden diagnostic channel.",
+    desc: "Unlocks Quiet Monitor and the kind of diagnostics that do not show up in Diagnostics.",
   },
   {
     id: "agents",
     name: "AI task assistant",
     cost: 300,
     xp: 120,
-    desc: "Assign a local assistant to development, research, or security.",
+    desc: "A local assistant you can assign to development, research or security. Very polite about everything.",
   },
   {
     id: "local",
@@ -61,15 +61,15 @@ export const SKILLS = [
     cost: 380,
     xp: 170,
     requires: "agents",
-    desc: "Unlock a third worker and stronger AI assignments.",
+    desc: "A third worker and a stronger assistant. Runs entirely on this machine, which is now warm.",
   },
 ];
 export const PROJECTS = [
   {
     id: "notes",
     name: "Pocket Notes",
-    kind: "SCRIPTING",
-    desc: "A small utility. An unreasonable number of opinions about fonts.",
+    kind: "SCRIPT",
+    desc: "A tiny notes utility with an unreasonable number of opinions about fonts.",
     skill: null,
     base: 45,
   },
@@ -77,7 +77,7 @@ export const PROJECTS = [
     id: "intranet",
     name: "Lunchboard",
     kind: "WEB SERVICE",
-    desc: "An internal portal for lunch orders and other critical infrastructure.",
+    desc: "The internal lunch portal. Three outages last quarter, all of them during lunch.",
     skill: "web",
     base: 80,
   },
@@ -85,7 +85,7 @@ export const PROJECTS = [
     id: "archive",
     name: "Archive Index",
     kind: "DATABASE",
-    desc: "Make decades of company records searchable. Including the awkward ones.",
+    desc: "Make forty years of company records searchable, including the ones nobody asked for.",
     skill: "database",
     base: 110,
   },
@@ -93,7 +93,7 @@ export const PROJECTS = [
     id: "monitor",
     name: "Quiet Monitor",
     kind: "SYSTEMS",
-    desc: "Watch the processes that would prefer not to be watched.",
+    desc: "Watches the processes that would prefer not to be watched.",
     skill: "systems",
     base: 150,
   },
@@ -101,7 +101,7 @@ export const PROJECTS = [
     id: "workspace",
     name: "Workspace Zero",
     kind: "LEGACY",
-    desc: "The previous employee’s abandoned environment, restored.",
+    desc: "Owner: you. Created eleven days before your start date.",
     skill: "legacy",
     base: 180,
   },
@@ -110,7 +110,7 @@ export const FEATURES = [
   {
     id: "search",
     name: "Search",
-    desc: "A useful, reliable addition.",
+    desc: "Find things. Modest, reliable, quietly beloved.",
     time: 14,
     bugs: 1,
     reward: 1,
@@ -118,7 +118,7 @@ export const FEATURES = [
   {
     id: "sync",
     name: "Cloud sync",
-    desc: "More users. More edge cases.",
+    desc: "More users, more edge cases, more feelings.",
     time: 22,
     bugs: 3,
     reward: 1.7,
@@ -126,18 +126,18 @@ export const FEATURES = [
   {
     id: "performance",
     name: "Performance",
-    desc: "Careful work, fewer defects.",
+    desc: "Careful, quiet work. Fewer defects.",
     time: 18,
     bugs: 0,
     reward: 1.2,
   },
 ];
 export const RANKS = [
-  "Junior developer",
+  "Junior Developer (Provisional)",
   "Developer",
-  "Senior developer",
-  "Staff engineer",
-  "Principal engineer",
+  "Senior Developer",
+  "Staff Engineer",
+  "Principal Engineer",
 ];
 export function fresh(now = Date.now()) {
   return {
@@ -160,7 +160,7 @@ export function fresh(now = Date.now()) {
     bookmarks: [],
     logs: [
       {
-        text: "Welcome to your new workstation. The previous user has been mostly removed.",
+        text: "Welcome to Stillwater. Your workstation has been prepared for you. The previous user has been mostly removed.",
         time: now,
       },
     ],
@@ -232,13 +232,13 @@ export function release(s, id) {
   p.stage = "plan";
   log(
     s,
-    `${def.name} v${p.version}.0 shipped. +$${money}. All tests pass. Somehow.`,
+    `${def.name} v${p.version}.0 shipped. +$${money}. Every test passed on the first run, as they always do.`,
   );
   if (s.releases === 2) {
     s.stories.hacker = 1;
     log(
       s,
-      "Security: an unrecognized plugin is consuming build resources. Inspect Diagnostics.",
+      "QuickFix installed itself to help with build performance. Build performance is down 20%. QuickFix is thrilled.",
     );
   }
   return true;
@@ -255,7 +255,7 @@ export function buy(s, id) {
     return false;
   s.money -= k.cost;
   s.skills.push(id);
-  log(s, `${k.name} installed. Your workstation is a little more yours.`);
+  log(s, `${k.name} installed. Your workstation is a little more yours, legally still ours.`);
   return true;
 }
 export function research(s) {
@@ -271,7 +271,7 @@ export function promote(s, track) {
   s.money += 100 * s.rank;
   log(
     s,
-    `Promoted to ${RANKS[s.rank]}. Budget increased by $${100 * s.rank}. Your title now has ${s.rank + 1} syllables of authority.`,
+    `Promoted to ${RANKS[s.rank]}. Budget +$${100 * s.rank}. Your email signature was updated eleven minutes before anyone told you.`,
   );
   return true;
 }
@@ -287,14 +287,14 @@ export function discover(s, id) {
     s.stories.employee = Math.max(1, s.stories.employee);
     log(
       s,
-      "Workspace Zero recovered. A note reads: “The fourth channel is not on the network.”",
+      "Workspace Zero restored: one project, 212 notes, zero colors. A sticky note on the README says: “The fourth channel is not on the network. That is the point.”",
     );
   }
   if (id === "channel") {
     s.stories.employee = 3;
     log(
       s,
-      "Private channel recovered: Mara left voluntarily. Her audit proves the company inflated deployment metrics. She left a reproducible trail, not a ghost.",
+      "Channel 04 opened. Mara Chen left on her own, with a reproducible audit: Stillwater Assure does not measure anything. The dashboards are green because green is the color.",
     );
   }
   s.bookmarks.push(id);
@@ -309,7 +309,7 @@ export function story(s, action) {
     s.stories.employee = 2;
     log(
       s,
-      "Archive / Mara Chen: resignation accepted. Attachment: “Disconnect before checking channel four. Keep a copy for your review.”",
+      "Archive › Personnel › Chen, Mara: resignation accepted. Exit interview: “declined, politely.” Attachment: “Disconnect before you look at channel four. They cannot watch what is not connected.”",
     );
     return true;
   }
@@ -317,13 +317,13 @@ export function story(s, action) {
     s.stories.hacker = 2;
     log(
       s,
-      "Trace captured: quick-fix.plugin sends metrics to an outside contractor. Quarantine is now safe.",
+      "Trace complete. QuickFix copies your real build times to an outside address owned by temp-contractor-0417. Someone wants the numbers Stillwater does not publish.",
     );
     return true;
   }
   if (action === "quarantine" && [1, 2].includes(s.stories.hacker)) {
     s.stories.hacker = s.stories.hacker === 2 ? 3 : 4;
-    log(s, "Suspicious plugin quarantined. Build capacity restored.");
+    log(s, "QuickFix quarantined. It asked to stay. Build capacity restored.");
     return true;
   }
   if (action === "patch" && [3, 4].includes(s.stories.hacker)) {
@@ -331,7 +331,7 @@ export function story(s, action) {
     s.xp += 25;
     log(
       s,
-      "Signature firewall enabled. The contractor’s abandoned credential is revoked; this intrusion will not recur.",
+      "Signing policy enforced. temp-contractor-0417 revoked. Its last sign-in was from this desk, on a Thursday, at 4:17 p.m. Probably Greg’s space heater.",
     );
     return true;
   }
@@ -341,10 +341,10 @@ export function story(s, action) {
       s,
       [
         "",
-        "Facilities: the duck waits beside a warm exhaust vent. Cafeteria staff leave oats at 12:15.",
-        "Camera log: boxes sometimes contain snacks. The duck has learned this. It cannot predict layoffs.",
-        "Door audit: the motion sensor detects ducks. Security is reviewing the definition of employee.",
-        "Directory corrected: “Board member: Duck” was a joke entry. A safe outdoor feeding area is approved.",
+        "Facilities: the duck sits by the loading-dock exhaust vent, which is warm. The cafeteria leaves oats out at 12:15. Mystery solved.",
+        "Camera log: the duck follows anyone carrying a cardboard box. Break-room boxes contain crackers. It predicts snacks, not layoffs.",
+        "Door audit: the secure wing opens for anything over 1.2 kg moving with purpose. The duck qualifies. Several interns do not.",
+        "Directory fix: “Board member: Duck” was a joke entry that synced to the public site. The duck has been offered a pond-side feeding area instead.",
       ][s.stories.duck],
     );
     return true;
@@ -388,7 +388,7 @@ export function tick(s, seconds) {
       if (j.kind === "research") {
         s.research++;
         s.xp += 8;
-        log(s, "Research complete. +8 knowledge.");
+        log(s, "Reading complete. +8 knowledge. Some of it was even true.");
       }
     }
     if (s.auto && s.skills.includes("scheduler"))
@@ -528,7 +528,7 @@ export function restore(raw, now = Date.now()) {
   if (elapsed > 60)
     log(
       s,
-      `Welcome back. Processes ran for ${Math.round(elapsed / 60)} minutes (offline limit: 2 hours).`,
+      `Welcome back. Your processes kept working for ${Math.round(elapsed / 60)} minutes without you (limit: 2 hours). They did not miss you.`,
     );
   return s;
 }
