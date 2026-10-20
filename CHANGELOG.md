@@ -2,6 +2,10 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
+## 1.2.0
+
+- Maintenance release.
+
 ## 1.1.0
 
 - **Windows edition.** An installer for Windows that updates itself from GitHub Releases.
