@@ -24,9 +24,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   plan:
-    uses: JX-Holdings-LLC/release-infrastructure/.github/workflows/plan.yml@181636b602317ba703c3f4bf12775c34560f4efb
+    uses: JX-Holdings-LLC/release-infrastructure/.github/workflows/plan.yml@c90f21a4835c8b37fa4345c7439fc76b42395344
     with:
-      toolkit-ref: 181636b602317ba703c3f4bf12775c34560f4efb
+      toolkit-ref: c90f21a4835c8b37fa4345c7439fc76b42395344
       channel: ${{ inputs.channel }}
       app: ${{ inputs.app }}
   windows:
@@ -107,7 +107,7 @@ jobs:
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
         repository: JX-Holdings-LLC/release-infrastructure
-        ref: 181636b602317ba703c3f4bf12775c34560f4efb
+        ref: c90f21a4835c8b37fa4345c7439fc76b42395344
         path: .toolkit
         persist-credentials: false
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -129,11 +129,11 @@ jobs:
     - plan
     - assemble
     if: needs.plan.outputs.selected == 'true' && fromJSON(needs.plan.outputs.apps)['advanced-settings'].selected
-    uses: JX-Holdings-LLC/release-infrastructure/.github/workflows/finish.yml@181636b602317ba703c3f4bf12775c34560f4efb
+    uses: JX-Holdings-LLC/release-infrastructure/.github/workflows/finish.yml@c90f21a4835c8b37fa4345c7439fc76b42395344
     permissions:
       contents: write
     with:
-      toolkit-ref: 181636b602317ba703c3f4bf12775c34560f4efb
+      toolkit-ref: c90f21a4835c8b37fa4345c7439fc76b42395344
       source-sha: ${{ needs.plan.outputs.sha }}
       app: advanced-settings
       security: standard
