@@ -196,6 +196,9 @@ const NOTES = [
   [() => s.skills.includes("database"), "If you find a project with your name on it, check the creation date before you open it."],
   [() => s.stories.employee >= 2 || s.suspicion >= 25, "The Calm Index in the corner has no sensor for the clients. It has one for you."],
   [() => s.stories.duck >= 2, "I investigated the duck. It is the only thing in this building that is exactly what it looks like. Leave it some oats."],
+  [() => s.releases >= 2, "Users are a feeling too. They leave quietly when nothing changes. Ship something small to an old project now and then."],
+  [() => s.releases >= 3, "Your manager always walks over at the worst moment. Ctrl+Shift+L beats any window. Locked screens don’t get questions."],
+  [() => s.releases >= 4, "Whatever the product collects, Quiet Monitor will find. It doesn’t care whose name is on the watching."],
   [() => s.releases >= 2, "Reggie on platform asks everyone about their weekends. Answer him properly. He keeps the answers."],
   [() => (s.threads.bella?.step ?? 0) >= 4, "People come back from the Wellness Wing very polite. The real them is still in there. Remind them of something silly."],
   [() => s.rank >= 2, "Greg is real. The space heater is real. I want you to know at least two things here are real."],
@@ -287,6 +290,9 @@ function goal() {
     return [s.over === "fired" ? "You were let go" : "Your workstation was reimaged", "This workstation is finished. Something kept track of what you found. Start again whenever you like.", "settings", "Start again", "reset"];
   if (!s.releases)
     return ["Ship something", "Open Workbench, pick a feature for Pocket Notes, then write, test, fix and ship it. Nobody expects much. That’s the nice part.", "workbench", "Open Workbench"];
+  const boss = s.incidents.boss;
+  if (boss.state === 1)
+    return ["Your manager is on the way", `About ${Math.max(0, Math.ceil(boss.at + G.relaxed(s, G.BOSS.window) - s.elapsed))} seconds. Minimize the personal stuff, or lock the screen (Ctrl+Shift+L).`, "", "Minimize everything", "minall"];
   const waiting = G.PROJECTS.find((d) => s.projects[d.id]?.stage === "task");
   if (waiting)
     return ["A release is waiting on you", `${waiting.name} passed its tests, but it still needs a ${G.T.TASK_NAMES[G.T.kindOf(waiting.id, s.projects[waiting.id].version)].toLowerCase()} before it can ship. The scheduler won’t do this part.`, "workbench", "Open Workbench"];
@@ -294,6 +300,9 @@ function goal() {
     return ["Your growth conversation is ready", "People & Serenity would like to discuss your trajectory. It’s in Mail.", "mail", "Open Mail"];
   if (s.stories.quickfix > 0 && s.stories.quickfix < 5)
     return ["Something is using your processor", "A plugin you didn’t install is helping. Activity Monitor has opinions about that.", "activity", "Open Activity Monitor"];
+  const drifting = G.PROJECTS.find((d) => s.projects[d.id]?.drift && s.projects[d.id].stage === "plan");
+  if (drifting)
+    return ["Users are drifting", `${drifting.name} hasn’t shipped in a while, and its users are wandering off. A new version brings them back.`, "workbench", "Open Workbench", "open"];
   if (!s.skills.includes("web"))
     return ["Widen your horizons", "Install Web development in Toolshed to unlock a second project. The lunch portal needs you.", "toolshed", "Open Toolshed"];
   if (!s.skills.includes("scheduler"))
@@ -357,7 +366,20 @@ function workbench() {
   });
   return tabs("workbench", tabList, cur) + `<div class="pane">${projectView(def)}</div>`;
 }
+function usersHTML(p) {
+  if (!p.version) return "";
+  const rate = p.users * G.INCOME * G.policy(s, "income") * 60;
+  const fresh = Math.max(0, Math.ceil((G.STALE - p.age) / 60));
+  return `<div class="users-line"><span><b>${Math.round(p.users).toLocaleString()}</b> users</span><span>${money(rate)}/min while they stay</span><span>next version pays ×${G.demand(p).toFixed(2)}</span><span class="${p.drift ? "warn" : ""}">${p.drift ? "drifting away · ship to win them back" : `settled for about ${fresh} more min`}</span></div>`;
+}
+function policyHTML() {
+  const made = Object.entries(s.decisions);
+  if (!made.length) return "";
+  return `<h3>Product policy</h3><ul class="policy">${made.map(([k, v]) => `<li><b>${G.POLICIES[k].name}: ${G.POLICIES[k].options[v].name}</b> ${G.POLICIES[k].options[v].effect}</li>`).join("")}</ul>`;
+}
 function projectExtra(def, p) {
+  if (def.id === "monitor" && p.version && s.decisions.telemetry === "all")
+    return `<p class="fine">Quiet Monitor v${p.version}.0 is watching. Its list of things that watch people includes Stillwater product telemetry, collecting everything, approved by you.</p>`;
   if (def.id === "lunchboard" && p.version)
     return `<p class="fine">Lunchboard is up and earning about ${money(p.version * 0.04 * 60)} a minute in “engagement”.</p>`;
   if (def.id === "archive" && p.version)
@@ -389,7 +411,7 @@ function projectView(def) {
   const steps = ["Plan", "Write", "Test", "Debug", "Task", "Ship"]
     .map((n, i) => `<li class="${i < at ? "done" : i === at && open ? "now" : ""}">${n}</li>`)
     .join("");
-  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${card(control, "controls")}${projectExtra(def, p)}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test.</p>`;
+  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${usersHTML(p)}${card(control, "controls")}${projectExtra(def, p)}${policyHTML()}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test, but the users each version brings make the next one pay more. Users drift away from projects that stop shipping.</p>`;
 }
 function toolshed() {
   const groups = {
@@ -397,8 +419,8 @@ function toolshed() {
     tools: ["tests", "autocomplete", "scheduler"],
     machine: ["hardware", "assistant", "local"],
   };
-  const cur = tabOf("toolshed", Object.keys(groups));
-  const rows = groups[cur]
+  const cur = tabOf("toolshed", [...Object.keys(groups), "upgrades"]);
+  const rows = cur === "upgrades" ? upgradeRows() : groups[cur]
     .map((id) => {
       const k = G.SKILLS.find((k) => k.id === id);
       const own = s.skills.includes(k.id);
@@ -408,9 +430,19 @@ function toolshed() {
     })
     .join("");
   return (
-    tabs("toolshed", [["languages", "Languages"], ["tools", "Tools"], ["machine", "Hardware & AI"]], cur) +
-    `<div class="pane"><div class="balance"><div><span>Budget</span><b>${money(s.money)}</b></div><div><span>Knowledge</span><b>${Math.floor(s.knowledge)}</b></div></div><p class="fine">Knowledge is never spent. It just has to be there. Budget is spent, enthusiastically. Toolshed is the only approved source of software on this workstation.</p>${rows}</div>`
+    tabs("toolshed", [["languages", "Languages"], ["tools", "Tools"], ["machine", "Hardware & AI"], ["upgrades", "Upgrades"]], cur) +
+    `<div class="pane"><div class="balance"><div><span>Budget</span><b>${money(s.money)}</b></div><div><span>Knowledge</span><b>${Math.floor(s.knowledge)}</b></div></div><p class="fine">${cur === "upgrades" ? "Upgrades can be bought again and again. Each level costs 15% more than the last, and spends knowledge as well as budget, so spending it now can keep you from the next install." : "Installing software only needs the knowledge to be there; it isn’t spent. Upgrades spend it. Budget is spent, enthusiastically. Toolshed is the only approved source of software on this workstation."}</p>${rows}</div>`
   );
+}
+function upgradeRows() {
+  return G.UPGRADES.map((u) => {
+    const n = s.upgrades[u.id] ?? 0;
+    const max = n >= u.max;
+    const c = G.upgradeCost(s, u.id);
+    const locked = u.requires && !s.skills.includes(u.requires);
+    const why = max ? "Maxed out" : locked ? `Needs ${G.SKILLS.find((k) => k.id === u.requires).name}` : s.knowledge < c.knowledge ? `Needs ${c.knowledge} knowledge` : s.money < c.money ? `Needs ${money(c.money)}` : "";
+    return `<div class="shelf ${max ? "owned" : ""}"><div><strong>${u.name} <span class="pill">level ${n} of ${u.max}</span></strong><p>${u.desc}</p><small class="muted">${max ? "No further levels. Facilities checked." : `Next level: ${money(c.money)} · spends ${c.knowledge} knowledge`}</small></div>${button(why || "Upgrade", "upgrade", u.id, !!why, why ? "ghost" : "primary", `aria-label="Upgrade ${u.name}"`)}</div>`;
+  }).join("");
 }
 function library() {
   const busy = s.jobs.find((j) => j.kind === "reading");
@@ -420,7 +452,7 @@ function library() {
       : s.secrets.includes("appendix")
         ? card(`${eyebrow("Appendix H · what “time” means here")}<p>Time here is measured in returns. Each time you leave and come back, the desk keeps a little more of you, and the welcome gets a little less sure who you are. This is normal. This is onboarding.</p>`)
         : card(`${eyebrow("Appendix H")}${s.returns >= 3 ? `<p>The appendix is open. It is shorter than you expected.</p>${button("Read Appendix H", "appendix", "", false, "ghost")}` : "<p>Appendix H is not available yet. Come back later.</p>"}`);
-  return `<div class="pane">${eyebrow("Stillwater Internal Documentation · rev. 41")}<h2>Read the documentation.</h2><p class="lede">Nobody reads it. That’s why it works. Each reading session takes 20 seconds of processor time and leaves you with 8 knowledge, which you keep forever.</p>${card(
+  return `<div class="pane">${eyebrow("Stillwater Internal Documentation · rev. 41")}<h2>Read the documentation.</h2><p class="lede">Nobody reads it. That’s why it works. Each reading session takes 20 seconds of processor time and leaves you with 8 knowledge, which you keep until you spend it on upgrades.</p>${card(
     busy
       ? `<div class="progress-label"><span>Reading${busy.paused ? " · paused" : ""}</span><b data-jobpct="${busy.id}">${pct(busy)}</b></div>${jobBar(busy)}`
       : button("Read the documentation · 20s", "read", "", !!s.over, "primary wide"),
@@ -648,7 +680,7 @@ function settings() {
   const cur = tabOf("settings", sections.map((x) => x[0]));
   let body = "";
   if (cur === "appearance")
-    body = `<h2>Appearance</h2><div class="setting-row"><div><strong>Wallpaper</strong><p>Hand-painted by a watercolor process that also does not exist.</p></div></div><div class="swatches">${Object.entries(WALLPAPERS).map(([w, [name, url]]) => `<button class="wall ${ui.wallpaper === w ? "on" : ""}" data-action="wallpaper" data-id="${esc(w)}" aria-label="${esc(name)} wallpaper" style="background-image:url('${esc(url)}')"><span>${esc(name)}</span></button>`).join("")}</div><div class="setting-row"><div><strong>Window transparency</strong><p>How much of the calm shows through.</p></div><input type="range" id="glass" min="0.2" max="0.9" step="0.05" value="${1.1 - ui.glass}" aria-label="Window transparency" /></div><div class="setting-row"><div><strong>Accent</strong><p>Both are on brand. One is slightly more on brand.</p></div><div class="row">${["blue", "pink", "lilac"].map((a) => `<button class="accent-dot a-${a} ${ui.accent === a ? "on" : ""}" data-action="accent" data-id="${a}" aria-label="${a} accent"></button>`).join("")}</div></div>${toggle("Reduce motion", "Fewer animations. Story moments still happen, just more politely.", "still", ui.still, false, "pref")}`;
+    body = `<h2>Appearance</h2><div class="setting-row"><div><strong>Wallpaper</strong><p>Hand-painted by a watercolor process that also does not exist.</p></div></div><div class="swatches">${Object.entries(WALLPAPERS).map(([w, [name, url]]) => `<button class="wall ${ui.wallpaper === w ? "on" : ""}" data-action="wallpaper" data-id="${esc(w)}" aria-label="${esc(name)} wallpaper" style="background-image:url('${esc(url)}')"><span>${esc(name)}</span></button>`).join("")}</div><div class="setting-row"><div><strong>Window transparency</strong><p>How much of the calm shows through.</p></div><input type="range" id="glass" min="0.2" max="0.9" step="0.05" value="${1.1 - ui.glass}" aria-label="Window transparency" /></div><div class="setting-row"><div><strong>Accent</strong><p>Both are on brand. One is slightly more on brand.</p></div><div class="row">${["blue", "pink", "lilac"].map((a) => `<button class="accent-dot a-${a} ${ui.accent === a ? "on" : ""}" data-action="accent" data-id="${a}" aria-label="${a} accent"></button>`).join("")}</div></div>${toggle("Reduce motion", "Fewer animations. Story moments still happen, just more politely.", "still", ui.still, false, "pref")}${toggle("Relaxed timing", "Moments that need a quick reaction wait twice as long. Everything else, rewards included, stays the same.", "relaxed", s.settings.relaxed)}`;
   else if (cur === "development")
     body = `<h2>Development</h2>${toggle("Safe development mode", "Careful writing means fewer defects. Turn it off to write 30% faster and add two defects to every new feature. Bold.", "safe", s.settings.safe)}`;
   else if (cur === "sound")
@@ -1246,8 +1278,14 @@ function markRead() {
   }
   if (visible("mail") && ui.win.mail.tab === "personal") G.readThread(s, "parents");
 }
+/* What a manager walking past would see: a personal page in Wayfinder, or the sudoku. */
+function presence() {
+  const shown = (id) => !!(ui.win[id]?.open && !ui.win[id].min && !document.hidden && !lockState);
+  s.playing = shown("sudoku");
+  s.browsing = shown("browser") && ui.web.page?.status === "ok" && !!ui.web.page.category;
+}
 function render() {
-  s.playing = !!(ui.win.sudoku?.open && !ui.win.sudoku.min);
+  presence();
   markRead();
   renderChrome();
   renderWindows();
@@ -1281,6 +1319,9 @@ function notify(text, app = "welcome") {
   setTimeout(() => t.remove(), 6700);
 }
 function sourceOf(text) {
+  if (/^Your manager/.test(text)) return "browser";
+  if (/^Upgrade installed/.test(text)) return "toolshed";
+  if (/users are drifting|^Quiet Monitor (found|looked)/.test(text)) return "workbench";
   if (/^People & Serenity|^IT:|^IT Security|^Kevin|replied all|got cake/.test(text)) return "mail";
   if (/^Workspace Zero v|passed for .* v\d|rejected\. Take|^The assistant finished|^Migration rolled back|^Lunchboard went down/.test(text)) return "workbench";
   if (/^Live help|Translate translated|box7|Panel B, including B7|cover to cover/.test(text)) return /Live help/.test(text) ? "help" : /cover/.test(text) ? "library" : "browser";
@@ -1609,6 +1650,9 @@ document.addEventListener("click", (e) => {
       break;
     case "buy":
       changed = G.buy(s, id);
+      break;
+    case "upgrade":
+      changed = G.upgrade(s, id);
       break;
     case "read":
       changed = G.read(s);
@@ -2240,6 +2284,10 @@ function lockScreen(state) {
   closePop();
   closeLauncher();
   if (state === "lock" && lockState !== "lock") S.play("lock");
+  if (state === "lock" && G.bossKey(s)) {
+    afterChange();
+    persist();
+  }
   lockState = state;
   saverAt = state === "saver" ? Date.now() : 0;
   const el = $("lock");
@@ -2381,11 +2429,11 @@ document.addEventListener("dblclick", (e) => {
 /* ---------- clock ---------- */
 let last = Date.now(),
   saveClock = 0;
-const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time, s.over, s.trace, s.elapsed < s.duckLock, ui.win.help?.open && Math.floor(s.elapsed / 5)]);
+const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time, s.over, s.trace, s.elapsed < s.duckLock, ui.win.help?.open && Math.floor(s.elapsed / 5), s.incidents.boss.state === 1 && Math.floor(s.elapsed), s.decisions, s.upgrades, s.settings.relaxed]);
 setInterval(() => {
   const now = Date.now();
   const was = sig();
-  s.playing = !!(ui.win.sudoku?.open && !ui.win.sudoku.min && !document.hidden);
+  presence();
   // A background tab, or a long gap after the browser froze it, counts as being away:
   // jobs keep going, but nothing can lose you the game while you aren't looking.
   const dt = (now - last) / 1000;

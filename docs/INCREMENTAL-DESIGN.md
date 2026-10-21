@@ -1,6 +1,20 @@
 # Deepening the incremental layer
 
-Design notes for making Advanced Settings' idle/incremental half as rich as its puzzle half. Ideas are marked **(yours)** when they came from the designer and **(proposed)** when they came out of the code review that produced this page. Nothing here is implemented yet.
+Design notes for making Advanced Settings' idle/incremental half as rich as its puzzle half. Ideas are marked **(yours)** when they came from the designer and **(proposed)** when they came out of the code review that produced this page. Version 1.3.0 implements part of it; see **Status** below. "Where things stand" describes the game before that.
+
+## Status (1.3.0)
+
+| Section | State |
+| --- | --- |
+| 1.1 Users | Done. Users belong to projects. They pay per second, raise the next version's reward (demand), and drift away from stale projects down to a loyal 40%. Staleness counts only time at the desk, so nothing drifts offline. A Lunchboard outage costs users. |
+| 1.2 Spendable knowledge | Done, the "costs knowledge" option. Upgrades spend it; installing a skill still only needs it. |
+| 1.3 Scaling curve | Done. The upgrades can be bought repeatedly, each level costing 1.15× the last (memory, a tiered autocomplete model, test suite, release notes). Demand from users keeps a project's earnings per second roughly flat or rising per version, where they used to fall. |
+| 2 Product decisions | Done, with all four candidates (pricing, telemetry, support, roadmap) as Odette's reviews in Ripple, at least two releases apart. Telemetry has delayed consequences in Quiet Monitor, the parents' last email and a later message from Odette. Each review states its immediate effect, and Workbench lists the policy in force. |
+| 3 Mid-game systems | Not started. |
+| 4 Secrets | Two added, each with a hint and a test: Boss key (lock screen) and Nothing to report (telemetry and Quiet Monitor). Six optional story moments are also new. |
+| 5 Fast moments | The boss key only. It needs the player present on a personal page, is telegraphed by a toast and sound, dents the Calm Index if missed, and is measured in `elapsed`. Relaxed timing (Settings › Appearance) doubles its window and the cake's. |
+
+None of this has been play-tested yet. The numbers (`INCOME`, `STALE`, the policy multipliers, the boss timings) live at the top of `game.js`.
 
 ## Where things stand
 

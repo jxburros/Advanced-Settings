@@ -268,6 +268,77 @@ export const SHOP = [
   { id: "crackers", name: "Cardboard box of crackers", cost: 15, flag: 10, desc: "A snack. In a box. Nothing else will happen." },
   { id: "heater", name: "Compact space heater", cost: 60, flag: 10, desc: "Cosy. 1,500 W. What could go wrong on a shared circuit?" },
 ];
+/* Repeatable upgrades. Each level costs 15% more than the last, and spends knowledge as well as budget. */
+export const UPGRADES = [
+  { id: "memory", name: "More memory", cost: 50, knowledge: 10, max: 10, desc: "Every job runs 6% faster per stick. Facilities can always find another stick." },
+  { id: "model", name: "Autocomplete model", cost: 140, knowledge: 30, max: 5, requires: "autocomplete", desc: "Writing runs 10% faster per tier, on top of Autocomplete. Each tier finishes slightly stranger sentences." },
+  { id: "suite", name: "Faster test suite", cost: 90, knowledge: 20, max: 5, requires: "tests", desc: "Testing and debugging run 15% faster per level. The tests still pass. They pass sooner." },
+  { id: "notes", name: "Release notes", cost: 80, knowledge: 15, max: 8, desc: "Every release brings 10% more new users per level. People read them. Nobody knows why." },
+];
+export function upgradeCost(s, id) {
+  const u = UPGRADES.find((x) => x.id === id);
+  const n = s.upgrades[id] ?? 0;
+  return { money: Math.round(u.cost * 1.15 ** n), knowledge: Math.round(u.knowledge * 1.15 ** n) };
+}
+const level = (s, id) => s.upgrades[id] ?? 0;
+
+/* Users. Each shipped project keeps its own. They pay a little while they stay, raise what the next
+   version of that project earns, and drift away from a project that hasn't shipped in a while. */
+export const INCOME = 0.0004; // budget per user per second
+export const STALE = 300; // seconds at the desk without a release before users start to drift
+const DRIFT = 0.0006; // share of users lost per second while drifting
+const LOYAL = 0.4; // nobody drifts below this share of a project's best
+export function demand(p) {
+  return 1 + Math.min(2, Math.sqrt(p?.users ?? 0) / 40);
+}
+
+/* Product reviews: one decision per release or so, asked in Ripple (stories.js), kept for good. */
+export const POLICIES = {
+  pricing: {
+    name: "Pricing",
+    options: {
+      ads: { name: "Free with ads", effect: "40% more new users; each one pays half as much.", growth: 1.4, income: 0.5 },
+      paid: { name: "Paid", effect: "30% fewer new users; each one pays twice as much.", growth: 0.7, income: 2 },
+      calm: { name: "Calm tier", effect: "10% fewer new users; they drift away half as fast.", growth: 0.9, drift: 0.5 },
+    },
+  },
+  telemetry: {
+    name: "Telemetry",
+    options: {
+      all: { name: "Collect everything", effect: "25% more new users, who drift a little slower. The Calm Index reads the same feeds: personal use counts 25% more.", growth: 1.25, drift: 0.8, flag: 1.25 },
+      crash: { name: "Crash reports only", effect: "No change. Crashes, reported." },
+      none: { name: "Nothing at all", effect: "10% fewer new users. Nothing to see.", growth: 0.9 },
+    },
+  },
+  support: {
+    name: "Support",
+    options: {
+      fast: { name: "Within the hour", effect: "Users drift away half as fast; project jobs run 10% slower while you answer them.", drift: 0.5, speed: 0.9 },
+      slow: { name: "Within the week", effect: "Users drift away 50% faster.", drift: 1.5 },
+    },
+  },
+  roadmap: {
+    name: "Roadmap",
+    options: Object.fromEntries(
+      [["search", "Search"], ["sync", "Cloud sync"], ["performance", "Performance"]].map(([id, n]) => [
+        id,
+        { name: n, effect: `${n} features pay 30% more and take 20% less time to write. The other two pay 10% less.`, feature: id },
+      ]),
+    ),
+  },
+};
+/* The product of one effect across every decision made so far. */
+export function policy(s, prop) {
+  let x = 1;
+  for (const [k, v] of Object.entries(s.decisions)) x *= POLICIES[k]?.options[v]?.[prop] ?? 1;
+  return x;
+}
+const roadmap = (s, feature) => (!s.decisions.roadmap ? 1 : s.decisions.roadmap === feature ? 1.3 : 0.9);
+
+/* The boss key: your manager walks over while you're on a personal page. Only while you're here. */
+export const BOSS = { releases: 3, after: 20, window: 10, cooldown: 600 };
+export const relaxed = (s, sec) => (s.settings.relaxed ? sec * 2 : sec);
+
 export const BLOG_TOPICS = [
   { id: "baking", name: "Weekend baking", flag: 6, readers: 3 },
   { id: "tips", name: "Ten productivity tips I do not follow", flag: 6, readers: 5 },
@@ -322,6 +393,8 @@ export const SECRETS = [
   ["manual", "Cover to cover", "Read every page of the documentation."],
   ["redacted", "Redacted", "Some names don’t stay hidden."],
   ["recursion", "Lost in translation", "Translate the translator."],
+  ["bosskey", "Boss key", "Locked screens don’t get questions."],
+  ["nothing", "Nothing to report", "Collect nothing. Then go looking for it."],
 ].map(([id, name, hint]) => ({ id, name, hint }));
 export const ENDINGS = [
   { id: "probation", name: "End of probation", hint: "Finish every story." },
@@ -549,6 +622,12 @@ export const MOMENTS = [
   ["Mom & Dad", "serene", "I am calm. I am calm. I am calm.", "Fix the Serene.", false, (s) => passed(s, "parents", 2)],
   ["Mom & Dad", "pantry", "Freshness is a feeling", "Answer about the Pantry.", false, (s) => passed(s, "parents", 3)],
   ["Mom & Dad", "dinner", "Bring the duck", "Get invited home.", false, (s) => reached(s, "parents", 4)],
+  ["Product", "review", "One question per release", "Answer a product review.", false, (s) => Object.keys(s.decisions).length >= 1],
+  ["Product", "reviews", "A product with a direction", "Answer every product review.", false, (s) => Object.keys(s.decisions).length === Object.keys(POLICIES).length],
+  ["Product", "drift", "Drifting away", "Leave a project alone until its users wander off.", false, (s) => s.marks.includes("drift")],
+  ["Product", "watcher", "One more watcher", "Let Quiet Monitor find your own telemetry.", false, (s) => s.marks.includes("telemetry")],
+  ["The office", "lookbusy", "Look busy", "Hide a personal page before your manager arrives.", false, (s) => s.marks.includes("boss:hid")],
+  ["The office", "seen", "Seen", "Let your manager see a personal page.", false, (s) => s.marks.includes("boss:caught")],
   ["The office", "storm", "Reply-all storm", "Survive an all-staff thread.", false, (s) => s.incidents.replyall.state >= 1],
   ["The office", "calmed", "Thread calmed", "Wait out the storm.", false, (s) => s.incidents.replyall.state === 2],
   ["The office", "kevin", "Kevin’s birthday", "Get to kitchen 3 in time.", false, (s) => s.incidents.cake.state === 2],
@@ -592,7 +671,7 @@ const GAMES = ["sudoku"];
 
 export function fresh(now = Date.now()) {
   return {
-    version: 5,
+    version: 6,
     money: 40,
     knowledge: 0,
     users: 0,
@@ -600,14 +679,16 @@ export function fresh(now = Date.now()) {
     rank: 0,
     skills: [],
     projects: {
-      pocket: { version: 0, stage: "plan", bugs: 0, feature: "search" },
+      pocket: project(),
     },
+    upgrades: {},
+    decisions: {},
     jobs: [],
     reading: 0,
     auto: false,
     ai: "development",
     aiClock: 10,
-    settings: { safe: true, legacy: false, duck: true, isolated: false },
+    settings: { safe: true, legacy: false, duck: true, isolated: false, relaxed: false },
     stories: { employee: 0, quickfix: 0, duck: 0, career: 0 },
     bookmarks: [],
     logs: [
@@ -639,11 +720,13 @@ export function fresh(now = Date.now()) {
     blog: { posts: [], readers: 0, mara: false },
     private: false,
     playing: false,
+    browsing: false,
     threads: {},
     incidents: {
       replyall: { state: 0, n: 0, at: 0, joined: -1, muted: false },
       cake: { state: 0, at: 0 },
       phish: { state: 0, at: 0 },
+      boss: { state: 0, at: 0, next: 0, seen: 0 },
     },
     training: 0,
     hints: {},
@@ -651,6 +734,10 @@ export function fresh(now = Date.now()) {
     marks: [],
     counters: {},
   };
+}
+/* A project's state. `users` drift once `age` (seconds at the desk since its last release) passes STALE. */
+function project() {
+  return { version: 0, stage: "plan", bugs: 0, feature: "search", users: 0, peak: 0, age: 0, drift: false };
 }
 export function log(s, text) {
   s.logs.unshift({ text, time: s.last });
@@ -690,12 +777,7 @@ export function addJob(s, kind, project, total) {
 export function start(s, id, feature) {
   const p = PROJECTS.find((p) => p.id === id);
   if (s.over || !p || !unlocked(s, p)) return false;
-  const state = (s.projects[id] ??= {
-    version: 0,
-    stage: "plan",
-    bugs: 0,
-    feature: "search",
-  });
+  const state = (s.projects[id] ??= project());
   if (state.stage !== "plan") return false;
   const f = FEATURES.find((f) => f.id === feature);
   if (!f) return false;
@@ -709,7 +791,7 @@ export function start(s, id, feature) {
 }
 /* Every version adds to the codebase, so each one takes a little longer to write. */
 export function writeTime(s, p, f) {
-  return Math.round(f.time * (1 + 0.4 * p.version) * (s.settings.safe ? 1 : 0.7));
+  return Math.round(f.time * (1 + 0.4 * p.version) * (s.settings.safe ? 1 : 0.7) * (s.decisions.roadmap === f.id ? 0.8 : 1));
 }
 export function test(s, id) {
   const p = s.projects[id];
@@ -757,10 +839,13 @@ export function solve(s, id, input) {
   else if (t.kind === "deploy") {
     if (T.rushing(t, s.elapsed)) {
       const loss = Math.min(Math.floor(s.money), 15 + 5 * t.d);
+      const left = Math.round(p.users * 0.1);
       s.money -= loss;
+      p.users -= left;
+      tally(s);
       p.task.lock = s.elapsed + 10;
       mark(s, "outage");
-      log(s, `Lunchboard went down in the middle of the lunch rush. −$${loss} in refunds and apology cookies. Wait for the traffic to drop.`);
+      log(s, `Lunchboard went down in the middle of the lunch rush. −$${loss} in refunds and apology cookies${left ? `, and ${left} users went somewhere with sandwiches` : ""}. Wait for the traffic to drop.`);
       return "outage";
     }
     ok = true;
@@ -796,14 +881,22 @@ export function release(s, id) {
     def = PROJECTS.find((x) => x.id === id);
   if (s.over || !p || p.stage !== "tested" || p.bugs > 0) return false;
   const f = FEATURES.find((f) => f.id === p.feature);
+  // Users already on a project raise what its next version earns.
   const money = Math.round(
     def.base *
       f.reward *
       (1 + p.version * 0.12) *
+      demand(p) *
+      roadmap(s, p.feature) *
       (s.track === "manager" ? 1.25 : 1),
   );
+  const gained = Math.round(money * 1.4 * policy(s, "growth") * (1 + 0.1 * level(s, "notes")));
   s.money += money;
-  s.users += Math.round(money * 1.4);
+  p.users += gained;
+  p.peak = Math.max(p.peak, p.users);
+  p.age = 0;
+  p.drift = false;
+  tally(s);
   s.knowledge += (20 + Math.round(def.base / 10)) * (id === "monitor" ? 2 : 1);
   s.releases++;
   p.version++;
@@ -811,8 +904,9 @@ export function release(s, id) {
   p.task = null;
   log(
     s,
-    `${def.name} v${p.version}.0 shipped. +$${money}. Every test passed on the first run, as they always do.`,
+    `${def.name} v${p.version}.0 shipped. +$${money}, +${gained.toLocaleString()} users. Every test passed on the first run, as they always do.`,
   );
+  if (id === "monitor") findings(s);
   if (id === "workspace" && p.version <= WORKSPACE_NOTES.length)
     log(s, WORKSPACE_NOTES[p.version - 1]);
   if (id === "archive" && p.version <= ARCHIVE.length)
@@ -846,6 +940,46 @@ export function buy(s, id) {
   s.money -= k.cost;
   s.skills.push(id);
   log(s, `${k.name} installed. Your workstation is a little more yours, legally still ours.`);
+  return true;
+}
+export function upgrade(s, id) {
+  const u = UPGRADES.find((x) => x.id === id);
+  if (s.over || !u || level(s, id) >= u.max || (u.requires && !s.skills.includes(u.requires))) return false;
+  const c = upgradeCost(s, id);
+  if (s.money < c.money || s.knowledge < c.knowledge) return false;
+  s.money -= c.money;
+  s.knowledge -= c.knowledge;
+  s.upgrades[id] = level(s, id) + 1;
+  log(s, `Upgrade installed: ${u.name}, level ${s.upgrades[id]}. It cost ${c.knowledge} knowledge, which you will have to learn again.`);
+  return true;
+}
+function tally(s) {
+  s.users = Math.round(Object.values(s.projects).reduce((n, p) => n + (p.users ?? 0), 0));
+}
+/* Product reviews are answered in Ripple; the answer stays on file. */
+function decide(s, key, value) {
+  if (!POLICIES[key]?.options[value] || s.decisions[key]) return false;
+  s.decisions[key] = value;
+  if (key === "telemetry") findings(s);
+  return true;
+}
+/* What Quiet Monitor makes of your own telemetry, once both exist. */
+function findings(s) {
+  if (!(s.projects.monitor?.version > 0)) return;
+  const t = s.decisions.telemetry;
+  if (t === "all" && mark(s, "telemetry"))
+    log(s, "Quiet Monitor found one more process that watches people: Stillwater product telemetry, collecting everything, approved by you. It forwards to the consumer pilots.");
+  if (t === "none" && secret(s, "nothing"))
+    log(s, "Quiet Monitor looked for your product telemetry and found nothing at all. It checked twice. It seemed relieved.");
+}
+/* Lock the screen while your manager is on the way. */
+export function bossKey(s) {
+  const b = s.incidents.boss;
+  if (s.over || b.state !== 1) return false;
+  Object.assign(b, { state: 0, next: s.elapsed + BOSS.cooldown, seen: 0 });
+  mark(s, "boss:hid");
+  secret(s, "bosskey");
+  log(s, "Your manager arrived at a locked screen, read the clock on it, nodded, and left. Locked screens don’t get questions.");
   return true;
 }
 export function read(s) {
@@ -987,7 +1121,7 @@ export function correct(s, option) {
 /* ---------- Acceptable Use and the wider computer ---------- */
 export function flag(s, amount) {
   if (s.over || s.settings.isolated || amount <= 0) return;
-  s.suspicion = Math.min(100, s.suspicion + amount * (s.private ? 1.5 : 1));
+  s.suspicion = Math.min(100, s.suspicion + amount * (s.private ? 1.5 : 1) * policy(s, "flag"));
   if (s.suspicion >= 40 && s.warned < 1) {
     s.warned = 1;
     log(s, "People & Serenity: a gentle note about acceptable use. Your Calm Index has been shared with your manager, gently.");
@@ -1259,6 +1393,7 @@ export function say(s, id, i) {
   t.picks.push({ step: t.step, i });
   t.picks = t.picks.slice(-60);
   if (c.secret) secret(s, c.secret);
+  if (c.decide) decide(s, ...c.decide);
   if (c.retry) return "retry";
   advance(s, t);
   return true;
@@ -1329,8 +1464,8 @@ export function phish(s, action) {
   }
   return true;
 }
-function incidents(s) {
-  const { replyall: r, cake: c, phish: p } = s.incidents;
+function incidents(s, dt, offline) {
+  const { replyall: r, cake: c, phish: p, boss: b } = s.incidents;
   if (r.state === 0 && s.releases >= 3) {
     Object.assign(r, { state: 1, n: 1, at: s.elapsed });
     log(s, "People & Serenity (all staff): the fridge in kitchen 3 will be cleaned out Friday. Label your calm.");
@@ -1345,11 +1480,31 @@ function incidents(s) {
   if (c.state === 0 && s.releases >= 4 && r.state === 2) {
     Object.assign(c, { state: 1, at: s.elapsed });
     log(s, "Kevin (Accounts): CAKE in kitchen 3!! First come first served 🎂");
-  } else if (c.state === 1 && s.elapsed > c.at + 45) c.state = 3;
+  } else if (c.state === 1 && s.elapsed > c.at + relaxed(s, 45)) c.state = 3;
   if (p.state === 0 && s.releases >= 5) {
     Object.assign(p, { state: 1, at: s.elapsed });
     log(s, "IT Security <it-securlty@stillwater.co>: Your password expires today. Keep it calm: click here to renew.");
   }
+  // The boss key happens only while you're here, looking at something personal.
+  const personal = s.browsing || s.playing;
+  if (b.state === 1) {
+    if (offline || !personal) {
+      Object.assign(b, { state: 0, next: s.elapsed + BOSS.cooldown, seen: 0 });
+      if (!offline && mark(s, "boss:hid"))
+        log(s, "Your manager stopped at your desk, looked at the build output, nodded, and left. Nobody saw anything, which is the main thing.");
+    } else if (s.elapsed >= b.at + relaxed(s, BOSS.window)) {
+      Object.assign(b, { state: 0, next: s.elapsed + BOSS.cooldown, seen: 0 });
+      mark(s, "boss:caught");
+      log(s, "Your manager saw the page you were on. They said nothing. They wrote something down, slowly, so you could watch.");
+      flag(s, 10);
+    }
+  } else if (!offline && personal && s.releases >= BOSS.releases && s.elapsed >= b.next && s.elapsed >= s.training) {
+    b.seen += dt;
+    if (b.seen >= BOSS.after) {
+      Object.assign(b, { state: 1, at: s.elapsed });
+      log(s, `Your manager has left their office and is walking this way. About ${relaxed(s, BOSS.window)} seconds. Minimize the personal stuff, or lock the screen.`);
+    }
+  } else if (!personal) b.seen = 0;
 }
 
 export function tick(s, seconds, offline = false) {
@@ -1363,8 +1518,11 @@ export function tick(s, seconds, offline = false) {
     const active = s.jobs.filter((j) => !j.paused);
     const share = Math.min(1, workers(s) / Math.max(1, active.length));
     for (const j of active) {
-      let speed = share;
+      let speed = share * (1 + 0.06 * level(s, "memory"));
       if (j.kind === "write" && s.skills.includes("autocomplete")) speed *= 1.4;
+      if (j.kind === "write") speed *= 1 + 0.1 * level(s, "model");
+      if (j.kind === "test" || j.kind === "debug") speed *= 1 + 0.15 * level(s, "suite");
+      if (j.kind !== "reading") speed *= policy(s, "speed");
       if (j.kind === "write" && s.perks.includes("chair")) speed *= 1.1;
       if (j.kind === "debug" && s.perks.includes("rubberduck")) speed *= 2;
       if (j.kind === "reading" && s.perks.includes("headphones")) speed *= 1.25;
@@ -1407,6 +1565,21 @@ export function tick(s, seconds, offline = false) {
     }
     const lunch = s.projects.lunchboard?.version ?? 0;
     if (lunch) s.money += dt * 0.04 * lunch;
+    // Users pay while they stay. Projects only go stale while you're at the desk.
+    for (const [id, p] of Object.entries(s.projects)) {
+      if (!p.users) continue;
+      s.money += dt * p.users * INCOME * policy(s, "income");
+      if (offline) continue;
+      p.age += dt;
+      if (p.age < STALE) continue;
+      if (!p.drift) {
+        p.drift = true;
+        mark(s, "drift");
+        log(s, `${PROJECTS.find((x) => x.id === id).name} users are drifting away. It hasn’t shipped anything in a while. Ship a new version to win them back.`);
+      }
+      p.users = Math.max(p.peak * LOYAL, p.users * (1 - DRIFT * policy(s, "drift") * dt));
+    }
+    tally(s);
     if (s.auto && s.skills.includes("scheduler"))
       for (const [id, p] of Object.entries(s.projects)) {
         if (p.stage === "written") test(s, id);
@@ -1439,7 +1612,7 @@ export function tick(s, seconds, offline = false) {
       }
     }
     deliver(s);
-    incidents(s);
+    incidents(s, dt, offline);
     moments(s);
     if (!offline) {
       if (buildRunning(s) && s.suspicion > 0)
@@ -1511,11 +1684,21 @@ export function complete(s) {
 }
 
 function migrate(s) {
-  if (![1, 2, 3, 4].includes(s?.version)) return s;
+  if (![1, 2, 3, 4, 5].includes(s?.version)) return s;
   const base = fresh(s.last);
   for (const k of Object.keys(base)) if (!(k in s)) s[k] = base[k];
   if (s.version === 1) s.secrets = [...s.bookmarks];
-  s.version = 5;
+  // Version 6: users belong to projects, shared out by how many versions each has shipped.
+  if (s.settings && !("relaxed" in s.settings)) s.settings.relaxed = false;
+  if (s.incidents && !s.incidents.boss) s.incidents.boss = base.incidents.boss;
+  const projects = Object.values(s.projects ?? {});
+  const shipped = projects.reduce((n, p) => n + (Number(p?.version) || 0), 0);
+  for (const p of projects)
+    if (p && !("users" in p)) {
+      const users = shipped ? Math.round(((Number(s.users) || 0) * (Number(p.version) || 0)) / shipped) : 0;
+      Object.assign(p, { users, peak: users, age: 0, drift: false });
+    }
+  s.version = 6;
   return s;
 }
 const bad = (msg) => {
@@ -1528,7 +1711,7 @@ export function restore(raw, now = Date.now()) {
   s = migrate(s);
   if (
     !s ||
-    s.version !== 5 ||
+    s.version !== 6 ||
     !s.projects ||
     !Array.isArray(s.jobs) ||
     !Array.isArray(s.skills) ||
@@ -1547,6 +1730,10 @@ export function restore(raw, now = Date.now()) {
       !FEATURES.some((x) => x.id === p.feature) ||
       !Number.isFinite(p.bugs) ||
       !Number.isFinite(p.version) ||
+      !num(p.users) ||
+      !num(p.peak) ||
+      !num(p.age) ||
+      typeof p.drift !== "boolean" ||
       (p.stage === "task" && !p.task) ||
       (p.task != null &&
         (typeof p.task !== "object" ||
@@ -1579,7 +1766,7 @@ export function restore(raw, now = Date.now()) {
   )
     bad("Invalid workstation state.");
   if (s.track !== undefined && !TRACKS.includes(s.track)) bad("Invalid career.");
-  for (const key of ["safe", "legacy", "duck", "isolated"])
+  for (const key of ["safe", "legacy", "duck", "isolated", "relaxed"])
     if (typeof s.settings[key] !== "boolean") bad("Invalid settings.");
   for (const [key, max] of Object.entries({ employee: 3, quickfix: 5, duck: 4, career: 4 }))
     if (!Number.isInteger(s.stories[key]) || s.stories[key] < 0 || s.stories[key] > max)
@@ -1608,6 +1795,13 @@ export function restore(raw, now = Date.now()) {
     typeof s.tidepool !== "boolean" ||
     typeof s.private !== "boolean" ||
     typeof s.playing !== "boolean" ||
+    typeof s.browsing !== "boolean" ||
+    !s.upgrades ||
+    typeof s.upgrades !== "object" ||
+    Object.entries(s.upgrades).some(([id, n]) => !UPGRADES.some((u) => u.id === id && Number.isInteger(n) && n >= 0 && n <= u.max)) ||
+    !s.decisions ||
+    typeof s.decisions !== "object" ||
+    Object.entries(s.decisions).some(([k, v]) => !POLICIES[k]?.options[v]) ||
     typeof s.sudoku !== "string" ||
     !/^[0-9]{81}$/.test(s.sudoku) ||
     !Array.isArray(s.breaker) ||
@@ -1624,7 +1818,7 @@ export function restore(raw, now = Date.now()) {
   )
     bad("Invalid workstation extras.");
   const int = (x, lo, hi) => Number.isInteger(x) && x >= lo && x <= hi;
-  const { replyall: r, cake: c, phish: p } = s.incidents ?? {};
+  const { replyall: r, cake: c, phish: p, boss: b } = s.incidents ?? {};
   if (
     !s.threads ||
     typeof s.threads !== "object" ||
@@ -1652,6 +1846,11 @@ export function restore(raw, now = Date.now()) {
     !p ||
     !int(p.state, 0, 3) ||
     !Number.isFinite(p.at) ||
+    !b ||
+    !int(b.state, 0, 1) ||
+    !Number.isFinite(b.at) ||
+    !Number.isFinite(b.next) ||
+    !num(b.seen) ||
     !Number.isFinite(s.training) ||
     !s.hints ||
     typeof s.hints !== "object" ||
@@ -1682,6 +1881,7 @@ export function restore(raw, now = Date.now()) {
     bad("Invalid process IDs.");
   const elapsed = Math.min(7200, Math.max(0, (now - s.last) / 1000));
   s.playing = false;
+  s.browsing = false;
   tick(s, elapsed, true);
   s.last = now;
   if (elapsed > 60 && !s.over)

@@ -424,13 +424,13 @@ test("save restoration handles offline time, migration, and malformed data", () 
   const old = { ...G.fresh(1000), version: 1, bookmarks: ["workspace"] };
   for (const k of ["secrets", "suspicion", "breach", "returns", "blog", "sudoku", "breaker", "aiClock"]) delete old[k];
   const migrated = G.restore(JSON.stringify(old), 2000);
-  assert.equal(migrated.version, 5);
+  assert.equal(migrated.version, 6);
   assert.deepEqual(migrated.secrets, ["workspace"]);
   assert.equal(migrated.sudoku, G.SUDOKU.givens);
   const v3 = { ...G.fresh(1000), version: 3 };
   for (const k of ["hints", "moments", "marks", "counters"]) delete v3[k];
   const up = G.restore(JSON.stringify(v3), 2000);
-  assert.deepEqual([up.version, up.hints, up.marks, up.counters], [5, {}, [], {}]);
+  assert.deepEqual([up.version, up.hints, up.marks, up.counters], [6, {}, [], {}]);
   assert.throws(() => G.restore({ ...s, hints: { workspace: { tier: 9, at: 0 } } }));
 });
 function play(s, id) {
@@ -721,4 +721,167 @@ test("small secrets: Panel B at full power, the translator, box 7, the whole man
   G.count(s, "undo", 3, "undo");
   assert.ok(s.secrets.includes("undo"));
   assert.equal(G.secret(s, "nonsense"), false);
+});
+test("users belong to projects: they pay, raise the next reward, and drift from stale projects", () => {
+  const s = G.fresh();
+  ship(s);
+  const p = s.projects.pocket;
+  assert.equal(p.users, 63);
+  assert.equal(s.users, 63);
+  assert.ok(G.demand(p) > 1);
+  const before = s.money;
+  G.tick(s, 100);
+  assert.ok(s.money - before > 63 * G.INCOME * 99, "users pay while they stay");
+  // The second version earns more than the bare curve, because users want it.
+  const a = G.fresh(), b = G.fresh();
+  ship(a), ship(b);
+  b.projects.pocket.users = 0;
+  const [ma, mb] = [a.money, b.money];
+  ship(a), ship(b);
+  assert.ok(a.money - ma > b.money - mb);
+  // Nothing drifts while you're away, and staleness only counts time at the desk.
+  const away = G.fresh();
+  ship(away);
+  G.tick(away, 7200, true);
+  assert.equal(away.projects.pocket.users, 63);
+  assert.equal(away.projects.pocket.drift, false);
+  G.tick(s, G.STALE);
+  assert.ok(p.drift && s.marks.includes("drift"));
+  assert.ok(s.logs.some((l) => /drifting away/.test(l.text)));
+  G.tick(s, 7200);
+  assert.equal(Math.round(p.users), Math.round(p.peak * 0.4), "a loyal core never leaves");
+  ship(s);
+  assert.equal(p.drift, false);
+  assert.equal(p.age, 0);
+});
+test("upgrades repeat, cost 15% more each level, and spend knowledge", () => {
+  const s = G.fresh();
+  s.money = 10000;
+  s.knowledge = 1000;
+  const c0 = G.upgradeCost(s, "memory");
+  assert.deepEqual(c0, { money: 50, knowledge: 10 });
+  assert.ok(G.upgrade(s, "memory"));
+  assert.equal(s.knowledge, 990);
+  assert.equal(s.money, 9950);
+  assert.deepEqual(G.upgradeCost(s, "memory"), { money: Math.round(50 * 1.15), knowledge: Math.round(10 * 1.15) });
+  assert.equal(G.upgrade(s, "model"), false, "the autocomplete model needs Autocomplete");
+  s.skills.push("autocomplete");
+  assert.ok(G.upgrade(s, "model"));
+  for (let i = 1; i < 10; i++) assert.ok(G.upgrade(s, "memory"));
+  assert.equal(G.upgrade(s, "memory"), false, "maxed out");
+  G.read(s);
+  G.tick(s, 10);
+  assert.ok(s.jobs[0].done > 15, "memory speeds up every job");
+  const poor = G.fresh();
+  poor.money = 1000;
+  assert.equal(G.upgrade(poor, "memory"), false, "needs knowledge too");
+  assert.throws(() => G.restore({ ...s, upgrades: { memory: 11 } }));
+});
+function review(s, choice) {
+  const t = G.thread(s, "product");
+  while (!t.open) G.tick(s, 1);
+  return G.say(s, "product", choice);
+}
+test("product reviews come one per release, stick, and come back later in other apps", () => {
+  const s = G.fresh();
+  ship(s);
+  G.tick(s, 30);
+  assert.equal(G.thread(s, "product").open, false);
+  ship(s);
+  s.stories.quickfix = 5; // keep QuickFix out of this one
+  assert.ok(review(s, 0));
+  assert.equal(s.decisions.pricing, "ads");
+  assert.equal(G.policy(s, "growth"), 1.4);
+  assert.equal(G.policy(s, "income"), 0.5);
+  G.tick(s, 600);
+  assert.equal(G.thread(s, "product").open, false, "the next question waits for more releases");
+  ship(s), ship(s), ship(s);
+  assert.ok(review(s, 0), "collect everything");
+  assert.equal(s.decisions.telemetry, "all");
+  // The Calm Index reads the same feeds.
+  const watched = structuredClone(s);
+  G.post(watched, "baking");
+  assert.ok(Math.abs(watched.suspicion - 6 * 1.25) < 1e-9);
+  // Quiet Monitor finds it.
+  s.skills.push("systems");
+  ship(s, "monitor");
+  assert.ok(s.marks.includes("telemetry"));
+  G.moments(s);
+  assert.ok(s.moments.includes("watcher"));
+  while (s.releases < 8) ship(s);
+  assert.equal(review(s, 0), "retry", "the duck is not on the support rota");
+  assert.ok(G.say(s, "product", 1));
+  while (s.releases < 11) ship(s);
+  assert.ok(review(s, 2));
+  assert.equal(s.decisions.roadmap, "performance");
+  const f = G.FEATURES.find((x) => x.id === "performance");
+  assert.ok(G.writeTime(s, { version: 0 }, f) < f.time);
+  ship(s), ship(s);
+  G.tick(s, 61);
+  assert.match(G.beatLines(s, G.THREADS.product.beats[4])[0], /Hearth/);
+  G.moments(s);
+  assert.ok(s.moments.includes("reviews"));
+  const back = G.restore(JSON.stringify(s), s.last);
+  assert.deepEqual(back.decisions, s.decisions);
+  assert.throws(() => G.restore({ ...s, decisions: { pricing: "free" } }));
+});
+test("collecting nothing, then shipping Quiet Monitor, is its own secret", () => {
+  const s = G.fresh();
+  s.decisions.telemetry = "none";
+  s.skills.push("systems");
+  ship(s, "monitor");
+  assert.ok(s.secrets.includes("nothing"));
+});
+test("the boss key: only while you're here on something personal, telegraphed, and recoverable", () => {
+  const s = G.fresh();
+  s.releases = G.BOSS.releases;
+  s.browsing = true;
+  G.tick(s, 600, true);
+  assert.equal(s.incidents.boss.state, 0, "never while you're away");
+  G.tick(s, G.BOSS.after);
+  assert.equal(s.incidents.boss.state, 1);
+  assert.match(s.logs[0].text, /walking this way/);
+  // Hiding the page in time.
+  const hid = structuredClone(s);
+  hid.browsing = false;
+  G.tick(hid, 1);
+  assert.equal(hid.incidents.boss.state, 0);
+  assert.ok(hid.marks.includes("boss:hid"));
+  assert.equal(hid.suspicion, 0);
+  // Locking the screen.
+  const locked = structuredClone(s);
+  assert.ok(G.bossKey(locked));
+  assert.ok(locked.secrets.includes("bosskey"));
+  assert.equal(G.bossKey(locked), false);
+  // Getting caught dents the Calm Index, and then it's quiet for a while.
+  G.tick(s, G.BOSS.window);
+  assert.ok(s.marks.includes("boss:caught"));
+  assert.equal(s.suspicion, 10);
+  G.tick(s, G.BOSS.cooldown - 1);
+  assert.equal(s.incidents.boss.state, 0);
+  // Relaxed timing doubles the window.
+  const calm = G.fresh();
+  calm.releases = G.BOSS.releases;
+  calm.settings.relaxed = true;
+  calm.playing = true;
+  G.tick(calm, G.BOSS.after + G.BOSS.window + 1);
+  assert.equal(calm.incidents.boss.state, 1, "still on the way");
+  G.tick(calm, G.BOSS.window);
+  assert.equal(calm.incidents.boss.state, 0);
+  assert.ok(calm.marks.includes("boss:caught"));
+  assert.equal(G.relaxed(calm, 45), 90, "the cake waits too");
+});
+test("version 5 saves gain per-project users and the new settings", () => {
+  const old = G.fresh(1000);
+  old.version = 5;
+  old.users = 300;
+  old.projects = { pocket: { version: 2, stage: "plan", bugs: 0, feature: "search" }, lunchboard: { version: 1, stage: "plan", bugs: 0, feature: "sync" } };
+  for (const k of ["upgrades", "decisions", "browsing"]) delete old[k];
+  delete old.settings.relaxed;
+  delete old.incidents.boss;
+  const up = G.restore(JSON.stringify(old), 2000);
+  assert.equal(up.version, 6);
+  assert.deepEqual([up.projects.pocket.users, up.projects.lunchboard.users], [200, 100]);
+  assert.equal(up.settings.relaxed, false);
+  assert.deepEqual([up.upgrades, up.decisions], [{}, {}]);
 });

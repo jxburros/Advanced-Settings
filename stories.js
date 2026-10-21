@@ -285,10 +285,83 @@ export const THREADS = {
       },
       {
         when: wait(200),
-        lines: ["We’re very proud of you, whatever it is you make. Come home for dinner soon. Bring the duck. -Mom & Dad"],
+        lines: (s) => [
+          "We’re very proud of you, whatever it is you make. Come home for dinner soon. Bring the duck. -Mom & Dad",
+          ...(s.decisions.telemetry === "all" ? ["P.S. The Hearth knows when we’re home now. It says it learned from Pocket Notes. Is that one of yours? -Dad"] : []),
+        ],
       },
     ],
   },
+};
+
+/* Product reviews, one question per release. A choice's `decide` is [policy, option] from POLICIES in game.js. */
+THREADS.product = {
+  name: "Odette Lane",
+  role: "Product · one question per release",
+  app: "ripple",
+  status: (s, t) => (t.step >= 5 ? "online · out of questions" : "online · reviewing"),
+  beats: [
+    {
+      when: all((s) => s.releases >= 2, wait(20)),
+      lines: [
+        "Hi! Odette, Product. I run the release review: one question per release, I promise, and the answers stick.",
+        "First one is pricing. Free things get more people, and each of them is worth less. Paid things keep fewer people, who pay. P&S would like you to consider the Calm tier, which nobody can describe.",
+      ],
+      choices: [
+        { text: "Free, with ads · 40% more new users, each pays half", reply: ["Bold. Lunchboard will show a banner for Lunchboard."], decide: ["pricing", "ads"] },
+        { text: "Paid · 30% fewer new users, each pays double", reply: ["Grown-up of you. Fewer people, nicer people."], decide: ["pricing", "paid"] },
+        { text: "The Calm tier · 10% fewer users, who drift away half as fast", reply: ["Lovely. It costs exactly as much as calm. Nobody knows what that is, so nobody cancels."], decide: ["pricing", "calm"] },
+      ],
+    },
+    {
+      when: all(rel(2), (s) => s.releases >= 5),
+      lines: [
+        "Telemetry. If we collect everything, we know what people want, so more of them arrive and they stay longer.",
+        "Two things, between us. The Calm Index reads the same feeds, so it would see more of you too. And Quiet Monitor lists everything that watches anyone, including us. The consumer pilots have asked for our feed.",
+      ],
+      choices: [
+        { text: "Collect everything · more users; personal use counts 25% more", reply: ["Noted. Assure will be thrilled. Assure is always thrilled."], decide: ["telemetry", "all"] },
+        { text: "Crash reports only · no change", reply: ["Sensible. We’ll know when it breaks, which is when people write anyway."], decide: ["telemetry", "crash"] },
+        { text: "Nothing at all · 10% fewer new users", reply: ["Nothing. Okay. I’ll put “nothing” in the dashboard. It will be green."], decide: ["telemetry", "none"] },
+      ],
+    },
+    {
+      when: all(rel(2), (s) => s.releases >= 8),
+      lines: [
+        "Support policy. Fast replies keep people. Fast replies are also you, replying, instead of building.",
+        "Slow replies are free, and people leave quietly while they wait.",
+      ],
+      choices: [
+        { text: "Can the duck do it?", reply: ["The duck is not on the support rota. It applied. It was overqualified."], retry: true },
+        { text: "Within the hour · users drift half as fast; projects build 10% slower", reply: ["Heroic. I’ll forward you everything. Everything."], decide: ["support", "fast"] },
+        { text: "Within the week · users drift 50% faster", reply: ["Realistic. People will understand. Some of them will understand somewhere else."], decide: ["support", "slow"] },
+      ],
+    },
+    {
+      when: all(rel(2), (s) => s.releases >= 11),
+      lines: [
+        "Last one: the roadmap. Leadership wants us to commit to one kind of feature. Committing means saying no to the other two.",
+        "Whatever you pick gets faster to write and pays more. The others pay a little less, forever. Leadership loves forever.",
+      ],
+      choices: [
+        { text: "Search · modest, reliable, quietly beloved", reply: ["Search it is. People will find things. Some of them will find us."], decide: ["roadmap", "search"] },
+        { text: "Cloud sync · more users, more edge cases", reply: ["Sync it is. Everything, everywhere, slightly out of date."], decide: ["roadmap", "sync"] },
+        { text: "Performance · careful, quiet work", reply: ["Performance. Fewer defects. Nobody will notice, which is the point."], decide: ["roadmap", "performance"] },
+      ],
+    },
+    {
+      when: all(rel(2), wait(60)),
+      lines: (s) =>
+        ({
+          all: [
+            "Update you didn’t ask for: the consumer pilots licensed our telemetry feed. The Hearth uses it to guess when people are home.",
+            "Your users are in there. Possibly people you know. I did warn you, a little.",
+          ],
+          crash: ["Assure asked for our telemetry feed. Crash reports only, so it got crashes. It seemed disappointed, then it crashed."],
+          none: ["Assure asked for our telemetry feed. There isn’t one. They asked twice. I said “nothing” both times. It felt wonderful."],
+        })[s.decisions.telemetry] ?? ["That’s every question I had. The product has a direction now. It’s mostly forward."],
+    },
+  ],
 };
 
 /* Short incidents. Each runs once per workstation. */
