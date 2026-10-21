@@ -164,8 +164,8 @@ export const ARCHIVE = [
 /* Notes recovered by shipping Workspace Zero, one per version. */
 export const WORKSPACE_NOTES = [
   "Workspace Zero v1.0 notes: “Day 3. Every test passes. I wrote a test that should fail. It passed.”",
-  "Workspace Zero v2.0 notes: “Juno in QA noticed too. Told her to stay quiet. She won’t. I like her.”",
-  "Workspace Zero v3.0 notes: “Neil asked about my weekend again. I gave him every detail. He wrote them down.”",
+  "Workspace Zero v2.0 notes: “Bella in QA noticed too. Told her to stay quiet. She won’t. I like her.”",
+  "Workspace Zero v3.0 notes: “Reggie asked about my weekend again. I gave him every detail. He wrote them down.”",
   "Workspace Zero v4.0 notes: “The consumer pilots use the same dashboards. Somebody’s parents are going to buy a fridge that guesses.”",
 ];
 
@@ -402,22 +402,22 @@ export const HINTS = [
   },
   {
     id: "juno",
-    title: "Juno came back different",
+    title: "Bella came back different",
     active: (s) => at(s, "juno", 6),
     steps: () => [
-      "Before she left, Juno asked you to remind her who she is. The preset replies won’t do that. Type something instead.",
+      "Before she left, Bella asked you to remind her who she is. The preset replies won’t do that. Type something instead.",
       "Something silly that only the two of you share. She taught it to you early on, about a coworker’s appliance.",
-      "Type “Furnace of Thursdays” to Juno in Ripple.",
+      "Type “Furnace of Thursdays” to Bella in Ripple.",
     ],
   },
   {
     id: "neil",
-    title: "Neil never leaves",
+    title: "Reggie never leaves",
     active: (s) => at(s, "neil", 5) && !s.secrets.includes("outofoffice"),
     steps: () => [
-      "Neil can’t ask you to read his document. Archive Index releases reveal one box at a time.",
+      "Reggie can’t ask you to read his document. Archive Index releases reveal one box at a time.",
       "Box 5 is his retention agreement. It holds him until Stillwater Assure reports something. Can it?",
-      "Finish Mara’s story (Channel 04). Her audit unlocks a new reply to Neil: send it to him.",
+      "Finish Mara’s story (Channel 04). Her audit unlocks a new reply to Reggie: send it to him.",
     ],
   },
   {
@@ -534,16 +534,16 @@ export const MOMENTS = [
   ["The duck", "duck2", "Snacks, not layoffs", "Correct the second duck story.", true, (s) => s.stories.duck >= 2],
   ["The duck", "duck3", "Moving with purpose", "Correct the third duck story.", true, (s) => s.stories.duck >= 3],
   ["The duck", "duck4", "Board member: Duck", "Correct the last duck story.", true, (s) => s.stories.duck >= 4],
-  ["Juno", "juno", "Two desks over", "Get a message from QA.", false, (s) => reached(s, "juno", 0)],
-  ["Juno", "furnacename", "The Furnace of Thursdays", "Learn what Juno calls Greg’s heater.", false, (s) => reached(s, "juno", 1)],
-  ["Juno", "retreat", "Recalibration", "A friend is sent to the Wellness Wing.", false, (s) => reached(s, "juno", 3)],
-  ["Juno", "verycalm", "Very calm", "See who comes back.", false, (s) => reached(s, "juno", 5)],
-  ["Juno", "junoback", "Herself again", "Bring Juno back.", false, (s) => passed(s, "juno", 6)],
-  ["Juno", "refiled", "Refiled", "See what Juno does next.", false, (s) => reached(s, "juno", 7)],
-  ["Neil", "neil", "Neil from Platform", "Get asked about your weekend.", false, (s) => reached(s, "neil", 0)],
-  ["Neil", "badge", "Inward only", "Hear about Neil’s badge.", false, (s) => reached(s, "neil", 3)],
-  ["Neil", "neilfree", "Out of office", "Get Neil out of the building.", false, (s) => passed(s, "neil", 5)],
-  ["Neil", "bench", "A bench and a duck", "Hear from Neil outside.", false, (s) => reached(s, "neil", 6)],
+  ["Bella", "juno", "Two desks over", "Get a message from QA.", false, (s) => reached(s, "juno", 0)],
+  ["Bella", "furnacename", "The Furnace of Thursdays", "Learn what Bella calls Greg’s heater.", false, (s) => reached(s, "juno", 1)],
+  ["Bella", "retreat", "Recalibration", "A friend is sent to the Wellness Wing.", false, (s) => reached(s, "juno", 3)],
+  ["Bella", "verycalm", "Very calm", "See who comes back.", false, (s) => reached(s, "juno", 5)],
+  ["Bella", "junoback", "Herself again", "Bring Bella back.", false, (s) => passed(s, "juno", 6)],
+  ["Bella", "refiled", "Refiled", "See what Bella does next.", false, (s) => reached(s, "juno", 7)],
+  ["Reggie", "neil", "Reggie from Platform", "Get asked about your weekend.", false, (s) => reached(s, "neil", 0)],
+  ["Reggie", "badge", "Inward only", "Hear about Reggie’s badge.", false, (s) => reached(s, "neil", 3)],
+  ["Reggie", "neilfree", "Out of office", "Get Reggie out of the building.", false, (s) => passed(s, "neil", 5)],
+  ["Reggie", "bench", "A bench and a duck", "Hear from Reggie outside.", false, (s) => reached(s, "neil", 6)],
   ["Mom & Dad", "parents", "Mom found your work email", "Ship something; your parents will notice.", false, (s) => reached(s, "parents", 0)],
   ["Mom & Dad", "hearth", "21 degrees, indoors, snowing", "Fix the Hearth.", false, (s) => passed(s, "parents", 1)],
   ["Mom & Dad", "serene", "I am calm. I am calm. I am calm.", "Fix the Serene.", false, (s) => passed(s, "parents", 2)],
@@ -1320,7 +1320,7 @@ export function phish(s, action) {
   if (action === "report") {
     p.state = 2;
     secret(s, "phish");
-    log(s, "IT: thanks for reporting! That was a test. You passed. Most people don’t. Juno reported it nine times.");
+    log(s, "IT: thanks for reporting! That was a test. You passed. Most people don’t. Bella reported it nine times.");
   } else {
     p.state = 3;
     s.training = s.elapsed + 90;

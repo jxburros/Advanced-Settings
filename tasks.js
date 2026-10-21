@@ -103,7 +103,7 @@ export const RUNBOOK = [
 export const PHRASES = [
   "ask the desk",
   "leave the duck some oats",
-  "neil keeps the answers",
+  "reggie keeps the answers",
   "every test passes on the first run",
   "the fourth channel is not on the network",
   "they cannot watch what is not connected",

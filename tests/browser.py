@@ -55,7 +55,7 @@ with sync_playwright() as p:
     page.clock.run_for(32000)
     dock.get_by_role("button", name="Ripple").click()
     chat = page.locator("#win-ripple")
-    expect(chat.get_by_text("juno, QA, two desks over", exact=False)).to_be_visible()
+    expect(chat.get_by_text("bella, QA, two desks over", exact=False)).to_be_visible()
     chat.get_by_role("button", name="I noticed that too.").click()
     expect(chat.get_by_text("FINALLY. a person with eyes.")).to_be_visible()
     dock.get_by_role("button", name="Mail").click()

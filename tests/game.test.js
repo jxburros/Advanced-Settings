@@ -438,7 +438,7 @@ function play(s, id) {
   G.tick(s, 1);
   return G.THREADS[id].beats[G.thread(s, id).step];
 }
-test("Juno IMs you, disappears to a retreat, and only a shared joke brings her back", () => {
+test("Bella IMs you, disappears to a retreat, and only a shared joke brings her back", () => {
   const s = G.fresh();
   ship(s);
   G.tick(s, 1);
@@ -467,7 +467,7 @@ test("Juno IMs you, disappears to a retreat, and only a shared joke brings her b
   assert.ok(G.say(s, "juno", 0));
   assert.equal(G.THREADS.juno.status(s, t), "online · herself again");
 });
-test("Neil can only leave once the audit shows his clause is impossible", () => {
+test("Reggie can only leave once the audit shows his clause is impossible", () => {
   const s = G.fresh();
   s.releases = 2;
   G.tick(s, 1);
@@ -495,7 +495,7 @@ test("Neil can only leave once the audit shows his clause is impossible", () => 
   G.say(s, "mara", 0);
   G.tick(s, 61);
   const lines = G.beatLines(s, G.THREADS.mara.beats[1]);
-  assert.match(lines[0], /Neil Ashby left/);
+  assert.match(lines[0], /Reggie Ashby left/);
 });
 test("your parents need answers from the undisclosed pilots page, and the truth", () => {
   const s = G.fresh();
