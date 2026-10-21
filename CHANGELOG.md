@@ -2,6 +2,10 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
+## 1.4.4
+
+- Added a `marketing` folder with the teaser trailer and the two wide logo lockups. It is not part of the game or its packages, so the game itself is unchanged.
+
 ## 1.4.3
 
 - Rewrote the README as a Stillwater press release and user manual, with new brand art and screenshots. Documentation only, so the game itself is unchanged.
