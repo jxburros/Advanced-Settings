@@ -2,9 +2,13 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
-## 1.4.1
+## 1.4.2
 
 - **Release fix.** Publishing a new version no longer fails the first time with “No release found”: the release tool now waits for the draft it has just created to appear.
+
+## 1.4.1
+
+- Refreshed the desktop, mail and mobile previews, which still showed Juno from before the rename to Bella. Documentation only, so the game itself is unchanged.
 
 ## 1.4.0
 
