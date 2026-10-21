@@ -113,8 +113,15 @@ const GLYPHS = {
   wifioff: '<path d="M3 9.5a13 13 0 0 1 18 0M6 13a8.5 8.5 0 0 1 12 0M9 16.5a4 4 0 0 1 6 0" opacity=".35"/><path d="M12 20h.01M4 4l16 16"/>',
   speaker: '<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"/>',
   speakeroff: '<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/>',
+  play: '<path d="M8 5.8v12.4a.8.8 0 0 0 1.2.7l9.6-6.2a.8.8 0 0 0 0-1.4L9.2 5.1a.8.8 0 0 0-1.2.7z" fill="currentColor"/>',
+  pause: '<rect x="6.5" y="5.5" width="3.8" height="13" rx="1.2" fill="currentColor"/><rect x="13.7" y="5.5" width="3.8" height="13" rx="1.2" fill="currentColor"/>',
+  prev: '<path d="M6 6v12"/><path d="M18 7.2v9.6a.8.8 0 0 1-1.2.7L10 12.7a.8.8 0 0 1 0-1.4l6.8-4.8a.8.8 0 0 1 1.2.7z" fill="currentColor"/>',
+  next: '<path d="M18 6v12"/><path d="M6 7.2v9.6a.8.8 0 0 0 1.2.7l6.8-4.8a.8.8 0 0 0 0-1.4L7.2 6.5A.8.8 0 0 0 6 7.2z" fill="currentColor"/>',
+  shuffle: '<path d="M4 7h2.5c5 0 6 10 11 10H20M4 17h2.5c1.8 0 3-1.3 4-3M13.5 10c1-1.7 2.2-3 4-3H20M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5"/>',
+  repeat: '<path d="M4.5 11.5v-1A3.5 3.5 0 0 1 8 7h11.5M16.5 4l3 3-3 3M19.5 12.5v1A3.5 3.5 0 0 1 16 17H4.5M7.5 20l-3-3 3-3"/>',
   duckling: '<path d="M8 10a4 4 0 1 1 7.5 2H19c0 4-3 7-7 7s-7-2-7-5c0-2 1.3-3.3 3-4z"/><path d="M15.5 9.5h3"/>',
 };
+const svg = (glyph) => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[glyph]}</svg>`;
 const icon = (glyph, tone, cls = "") =>
   `<span class="app-icon tone-${tone} ${cls}" aria-hidden="true"><svg viewBox="0 0 24 24">${GLYPHS[glyph]}</svg></span>`;
 
@@ -928,7 +935,7 @@ function music() {
   const P = S.player;
   const t = P.tracks[P.index];
   const own = P.tracks.length > 1;
-  return `<div class="pane music"><div class="art" aria-hidden="true">${t.synth ? icon("music", "lilac", "big") : ""}</div><div class="now">${eyebrow(P.playing ? "Now playing" : "Paused")}<h2>${esc(t.title)}</h2><p class="fine">${esc(t.artist || "Unknown artist")}</p></div>${t.synth ? "" : `<input type="range" id="music-seek" min="0" max="${Math.max(1, Math.floor(P.duration))}" step="1" value="${Math.floor(P.position)}" data-music-pos="seek" aria-label="Position" />`}<div class="times"><span data-music-pos="time">${mmss(P.position)}</span><span>${t.synth ? "loops forever" : mmss(P.duration)}</span></div><div class="controls">${button("⏮", "music", "prev", false, "ghost", 'aria-label="Previous track"')}${button(P.playing ? "❚❚" : "▶", "music", "toggle", false, "primary", `aria-label="${P.playing ? "Pause" : "Play"}"`)}${button("⏭", "music", "next", false, "ghost", 'aria-label="Next track"')}${button("⇄", "music", "shuffle", false, "ghost " + (P.shuffle ? "on" : ""), `aria-pressed="${P.shuffle}" aria-label="Shuffle"`)}${button("↻", "music", "repeat", false, "ghost " + (P.repeat ? "on" : ""), `aria-pressed="${P.repeat}" aria-label="Repeat"`)}</div><div class="setting-row"><div><strong>Volume</strong></div><input type="range" id="music-vol" min="0" max="1" step="0.05" value="${P.volume}" aria-label="Music volume" /></div>${P.error ? `<p class="warn">${esc(P.error)}</p>` : ""}<h3>Up next</h3><div class="tracklist">${P.tracks.map((x, i) => button(`<span>${esc(x.title)}</span><small>${esc(x.artist)}</small>`, "music", "play:" + i, false, i === P.index ? "on" : "", `aria-label="Play ${esc(x.title)}"`)).join("")}</div><p class="fine">${own ? "Music from assets/music." : "Only the hold music so far. Add your own in assets/music; the README there explains how."}</p></div>`;
+  return `<div class="pane music"><div class="art" aria-hidden="true">${t.synth ? icon("music", "lilac", "big") : ""}</div><div class="now">${eyebrow(P.playing ? "Now playing" : "Paused")}<h2>${esc(t.title)}</h2><p class="fine">${esc(t.artist || "Unknown artist")}</p></div>${t.synth ? "" : `<input type="range" id="music-seek" min="0" max="${Math.max(1, Math.floor(P.duration))}" step="1" value="${Math.floor(P.position)}" data-music-pos="seek" aria-label="Position" />`}<div class="times"><span data-music-pos="time">${mmss(P.position)}</span><span>${t.synth ? "loops forever" : mmss(P.duration)}</span></div><div class="controls">${button(svg("prev"), "music", "prev", false, "ghost", 'aria-label="Previous track"')}${button(svg(P.playing ? "pause" : "play"), "music", "toggle", false, "primary", `aria-label="${P.playing ? "Pause" : "Play"}"`)}${button(svg("next"), "music", "next", false, "ghost", 'aria-label="Next track"')}${button(svg("shuffle"), "music", "shuffle", false, "ghost " + (P.shuffle ? "on" : ""), `aria-pressed="${P.shuffle}" aria-label="Shuffle"`)}${button(svg("repeat"), "music", "repeat", false, "ghost " + (P.repeat ? "on" : ""), `aria-pressed="${P.repeat}" aria-label="Repeat"`)}</div><div class="setting-row"><div><strong>Volume</strong></div><input type="range" id="music-vol" min="0" max="1" step="0.05" value="${P.volume}" aria-label="Music volume" /></div>${P.error ? `<p class="warn">${esc(P.error)}</p>` : ""}<h3>Up next</h3><div class="tracklist">${P.tracks.map((x, i) => button(`<span>${esc(x.title)}</span><small>${esc(x.artist)}</small>`, "music", "play:" + i, false, i === P.index ? "on" : "", `aria-label="Play ${esc(x.title)}"`)).join("")}</div><p class="fine">${own ? "Music from assets/music." : "Only the hold music so far. Add your own in assets/music; the README there explains how."}</p></div>`;
 }
 function helpdesk() {
   const open = G.HINTS.filter((h) => h.active(s));
@@ -998,6 +1005,44 @@ const APPS = {
 const docked = (a) => (typeof a.dock === "function" ? a.dock() : a.dock);
 
 /* ---------- window manager ---------- */
+// Re-renders patch the existing nodes instead of replacing them, so hover, focus, scroll
+// and CSS transitions (switches, meters, the dock) survive. Form fields still take the
+// rendered value, exactly as a fresh innerHTML would; renderWindows restores the kept ones.
+function morph(el, html) {
+  const t = document.createElement("template");
+  t.innerHTML = html;
+  patchChildren(el, t.content);
+}
+function patchChildren(a, b) {
+  const old = [...a.childNodes];
+  const next = [...b.childNodes];
+  next.forEach((n, i) => {
+    const o = old[i];
+    if (!o) a.append(n);
+    else if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName || o.id !== n.id) o.replaceWith(n);
+    else if (o.nodeType !== 1) {
+      if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue;
+    } else patchNode(o, n);
+  });
+  for (const o of old.slice(next.length)) o.remove();
+}
+function patchNode(o, n) {
+  for (const { name } of [...o.attributes]) if (!n.hasAttribute(name)) o.removeAttribute(name);
+  for (const { name, value } of n.attributes) if (o.getAttribute(name) !== value) o.setAttribute(name, value);
+  patchChildren(o, n);
+  if (o.tagName === "INPUT" && o.type !== "file") {
+    if (o.value !== n.value) o.value = n.value;
+    o.checked = n.checked;
+  } else if (o.tagName === "TEXTAREA" || o.tagName === "SELECT") {
+    if (o.value !== n.value) o.value = n.value;
+  }
+}
+// Range inputs paint their filled part from --p.
+function fill(r) {
+  const min = Number(r.min) || 0, max = r.max === "" ? 100 : Number(r.max);
+  r.style.setProperty("--p", (max > min ? ((Number(r.value) - min) / (max - min)) * 100 : 0) + "%");
+}
+const fillAll = () => document.querySelectorAll('input[type="range"]').forEach(fill);
 function saveUI() {
   try {
     localStorage.setItem(UIKEY, JSON.stringify(ui));
@@ -1077,11 +1122,28 @@ function renderWindows() {
     const w = ui.win[id];
     const existing = $("win-" + id);
     if (!w?.open) {
-      existing?.remove();
+      if (existing?.classList.contains("min")) existing.remove();
+      else if (existing && !existing.classList.contains("closing")) leave(existing, "closing", () => existing.remove());
       continue;
     }
+    const fresh = !existing;
     const el = frame(id);
-    el.classList.toggle("min", !!w.min);
+    if (el.classList.contains("closing")) {
+      // Reopened while it was closing: play the opening again from the start.
+      el.classList.remove("closing");
+      el.style.animation = "none";
+      void el.offsetWidth;
+      el.style.animation = "";
+    }
+    if (!w.min) el.classList.remove("min", "minimizing");
+    else if (fresh) el.classList.add("min");
+    else if (!el.classList.contains("min") && !el.classList.contains("minimizing"))
+      leave(el, "minimizing", () => ui.win[id]?.min && el.classList.add("min"));
+    if (!fresh && el.classList.contains("max") !== !!w.max) {
+      el.classList.add("zooming");
+      clearTimeout(el.zoomTimer);
+      el.zoomTimer = setTimeout(() => el.classList.remove("zooming"), 320);
+    }
     el.classList.toggle("max", !!w.max);
     el.classList.toggle("focused", id === top);
     Object.assign(el.style, { left: w.x + "px", top: w.y + "px", width: w.w + "px", height: w.h + "px", zIndex: w.z });
@@ -1091,7 +1153,7 @@ function renderWindows() {
     const inputs = [...body.querySelectorAll("input[id]")]
       .filter((x) => x.dataset.keep || x.id === focusId || x.type === "radio")
       .map((x) => [x.id, x.value, x.checked]);
-    body.innerHTML = a.render();
+    morph(body, a.render());
     [...body.querySelectorAll(".pane")].forEach((p, i) => (p.scrollTop = scroll[i] || 0));
     for (const [sid, v] of selects) if ($(sid) && !["ai", "installs"].includes(sid)) $(sid).value = v;
     for (const [iid, v, c] of inputs) {
@@ -1107,6 +1169,21 @@ function renderWindows() {
   }
   document.body.classList.toggle("has-window", !!top);
   $("active-app").textContent = top ? APPS[top].title : "Desktop";
+  fillAll();
+}
+// Plays a closing or minimizing animation, then finishes the job, unless the window came back meanwhile.
+function leave(el, cls, then) {
+  el.classList.add(cls);
+  const done = () => {
+    clearTimeout(timer);
+    el.removeEventListener("animationend", end);
+    if (!el.classList.contains(cls)) return;
+    el.classList.remove(cls);
+    then();
+  };
+  const end = (e) => e.target === el && done();
+  const timer = setTimeout(done, 400);
+  el.addEventListener("animationend", end);
 }
 function renderChrome() {
   document.body.dataset.accent = ui.accent;
@@ -1115,20 +1192,20 @@ function renderChrome() {
   document.documentElement.style.setProperty("--fade", Math.max(0.45, 1 - Math.max(0, s.returns - 5) * 0.06));
   $("wallpaper").style.backgroundImage = `url("${wallpaperURL()}")`;
   const reported = s.stories.employee === 3;
-  $("stats").innerHTML = [
+  morph($("stats"), [
     ["Budget", money(s.money)],
     ["Knowledge", Math.floor(s.knowledge)],
     [reported ? "Users (reported)" : "Users", s.users.toLocaleString()],
     ["Releases", s.releases],
   ]
     .map(([l, v]) => `<span title="${l}${reported && l.startsWith("Users") ? ` · verified: about ${Math.round(s.users / 1.4).toLocaleString()}` : ""}"><small>${l}</small>${v}</span>`)
-    .join("");
+    .join(""));
   $("calm").textContent = `Calm ${G.calm(s)}%`;
-  $("wifi").innerHTML = `<svg viewBox="0 0 24 24">${GLYPHS[s.settings.isolated ? "wifioff" : "wifi"]}</svg>`;
+  morph($("wifi"), `<svg viewBox="0 0 24 24">${GLYPHS[s.settings.isolated ? "wifioff" : "wifi"]}</svg>`);
   $("wifi").setAttribute("aria-label", s.settings.isolated ? "Network: isolated" : "Network: connected");
-  $("volume").innerHTML = `<svg viewBox="0 0 24 24">${GLYPHS[ui.sounds ? "speaker" : "speakeroff"]}</svg>`;
+  morph($("volume"), `<svg viewBox="0 0 24 24">${GLYPHS[ui.sounds ? "speaker" : "speakeroff"]}</svg>`);
   $("volume").setAttribute("aria-label", ui.sounds ? "Sound: on" : "Sound: off");
-  $("search-btn").innerHTML = `<svg viewBox="0 0 24 24">${GLYPHS.search}</svg>`;
+  morph($("search-btn"), `<svg viewBox="0 0 24 24">${GLYPHS.search}</svg>`);
   const P = S.player;
   $("nowplaying").hidden = !P.playing;
   $("nowplaying").textContent = P.playing ? "♪ " + P.tracks[P.index].title : "";
@@ -1139,17 +1216,17 @@ function renderChrome() {
     activity: s.stories.quickfix > 0 && s.stories.quickfix < 5,
     ripple: Object.entries(G.THREADS).some(([id, d]) => d.app === "ripple" && unread(id)),
   };
-  $("dock").innerHTML = Object.entries(APPS)
+  morph($("dock"), Object.entries(APPS)
     .filter(([, a]) => docked(a))
     .map(([id, a]) => `${id === "settings" ? '<span class="dock-sep"></span>' : ""}<button class="dock-item ${ui.win[id]?.open ? "running" : ""}" data-action="open" data-id="${id}" aria-label="${a.title}">${icon(a.glyph, a.tone)}<span class="dock-label">${a.title}</span>${attention[id] ? '<i class="badge">!</i>' : ""}</button>`)
-    .join("");
-  $("icons").innerHTML = deskIcons()
+    .join(""));
+  morph($("icons"), deskIcons()
     .map(([key, app, label, glyph, tone, tab]) => `<button class="desk-icon ${selected.has(key) ? "selected" : ""}" data-action="icon" data-id="${app}" data-key="${key}" ${tab ? `data-tab="${tab}"` : ""} draggable="${key !== "trash"}" aria-label="${esc(label)}">${icon(glyph, tone)}<span>${esc(label)}</span></button>`)
-    .join("");
+    .join(""));
   const [title, desc, app, cta, action = "open"] = goal();
   const active = s.jobs.filter((j) => !j.paused).length;
   const d = s.stories.duck;
-  $("widgets").innerHTML = `<section class="widget goal">${eyebrow("Your next small victory")}<h3>${title}</h3><p>${desc}</p>${button(cta, action, app, false, "primary")}</section><section class="widget">${eyebrow("Processor")}<div class="meter"><i style="width:${Math.min(100, Math.round((active / G.workers(s)) * 100))}%"></i></div><p>${s.jobs.length ? `${active} running, ${s.jobs.length - active} paused · ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""}` : "Idle. Suspiciously peaceful."}</p></section><button class="widget news-widget" data-action="open" data-id="news">${eyebrow("The Daily Current")}<span class="duck" aria-hidden="true">🦆</span><b>${G.duckOpen(s) || d === 4 ? DUCK[d].head : "A QUIET DAY FOR THE DUCK"}</b></button>`;
+  morph($("widgets"), `<section class="widget goal">${eyebrow("Your next small victory")}<h3>${title}</h3><p>${desc}</p>${button(cta, action, app, false, "primary")}</section><section class="widget">${eyebrow("Processor")}<div class="meter"><i style="width:${Math.min(100, Math.round((active / G.workers(s)) * 100))}%"></i></div><p>${s.jobs.length ? `${active} running, ${s.jobs.length - active} paused · ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""}` : "Idle. Suspiciously peaceful."}</p></section><button class="widget news-widget" data-action="open" data-id="news">${eyebrow("The Daily Current")}<span class="duck" aria-hidden="true">🦆</span><b>${G.duckOpen(s) || d === 4 ? DUCK[d].head : "A QUIET DAY FOR THE DUCK"}</b></button>`);
 }
 const selected = new Set();
 function deskIcons() {
@@ -1201,7 +1278,7 @@ function notify(text, app = "welcome") {
   S.play(/^Discovery noted/.test(text) ? "success" : app === "ripple" || app === "mail" ? "message" : "alert");
   while ($("toasts").children.length > 3) $("toasts").lastChild.remove();
   setTimeout(() => t.classList.add("out"), 6000);
-  setTimeout(() => t.remove(), 6600);
+  setTimeout(() => t.remove(), 6700);
 }
 function sourceOf(text) {
   if (/^People & Serenity|^IT:|^IT Security|^Kevin|replied all|got cake/.test(text)) return "mail";
@@ -1817,6 +1894,7 @@ document.addEventListener("change", (e) => {
 });
 document.addEventListener("input", (e) => {
   const id = e.target.id;
+  if (e.target.type === "range") fill(e.target);
   if (id === "glass") {
     ui.glass = Math.round((1.1 - Number(e.target.value)) * 100) / 100;
     document.documentElement.style.setProperty("--glass", ui.glass);
@@ -1978,8 +2056,13 @@ function renderPop() {
   const el = $("pop");
   document.querySelectorAll("[aria-expanded]").forEach((x) => x.removeAttribute("aria-expanded"));
   if (!pop) return void (el.hidden = true);
-  el.innerHTML = popHTML();
+  // Re-rendering an open popover patches it, so a slider being dragged keeps its grip.
+  const key = pop.kind + ":" + pop.id;
+  if (!el.hidden && el.dataset.key === key) morph(el, popHTML());
+  else el.innerHTML = popHTML();
+  el.dataset.key = key;
   el.hidden = false;
+  fillAll();
   el.setAttribute("role", pop.kind === "menu" || pop.kind === "ctx" ? "menu" : "dialog");
   const w = el.offsetWidth, h = el.offsetHeight;
   let x = pop.x, y = pop.y;
@@ -2274,7 +2357,7 @@ document.addEventListener("pointermove", (e) => {
     w.h = Math.max(240, Math.min(innerHeight - w.y - 8, drag.h + dy));
   } else {
     w.x = Math.max(-w.w + 120, Math.min(innerWidth - 120, drag.x + dx));
-    w.y = Math.max(36, Math.min(innerHeight - 60, drag.y + dy));
+    w.y = Math.max(44, Math.min(innerHeight - 60, drag.y + dy));
   }
   Object.assign(drag.win.style, { left: w.x + "px", top: w.y + "px", width: w.w + "px", height: w.h + "px" });
 });
@@ -2285,8 +2368,10 @@ document.addEventListener("pointerup", () => {
   saveUI();
 });
 document.addEventListener("dblclick", (e) => {
-  const bar = e.target.closest(".titlebar");
-  if (!bar || e.target.closest("button")) return;
+  // Dragging captures the pointer on the window, so the event's target is the window, not the title bar.
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  const bar = hit?.closest(".titlebar");
+  if (!bar || hit.closest("button") || mobile()) return;
   const id = bar.parentElement.dataset.app;
   ui.win[id].max = !ui.win[id].max;
   saveUI();
@@ -2327,7 +2412,10 @@ setInterval(() => {
     S.step();
     for (const el of document.querySelectorAll("[data-music-pos]")) {
       if (el.dataset.musicPos === "time") el.textContent = mmss(S.player.position);
-      else if (document.activeElement !== el) el.value = Math.floor(S.player.position);
+      else if (document.activeElement !== el) {
+        el.value = Math.floor(S.player.position);
+        fill(el);
+      }
     }
     if (saveClock % 20 === 0) renderChrome();
     updateClock();
@@ -2365,15 +2453,31 @@ function boot() {
     openApp("workbench");
     ui.win.workbench.x = Math.max(12, Math.round(innerWidth / 2 - 460));
     openApp("welcome");
-    ui.win.welcome.x = Math.max(12, Math.min(innerWidth - ui.win.welcome.w - 12, ui.win.workbench.x + 360));
+    // Overlap the Workbench a little, but stay clear of the widgets.
+    ui.win.welcome.x = Math.max(12, Math.min(innerWidth - ui.win.welcome.w - (innerWidth > 1100 ? 320 : 12), ui.win.workbench.x + 360));
     ui.win.welcome.y = 90;
   }
+  fitWindows();
+}
+// Keeps every window reachable on the current screen: never wider or taller than it, title bar always on it.
+function fitWindows() {
   for (const w of Object.values(ui.win)) {
-    w.w = Math.min(w.w, innerWidth - 16);
+    if (!w.w) continue;
+    w.w = Math.max(300, Math.min(w.w, innerWidth - 16));
+    w.h = Math.max(200, Math.min(w.h, innerHeight - 60));
     w.x = Math.max(8, Math.min(innerWidth - Math.min(w.w, 200), w.x));
-    w.y = Math.max(36, Math.min(innerHeight - 120, w.y));
+    w.y = Math.max(44, Math.min(innerHeight - 120, w.y));
   }
 }
+let fitTimer = 0;
+window.addEventListener("resize", () => {
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => {
+    fitWindows();
+    renderWindows();
+    if (pop) closePop();
+  }, 120);
+});
 boot();
 if (APPS[location.hash.slice(1)]) openApp(location.hash.slice(1));
 if (G.record(archive, s)) saveArchive();
