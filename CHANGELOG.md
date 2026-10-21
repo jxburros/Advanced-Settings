@@ -2,6 +2,10 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
+## 1.2.4
+
+- Added design notes for deepening the incremental layer. Documentation only, so the game itself is unchanged.
+
 ## 1.2.3
 
 - **Release fix.** The release publisher now finds its own draft, so releases can complete. 1.2.1 and 1.2.2 were never published; their changes ship in this release.
