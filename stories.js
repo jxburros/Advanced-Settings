@@ -10,7 +10,7 @@ const all =
 const done = (s, id) => s.threads[id]?.step ?? 0;
 
 export const THREADS = {
-  juno: {
+  bella: {
     name: "Bella Park",
     role: "QA · two desks over",
     app: "ripple",
@@ -20,7 +20,7 @@ export const THREADS = {
       {
         when: (s) => s.releases >= 1,
         lines: [
-          "hey new person! juno, QA, two desks over. saw your first ship go out 🎉",
+          "hey new person! bella, QA, two desks over. saw your first ship go out 🎉",
           "fair warning: every test here passes on the first run. EVERY test. i have opinions about this.",
         ],
         choices: [
@@ -105,7 +105,7 @@ export const THREADS = {
       },
     ],
   },
-  neil: {
+  reggie: {
     name: "Reggie Ashby",
     role: "Platform · on site",
     app: "ripple",
@@ -216,7 +216,7 @@ export const THREADS = {
       {
         when: wait(60),
         lines: (s) =>
-          done(s, "neil") >= 6
+          done(s, "reggie") >= 6
             ? ["I heard Reggie Ashby left the building. Was that you?", "Thank you. I tried for a year. He kept asking about my weekends."]
             : [
                 "One thing. Reggie Ashby, on platform. If he’s still there, someone should show him the audit.",
