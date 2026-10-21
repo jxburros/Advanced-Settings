@@ -9,6 +9,7 @@
 | End of probation (win) | Reach Principal Engineer (18 releases; promotions at 3, 7, 12 and 18) and finish all four stories: the previous user (Channel 04), QuickFix (credential revoked), and all four duck corrections. |
 | Released to the community (loss) | Acceptable Use concern reaches 100% **twice**. It rises with blocked sites (+1), translated or proxied personal pages, shopping (+4 to +10), blog posts (+6 to +26), and online sudoku play. **Private browsing multiplies it by 1.5**, although Settings › Privacy claims it counts *less*; the Calm Improvement Plan issues a correction in the log, in Mail and in the setting itself. Real work (a running build) lowers it, and nothing is reported while the workstation is isolated. Mail warns you at 40 and 70, and the Calm Index in the menu bar drops. The first time it reaches 100 you get a Calm Improvement Plan instead: concern resets to 55, Wayfinder closes for three minutes and private browsing is switched off. |
 | Reimaged (loss) | Leave QuickFix unquarantined for about 15 minutes of build time (900 breach points). It only grows while a build is running and you're online and looking: it pauses while isolated, while nothing is building, and while the tab is in the background. It speeds up 3× if Developer › Install from is set to “Anywhere”. Warnings arrive at 5, 10 and 13 minutes of build time, and its processor use grows from 20% to 30% to 40%. Quiet Monitor releases push it back. |
+| Handed over (neither) | As a Principal Engineer, use Mail › Hand off WS-0417. You start a new workstation with no projects or budget, a quarter of your knowledge, an optional handover note (it appears in Notes, signed “the previous user (you)”), and a legacy bonus: releases and reading pay 10% more per handover, up to 50%. |
 
 The Secret Tracker unlocks in the dock after the first ending of any kind, and it persists across new workstations.
 
@@ -27,7 +28,7 @@ After a version passes its tests (Pocket Notes v1.0 excepted) it needs a release
 
 ## Story moments
 
-The Secret Tracker's Story tab lists 58 moments in nine sections (Work, the previous user, QuickFix, the duck, Bella, Reggie, Mom & Dad, the office, the Calm Index). The 15 marked “needed for probation” are the ones the win requires: the first release, all four promotions, Workspace Zero, the attachment, Channel 04, QuickFix arriving, quarantined and revoked, and the four duck corrections. Some optional ones exclude each other in a single run (getting the cake or missing it; reporting the phishing email or clicking it), so a full tracker takes more than one workstation.
+The Secret Tracker's Story tab lists 64 moments in ten sections (Work, the previous user, QuickFix, the duck, Bella, Reggie, Mom & Dad, Product, the office, the Calm Index). The 15 marked “needed for probation” are the ones the win requires: the first release, all four promotions, Workspace Zero, the attachment, Channel 04, QuickFix arriving, quarantined and revoked, and the four duck corrections. Some optional ones exclude each other in a single run (getting the cake or missing it; reporting the phishing email or clicking it), so a full tracker takes more than one workstation.
 
 ## Help Desk
 
@@ -60,7 +61,7 @@ Help › Help Desk lists a ticket for every problem the player currently has: th
 | Out of office | Reggie’s questions; the directory (“last badge-out: never”); facilities (sleeping pod 4); Mara’s guest message | Archive Index box 5 is Reggie’s retention agreement: he stays “until Stillwater Assure reports that it is fully calm”. Once you have Channel 04 (Mara’s audit), a new reply appears: send him the audit. The condition is impossible, so the clause is void, and he leaves. |
 | Return to sender | Mom: “see intranet.stillwater/pilots” | Answers are on the hidden intranet.stillwater/pilots page: hold the Hearth dial for ten seconds; say “I am calm” three times to the Serene TV. For the Pantry fridge, the truthful reply appears only after Channel 04. The corporate script also ends the thread, but without the secret. |
 | Part of the problem | — | Press Reply all on the fridge-cleanout thread. Six more people reply all to agree with you. |
-| There was cake | A toast: “CAKE in kitchen 3!!” | After the reply-all storm ends (from 4 releases), cake is announced. You have 45 seconds to click Go to kitchen 3. |
+| There was cake | A toast: “CAKE in kitchen 3!!” | After the reply-all storm ends (from 4 releases), cake is announced. You have 45 seconds (90 with Relaxed timing) to click Go to kitchen 3. |
 | Not today | The sender is `it-securlty@stillwater.co` | Report the “password expires” email (from 5 releases). Clicking it closes Wayfinder for 90 seconds and dents the Calm Index. |
 | Quiet hours | — | Turn interface sounds off (menu bar speaker, or Settings › Sound). |
 | Unlisted alert | Settings › Sound, after Quiet hours: “one of these wasn’t on the list before” | Choose the Quack alert sound. |
@@ -84,6 +85,28 @@ Help › Help Desk lists a ticket for every problem the player currently has: th
 | Cover to cover | — | Complete 11 reading sessions. |
 | Redacted | Settings › About | Click the redacted name 3 times. |
 | Lost in translation | — | Translate translate.stillwater with translate.stillwater. |
+| Boss key | Notes: “Ctrl+Shift+L beats any window. Locked screens don’t get questions.”; the warning toast | From 3 releases, stay on a personal page (a translated personal site, or the sudoku) for 20 seconds and your manager starts walking over. Lock the screen (Ctrl+Shift+L or the logo menu) before they arrive. |
+| Escape artist | — | Press Esc 10 times with nothing to close. |
+| Nice try | — | Search (Ctrl+K) for anything starting with `sudo`. |
+| Not found | — | Have a budget of exactly $404 (whole dollars). |
+| Every last dollar | — | Spend your budget down to less than $1. |
+| Unlucky for some | — | Ship version 13.0 of any project. |
+| Full house | — | Have every app in the dock open at once. |
+| Pocket-sized | — | Resize a window to its smallest (340 × 240). |
+| Indecisive | — | Change the accent colour 10 times (Settings › Appearance). |
+| Change of scenery | — | Try every wallpaper. |
+| Not my network | — | Click every other network in the Wi-Fi menu. |
+| Overtime | — | Play on a Saturday or Sunday, local time. |
+| Clocking out | — | Be at the desk on a Friday between 5:00 and 5:04 p.m., local time. |
+| Coffee break | — | With at least three jobs, pause every one of them. |
+| Deep work | — | Stay at the desk for an hour without the tab going into the background. |
+| Maxed out | — | Buy the last level of any upgrade. |
+| Clock watcher | — | Open the calendar (the menu bar clock) 10 times. |
+| Paranoid | — | Lock the screen 5 times within a minute. |
+| Surprise me, forever | — | Turn on both shuffle and repeat in Murmur. |
+| Silent disco | — | Play music in Murmur with the volume all the way down. |
+| Required reading | — | Open Welcome.pdf 5 times. |
+| Nothing to report | Ashleigh’s telemetry review (“Quiet Monitor lists everything that watches anyone, including us”); Notes | Answer the telemetry review with “Nothing at all”, then ship Quiet Monitor (or have it shipped already). |
 
 ## Conversations
 
@@ -94,8 +117,39 @@ Help › Help Desk lists a ticket for every problem the player currently has: th
 | Mom & Dad | Mail › Personal, after the first release | Three pilot products, each fixed with an answer from the hidden pilots page. The last one asks you to choose between the script and the truth. |
 | Greg Okafor | Ripple, after you revoke the credential | His heater’s smart plug used the contractor account, so the “hacker” was partly a heater. He has a later note once Panel B is fixed. |
 | mchen (guest) | Ripple, after Mara’s blog and Channel 04 | Mara says hello, then asks you to help Reggie, or thanks you if you already have. |
+| Ashleigh Lane (Product) | Ripple, after 2 releases | One product review every two releases or more (from 2, 5, 8 and 11 releases): pricing, telemetry, support and the roadmap. Each answer stays on file and is listed under Product policy in Workbench. A last message reports what Assure did with your telemetry. |
 
 Shipping Workspace Zero recovers one of Mara’s notes per version (v1–v4). These mention Bella, Reggie and the consumer pilots.
+
+## Users and product policy
+
+Each shipped project keeps its own users. A release adds 1.4 users per dollar it earned. Users pay $0.0004 each per second, and a project's next version pays more the more users it has (× 1 + √users ÷ 40, at most × 3). After 5 minutes at the desk without a release a project starts to drift: it loses 0.06% of its users a second, never dropping below 40% of its best. Time away never counts. A Lunchboard outage loses 10% of its users.
+
+| Review | Answer | Effect |
+| --- | --- | --- |
+| Pricing | Free with ads | 40% more new users, each paying half. |
+| | Paid | 30% fewer new users, each paying double. |
+| | Calm tier | 10% fewer new users, drifting half as fast. |
+| Telemetry | Collect everything | 25% more new users, drifting a little slower; personal use counts 25% more toward the Calm Index. Quiet Monitor lists your telemetry; your parents’ Hearth learns from it; Ashleigh reports that the consumer pilots licensed it. |
+| | Crash reports only | No change. |
+| | Nothing at all | 10% fewer new users. With Quiet Monitor shipped: the secret Nothing to report. |
+| Support | Within the hour | Users drift half as fast; project jobs run 10% slower. (“Can the duck do it?” gets a reply but no decision.) |
+| | Within the week | Users drift 50% faster. |
+| Roadmap | Search, Cloud sync or Performance | The chosen kind pays 30% more and takes 20% less time to write; the other two pay 10% less. |
+
+Toolshed › Upgrades can be bought repeatedly. Each level costs 15% more budget and knowledge than the last, and the knowledge is spent: More memory (every job +6% a level, 10 levels), Autocomplete model (writing +10% a tier, 5 tiers, needs Autocomplete), Faster test suite (testing and debugging +15% a level, 5 levels, needs Test harness) and Release notes (+10% new users a level, 8 levels).
+
+## Technical debt, resources and the scheduler
+
+**Debt.** When tests find defects you can debug, or **Ship anyway**. Shipping anyway still needs the release task. Each known issue cuts that release's pay by 10% and its new users by 15% (each down to at most 40%), and becomes a point of debt on the project. Writing a feature with Safe development off adds one more. Each point of debt makes that project's writing 15% slower and its users drift 10% faster. **Refactor** (Workbench, when the project is idle) takes 10 + 6 × debt seconds and clears it all. Debt is capped at 20.
+
+**Resources.** Every job needs processor; tests also need disk; debugging, refactoring and reading need memory; and any job on Lunchboard or a Cloud sync feature (except refactoring) needs network. A job runs at the pace of its scarcest resource: capacity ÷ the number of running jobs that need it, at most 1. Processor is one per core, less QuickFix's share (20–40%). Memory is 1, plus 0.25 per More memory level. Disk is 1, or 2 while Panel B is restored. Network is 1, or 0.25 while isolated. Activity Monitor › Processes shows each one and marks the bottleneck.
+
+**Scheduler rules** (Conductor, with the Task scheduler): per project, *Test, fix and ship*, *Test and fix, then wait for me*, or *Hands off*; how many known bugs it may ship anyway (0–9); the debt at which it refactors an idle project first (0 = never); and *Keep reading*, which starts a documentation session whenever none is running. The Automator track's restart follows the same rules.
+
+## The manager
+
+From 3 releases, 20 seconds on a personal page (a translated personal site, or the sudoku) while you are at the desk sends your manager over, at most once every 10 minutes. A toast and the goal widget warn you. You have 10 seconds (20 with Relaxed timing): minimizing or closing the page counts as hiding, locking the screen is the Boss key secret, and being seen adds 10 Acceptable Use concern. It never happens while the tab is in the background.
 
 ## The duck corrections
 

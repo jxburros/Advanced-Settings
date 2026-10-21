@@ -196,6 +196,9 @@ const NOTES = [
   [() => s.skills.includes("database"), "If you find a project with your name on it, check the creation date before you open it."],
   [() => s.stories.employee >= 2 || s.suspicion >= 25, "The Calm Index in the corner has no sensor for the clients. It has one for you."],
   [() => s.stories.duck >= 2, "I investigated the duck. It is the only thing in this building that is exactly what it looks like. Leave it some oats."],
+  [() => s.releases >= 2, "Users are a feeling too. They leave quietly when nothing changes. Ship something small to an old project now and then."],
+  [() => s.releases >= 3, "Your manager always walks over at the worst moment. Ctrl+Shift+L beats any window. Locked screens don’t get questions."],
+  [() => s.releases >= 4, "Whatever the product collects, Quiet Monitor will find. It doesn’t care whose name is on the watching."],
   [() => s.releases >= 2, "Reggie on platform asks everyone about their weekends. Answer him properly. He keeps the answers."],
   [() => (s.threads.bella?.step ?? 0) >= 4, "People come back from the Wellness Wing very polite. The real them is still in there. Remind them of something silly."],
   [() => s.rank >= 2, "Greg is real. The space heater is real. I want you to know at least two things here are real."],
@@ -287,6 +290,9 @@ function goal() {
     return [s.over === "fired" ? "You were let go" : "Your workstation was reimaged", "This workstation is finished. Something kept track of what you found. Start again whenever you like.", "settings", "Start again", "reset"];
   if (!s.releases)
     return ["Ship something", "Open Workbench, pick a feature for Pocket Notes, then write, test, fix and ship it. Nobody expects much. That’s the nice part.", "workbench", "Open Workbench"];
+  const boss = s.incidents.boss;
+  if (boss.state === 1)
+    return ["Your manager is on the way", `About ${Math.max(0, Math.ceil(boss.at + G.relaxed(s, G.BOSS.window) - s.elapsed))} seconds. Minimize the personal stuff, or lock the screen (Ctrl+Shift+L).`, "", "Minimize everything", "minall"];
   const waiting = G.PROJECTS.find((d) => s.projects[d.id]?.stage === "task");
   if (waiting)
     return ["A release is waiting on you", `${waiting.name} passed its tests, but it still needs a ${G.T.TASK_NAMES[G.T.kindOf(waiting.id, s.projects[waiting.id].version)].toLowerCase()} before it can ship. The scheduler won’t do this part.`, "workbench", "Open Workbench"];
@@ -294,19 +300,24 @@ function goal() {
     return ["Your growth conversation is ready", "People & Serenity would like to discuss your trajectory. It’s in Mail.", "mail", "Open Mail"];
   if (s.stories.quickfix > 0 && s.stories.quickfix < 5)
     return ["Something is using your processor", "A plugin you didn’t install is helping. Activity Monitor has opinions about that.", "activity", "Open Activity Monitor"];
+  const drifting = G.PROJECTS.find((d) => s.projects[d.id]?.drift && s.projects[d.id].stage === "plan");
+  if (drifting)
+    return ["Users are drifting", `${drifting.name} hasn’t shipped in a while, and its users are wandering off. A new version brings them back.`, "workbench", "Open Workbench", "open"];
   if (!s.skills.includes("web"))
     return ["Widen your horizons", "Install Web development in Toolshed to unlock a second project. The lunch portal needs you.", "toolshed", "Open Toolshed"];
   if (!s.skills.includes("scheduler"))
     return ["Get your afternoons back", "The Task scheduler tests, fixes and ships on its own. Find it in Toolshed.", "toolshed", "Open Toolshed"];
   if (s.rank < 4)
     return ["Build a reputation", `${G.RANK_AT[s.rank + 1] - s.releases} more release${G.RANK_AT[s.rank + 1] - s.releases === 1 ? "" : "s"} until your next growth conversation. New projects ship faster than old ones.`, "workbench", "Open Workbench"];
+  if (complete() && G.handoffReady(s) && archive.legacy < G.LEGACY_MAX)
+    return ["Pass it on", "WS-0417 is ready for its next user whenever you are. Mail has the handover form. Free play continues until then.", "mail", "Open Mail"];
   if (!complete() && G.HINTS.some((h) => h.active(s)))
     return ["Stuck on something?", "Finish the case files, read the notes, open the menus nobody opens. The Help Desk takes tickets, and answers them eventually.", "help", "Open Help Desk"];
   return ["The workstation is yours", "Finish the case files, read the notes, open the menus nobody opens. Keep building.", "notes", "Open Notes"];
 }
 
 /* ---------- apps ---------- */
-const STAGE = { plan: 0, writing: 1, written: 1, testing: 2, tested: 3, debugging: 3, task: 4 };
+const STAGE = { plan: 0, writing: 1, written: 1, testing: 2, tested: 3, debugging: 3, task: 4, refactoring: 0 };
 /* The release task panel: each kind is played differently. */
 function rushInfo(t) {
   const ph = (s.elapsed + t.offset) % G.T.PERIOD;
@@ -357,7 +368,20 @@ function workbench() {
   });
   return tabs("workbench", tabList, cur) + `<div class="pane">${projectView(def)}</div>`;
 }
+function usersHTML(p) {
+  if (!p.version) return "";
+  const rate = p.users * G.INCOME * G.policy(s, "income") * 60;
+  const fresh = Math.max(0, Math.ceil((G.STALE - p.age) / 60));
+  return `<div class="users-line"><span><b>${Math.round(p.users).toLocaleString()}</b> users</span>${p.debt ? `<span class="warn">${p.debt} debt</span>` : ""}<span>${money(rate)}/min while they stay</span><span>next version pays ×${G.demand(p).toFixed(2)}</span><span class="${p.drift ? "warn" : ""}">${p.drift ? "drifting away · ship to win them back" : `settled for about ${fresh} more min`}</span></div>`;
+}
+function policyHTML() {
+  const made = Object.entries(s.decisions);
+  if (!made.length) return "";
+  return `<h3>Product policy</h3><ul class="policy">${made.map(([k, v]) => `<li><b>${G.POLICIES[k].name}: ${G.POLICIES[k].options[v].name}</b> ${G.POLICIES[k].options[v].effect}</li>`).join("")}</ul>`;
+}
 function projectExtra(def, p) {
+  if (def.id === "monitor" && p.version && s.decisions.telemetry === "all")
+    return `<p class="fine">Quiet Monitor v${p.version}.0 is watching. Its list of things that watch people includes Stillwater product telemetry, collecting everything, approved by you.</p>`;
   if (def.id === "lunchboard" && p.version)
     return `<p class="fine">Lunchboard is up and earning about ${money(p.version * 0.04 * 60)} a minute in “engagement”.</p>`;
   if (def.id === "archive" && p.version)
@@ -374,22 +398,22 @@ function projectView(def) {
   if (!open)
     control = `<div class="locked">This project needs <b>${esc(G.SKILLS.find((k) => k.id === def.skill)?.name ?? def.skill)}</b>. Toolshed has it, for a price.</div>${button("Open Toolshed →", "open", "toolshed", false, "ghost")}`;
   else if (p.stage === "plan")
-    control = `<label class="field-label" for="feature-${def.id}">Next feature</label><select id="feature-${def.id}">${G.FEATURES.map((f) => `<option value="${f.id}">${f.name} · ${G.writeTime(s, p, f)}s · ${f.bugs} expected defect${f.bugs === 1 ? "" : "s"} — ${f.desc}</option>`).join("")}</select>${button("Start development", "start", def.id, !!s.over, "primary wide")}`;
+    control = `${p.debt ? `<div class="result warn">${p.debt} debt: every version of ${def.name} takes ${Math.round(15 * p.debt)}% longer to write, and its users drift ${10 * p.debt}% faster.</div>${button(`Refactor · ${G.refactorTime(p)}s`, "refactor", def.id, !!s.over, "ghost wide")}` : ""}<label class="field-label" for="feature-${def.id}">Next feature</label><select id="feature-${def.id}">${G.FEATURES.map((f) => `<option value="${f.id}">${f.name} · ${G.writeTime(s, p, f)}s · ${f.bugs} expected defect${f.bugs === 1 ? "" : "s"} — ${f.desc}</option>`).join("")}</select>${button("Start development", "start", def.id, !!s.over, "primary wide")}`;
   else if (j)
-    control = `<div class="progress-label"><span>${{ write: "Writing the feature", test: "Running the test suite", debug: "Fixing what the tests found" }[j.kind]}${j.paused ? " · paused" : ""}</span><b data-jobpct="${j.id}">${pct(j)}</b></div>${jobBar(j)}<div class="row">${button(j.paused ? "Resume" : "Pause", "pause", j.id, false, "ghost", `aria-label="${j.paused ? "Resume" : "Pause"} ${def.name}"`)}<small class="muted">Sharing ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""} with everything else</small></div>`;
+    control = `<div class="progress-label"><span>${{ write: "Writing the feature", test: "Running the test suite", debug: "Fixing what the tests found", refactor: "Refactoring: paying off debt" }[j.kind]}${j.paused ? " · paused" : ""}</span><b data-jobpct="${j.id}">${pct(j)}</b></div>${jobBar(j)}<div class="row">${button(j.paused ? "Resume" : "Pause", "pause", j.id, false, "ghost", `aria-label="${j.paused ? "Resume" : "Pause"} ${def.name}"`)}<small class="muted">Sharing ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""} with everything else</small></div>`;
   else if (p.stage === "written")
     control = `<div class="result">The feature is written. Whether it works is a separate question.</div>${button(`Run tests · ${8 + 2 * p.version}s`, "test", def.id, false, "primary wide")}`;
   else if (p.stage === "task" && p.task) control = taskView(def, p);
   else if (p.stage === "tested")
     control = p.bugs
-      ? `<div class="result warn">${p.bugs} defect${p.bugs > 1 ? "s" : ""} found. The release gate is closed until they’re fixed.</div>${button("Debug feature", "debug", def.id, false, "primary wide")}`
+      ? `<div class="result warn">${p.bugs} defect${p.bugs > 1 ? "s" : ""} found. Fix them, or ship anyway: known issues cut what this release pays and the users it brings, and stay behind as debt.</div><div class="row">${button("Debug feature", "debug", def.id, false, "primary")}${button(`Ship anyway · +${p.bugs} debt`, "shipanyway", def.id, false, "ghost")}</div>`
       : `<div class="result">All checks passed. It’s as ready as anything ever is.</div>${button("Ship v" + (p.version + 1) + ".0", "release", def.id, false, "primary wide")}`;
   else control = `<div class="result">Nothing is running for this project. The workstation was reset under it.</div>`;
   const at = p.stage === "tested" && !p.bugs ? 5 : STAGE[p.stage];
   const steps = ["Plan", "Write", "Test", "Debug", "Task", "Ship"]
     .map((n, i) => `<li class="${i < at ? "done" : i === at && open ? "now" : ""}">${n}</li>`)
     .join("");
-  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${card(control, "controls")}${projectExtra(def, p)}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test.</p>`;
+  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${usersHTML(p)}${card(control, "controls")}${projectExtra(def, p)}${policyHTML()}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test, but the users each version brings make the next one pay more. Users drift away from projects that stop shipping. Each job needs processor and sometimes memory, disk or network, and runs at the pace of whichever is scarcest; Activity Monitor shows which.</p>`;
 }
 function toolshed() {
   const groups = {
@@ -397,8 +421,8 @@ function toolshed() {
     tools: ["tests", "autocomplete", "scheduler"],
     machine: ["hardware", "assistant", "local"],
   };
-  const cur = tabOf("toolshed", Object.keys(groups));
-  const rows = groups[cur]
+  const cur = tabOf("toolshed", [...Object.keys(groups), "upgrades"]);
+  const rows = cur === "upgrades" ? upgradeRows() : groups[cur]
     .map((id) => {
       const k = G.SKILLS.find((k) => k.id === id);
       const own = s.skills.includes(k.id);
@@ -408,9 +432,19 @@ function toolshed() {
     })
     .join("");
   return (
-    tabs("toolshed", [["languages", "Languages"], ["tools", "Tools"], ["machine", "Hardware & AI"]], cur) +
-    `<div class="pane"><div class="balance"><div><span>Budget</span><b>${money(s.money)}</b></div><div><span>Knowledge</span><b>${Math.floor(s.knowledge)}</b></div></div><p class="fine">Knowledge is never spent. It just has to be there. Budget is spent, enthusiastically. Toolshed is the only approved source of software on this workstation.</p>${rows}</div>`
+    tabs("toolshed", [["languages", "Languages"], ["tools", "Tools"], ["machine", "Hardware & AI"], ["upgrades", "Upgrades"]], cur) +
+    `<div class="pane"><div class="balance"><div><span>Budget</span><b>${money(s.money)}</b></div><div><span>Knowledge</span><b>${Math.floor(s.knowledge)}</b></div></div><p class="fine">${cur === "upgrades" ? "Upgrades can be bought again and again. Each level costs 15% more than the last, and spends knowledge as well as budget, so spending it now can keep you from the next install." : "Installing software only needs the knowledge to be there; it isn’t spent. Upgrades spend it. Budget is spent, enthusiastically. Toolshed is the only approved source of software on this workstation."}</p>${rows}</div>`
   );
+}
+function upgradeRows() {
+  return G.UPGRADES.map((u) => {
+    const n = s.upgrades[u.id] ?? 0;
+    const max = n >= u.max;
+    const c = G.upgradeCost(s, u.id);
+    const locked = u.requires && !s.skills.includes(u.requires);
+    const why = max ? "Maxed out" : locked ? `Needs ${G.SKILLS.find((k) => k.id === u.requires).name}` : s.knowledge < c.knowledge ? `Needs ${c.knowledge} knowledge` : s.money < c.money ? `Needs ${money(c.money)}` : "";
+    return `<div class="shelf ${max ? "owned" : ""}"><div><strong>${u.name} <span class="pill">level ${n} of ${u.max}</span></strong><p>${u.desc}</p><small class="muted">${max ? "No further levels. Facilities checked." : `Next level: ${money(c.money)} · spends ${c.knowledge} knowledge`}</small></div>${button(why || "Upgrade", "upgrade", u.id, !!why, why ? "ghost" : "primary", `aria-label="Upgrade ${u.name}"`)}</div>`;
+  }).join("");
 }
 function library() {
   const busy = s.jobs.find((j) => j.kind === "reading");
@@ -420,16 +454,25 @@ function library() {
       : s.secrets.includes("appendix")
         ? card(`${eyebrow("Appendix H · what “time” means here")}<p>Time here is measured in returns. Each time you leave and come back, the desk keeps a little more of you, and the welcome gets a little less sure who you are. This is normal. This is onboarding.</p>`)
         : card(`${eyebrow("Appendix H")}${s.returns >= 3 ? `<p>The appendix is open. It is shorter than you expected.</p>${button("Read Appendix H", "appendix", "", false, "ghost")}` : "<p>Appendix H is not available yet. Come back later.</p>"}`);
-  return `<div class="pane">${eyebrow("Stillwater Internal Documentation · rev. 41")}<h2>Read the documentation.</h2><p class="lede">Nobody reads it. That’s why it works. Each reading session takes 20 seconds of processor time and leaves you with 8 knowledge, which you keep forever.</p>${card(
+  return `<div class="pane">${eyebrow("Stillwater Internal Documentation · rev. 41")}<h2>Read the documentation.</h2><p class="lede">Nobody reads it. That’s why it works. Each reading session takes 20 seconds of processor time and leaves you with 8 knowledge, which you keep until you spend it on upgrades.</p>${card(
     busy
       ? `<div class="progress-label"><span>Reading${busy.paused ? " · paused" : ""}</span><b data-jobpct="${busy.id}">${pct(busy)}</b></div>${jobBar(busy)}`
       : button("Read the documentation · 20s", "read", "", !!s.over, "primary wide"),
     "controls",
   )}${s.reading ? `<blockquote>${READING[(s.reading - 1) % READING.length]}</blockquote><p class="fine">${s.reading} session${s.reading === 1 ? "" : "s"} completed.${s.secrets.includes("appendix") ? "" : " Appendix H remains unread."}</p>` : `<p class="fine">0 sessions completed. The table of contents alone is 30 pages.</p>`}${appendix}</div>`;
 }
+function rulesHTML() {
+  const sched = s.skills.includes("scheduler");
+  const sel = (id, label, opts, cur) => `<select id="rule-${id}" aria-label="${esc(label)}" ${sched ? "" : "disabled"}>${opts.map(([v, l]) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+  const n = (k, none, some) => Array.from({ length: 10 }, (_, i) => [i, i ? some(i) : none]);
+  const projects = G.PROJECTS.filter((d) => G.unlocked(s, d))
+    .map((d) => `<div class="setting-row"><div><strong>${d.name}</strong></div>${sel(d.id, `Pipeline rule for ${d.name}`, Object.entries(G.MODES), s.rules.modes[d.id] ?? "ship")}</div>`)
+    .join("");
+  return `<h3>Pipeline rules</h3><p class="fine">The pipeline follows these in order, every second, for every project.</p>${projects}<div class="setting-row"><div><strong>Known bugs it may ship</strong><p>Up to this many defects ships anyway instead of debugging. Each one becomes debt.</p></div>${sel("bugs", "Known bugs the pipeline may ship", n("bugs", "None: always debug", (i) => `Up to ${i}`), s.rules.bugs)}</div><div class="setting-row"><div><strong>Refactor at</strong><p>Pays off a project’s debt before its next version once it reaches this much.</p></div>${sel("debt", "Refactor when debt reaches", n("debt", "Never", (i) => `${i} debt`), s.rules.debt)}</div>${toggle("Keep reading", sched ? "Start a documentation session whenever none is running." : "Requires the Task scheduler from Toolshed.", "read", s.rules.read, !sched, "rule")}`;
+}
 function conductor() {
   const assistant = s.skills.includes("assistant");
-  return `<div class="pane">${eyebrow("Automation")}<h2>Let the familiar run itself.</h2>${toggle("Release pipeline", s.skills.includes("scheduler") ? "Tests, fixes and ships finished work automatically. You still choose every feature; the scheduler has no taste." : "Requires the Task scheduler from Toolshed.", "auto", s.auto, !s.skills.includes("scheduler"))}<div class="setting-row"><div><strong>Assistant assignment</strong><p>Development speeds up project work. Reading speeds up the documentation. Security traces and quarantines things that shouldn’t be there, but won’t guess a password for you.</p></div><select id="ai" ${assistant ? "" : "disabled"} aria-label="Assistant assignment">${["development", "reading", "security"].map((v) => `<option value="${v}" ${s.ai === v ? "selected" : ""}>${v[0].toUpperCase() + v.slice(1)}</option>`).join("")}</select></div><p class="fine">${assistant ? `Assistant online. ${s.skills.includes("local") ? "Local model: +80% on its assignment." : "Base model: +40% on its assignment."} It would like you to know it is happy to help.` : "Install the AI task assistant in Toolshed to hire one. No real AI is involved; it is very convincing anyway."}</p></div>`;
+  return `<div class="pane">${eyebrow("Automation")}<h2>Let the familiar run itself.</h2>${toggle("Release pipeline", s.skills.includes("scheduler") ? "Tests, fixes and ships finished work by your rules below. You still choose every feature; the scheduler has no taste." : "Requires the Task scheduler from Toolshed.", "auto", s.auto, !s.skills.includes("scheduler"))}${rulesHTML()}<div class="setting-row"><div><strong>Assistant assignment</strong><p>Development speeds up project work. Reading speeds up the documentation. Security traces and quarantines things that shouldn’t be there, but won’t guess a password for you.</p></div><select id="ai" ${assistant ? "" : "disabled"} aria-label="Assistant assignment">${["development", "reading", "security"].map((v) => `<option value="${v}" ${s.ai === v ? "selected" : ""}>${v[0].toUpperCase() + v.slice(1)}</option>`).join("")}</select></div><p class="fine">${assistant ? `Assistant online. ${s.skills.includes("local") ? "Local model: +80% on its assignment." : "Base model: +40% on its assignment."} It would like you to know it is happy to help.` : "Install the AI task assistant in Toolshed to hire one. No real AI is involved; it is very convincing anyway."}</p></div>`;
 }
 function message(from, subject, body, meta = "", cls = "") {
   return `<article class="message ${cls}"><header><span class="avatar">${from[0]}</span><div><strong>${subject}</strong><small>${from}${meta ? " · " + meta : ""}</small></div></header>${body}</article>`;
@@ -519,6 +562,13 @@ function mail() {
       body += message("IT", "WS-0417 reimaged", "<p>An unsigned plugin granted itself administrator rights and helped everything. The workstation has been restored to factory calm.</p>", "today", "ending");
     if (complete())
       body += message("People & Serenity", "End of probation", `<p>Congratulations. Your probation period has ended.</p><p>You shipped working software, secured your workstation, reconstructed a former colleague’s audit, and established that the duck is a duck. Stillwater remains committed to calm. Your corner of it is now also committed to accuracy. We have noted this, in a file.</p><p><b>All four stories are complete.</b> Free play continues.</p>`, "today", "ending");
+    if (G.handoffReady(s))
+      body += message(
+        "People & Serenity",
+        "Hand off WS-0417",
+        `<p>Principal Engineers may prepare their workstation for its next user. Your projects and budget stay with the desk. A quarter of what you know, and a little of how you work, goes with you.</p><p>${archive.legacy ? `You have handed this desk over ${archive.legacy} time${archive.legacy > 1 ? "s" : ""} before. ` : ""}Each handover makes releases and reading pay 10% more on the next desk, up to ${G.LEGACY_MAX * 10}%.</p><form class="inline-form" data-form="handoff"><label class="sr" for="handoff-note">Handover note</label><input id="handoff-note" name="v" type="text" maxlength="200" autocomplete="off" placeholder="A note for the next user (optional)" data-keep="1" /><button class="primary">Hand off</button></form><p class="fine">The Secret Tracker comes too. It always does.</p>`,
+        "whenever you’re ready",
+      );
     if (s.returns >= 12)
       body += message("People & Serenity", "Onboarding your successor", "<p>Please prepare WS-0417 for its next user. A short handover note would be appreciated. Previous users have left notes in drawers, margins and, once, a ceiling tile. Please don’t do that.</p>", "draft · not meant for you");
     if (s.warned >= 3)
@@ -555,14 +605,24 @@ function mail() {
   }
   return tabs("mail", [["inbox", "Inbox", eligible || s.warned || mailNews() ? '<i class="badge">1</i>' : ""], ["recovered", "Recovered"], ...(personal ? [["personal", "Personal", unread("parents") && cur !== "personal" ? '<i class="badge">1</i>' : ""]] : [])], cur) + `<div class="pane">${body}</div>`;
 }
+/* Capacity against demand for each resource, with the one holding things back marked. */
+function resourcesHTML() {
+  const res = G.resources(s);
+  const worst = G.bottleneck(s, res);
+  return `<div class="resources">${Object.entries(G.RESOURCES)
+    .map(([r, name]) => {
+      const { cap, load } = res[r];
+      return `<div class="${r === worst ? "worst" : ""}"><span>${name}${r === worst ? " · bottleneck" : ""}</span><div class="meter"><i style="width:${Math.min(100, Math.round((load / Math.max(cap, 0.01)) * 100))}%"></i></div><small>${load} job${load === 1 ? "" : "s"} · room for ${+cap.toFixed(2)}</small></div>`;
+    })
+    .join("")}</div><p class="fine">${worst ? `${G.RESOURCES[worst]} is the bottleneck: jobs that need it are waiting their turn.` : "Nothing is waiting on anything."} Processor is cores, less whatever QuickFix takes. Memory grows with More memory. Disk doubles with Panel B restored. Network crawls while isolated, and Lunchboard and Cloud sync need it.</p>`;
+}
 function activity() {
   const cur = tabOf("activity", ["processes", "channels", "security", "log"]);
   const h = s.stories.quickfix;
   const watching = (s.projects.monitor?.version ?? 0) > 0;
   let body = "";
   if (cur === "processes") {
-    const active = s.jobs.filter((j) => !j.paused).length;
-    body = `<div class="balance"><div><span>Processor</span><b>${Math.min(100, Math.round((active / G.workers(s)) * 100))}%</b></div><div><span>Cores</span><b>${G.workers(s)}</b></div><div><span>Processes</span><b>${s.jobs.length}</b></div></div>${
+    body = `${resourcesHTML()}${
       s.jobs.length
         ? s.jobs
             .map((j) => {
@@ -615,8 +675,9 @@ function news() {
   }${desk}${d ? `<h3>What actually happened</h3><ul class="truths">${DUCK.slice(0, d).map((x) => `<li><b>${x.short}</b>${x.truth}</li>`).join("")}</ul>` : ""}<h3>Also in the news</h3><ul class="also">${ALSO_NEWS.map((x) => `<li>${x}</li>`).join("")}</ul></div>`;
 }
 function notes() {
+  const left = archive.notes.map((n) => `<div class="sticky s2 handover">${esc(n)}<small>— the previous user (you)</small></div>`).join("");
   const found = NOTES.filter(([ok]) => ok());
-  return `<div class="pane">${eyebrow("Found in drawers, margins, and one ceiling tile")}<h2>Notes from the previous user</h2><p class="fine">${found.length} of ${NOTES.length} found. More turn up as you go deeper.</p><div class="stickies">${NOTES.map(([ok, text, by = "— M."], i) => (ok() ? `<div class="sticky s${i % 4}">${text}<small>${by}</small></div>` : `<div class="sticky ghost" aria-label="Not found yet">…</div>`)).join("")}</div></div>`;
+  return `<div class="pane">${eyebrow("Found in drawers, margins, and one ceiling tile")}<h2>Notes from the previous user</h2><p class="fine">${found.length} of ${NOTES.length} found. More turn up as you go deeper.</p><div class="stickies">${left}${NOTES.map(([ok, text, by = "— M."], i) => (ok() ? `<div class="sticky s${i % 4}">${text}<small>${by}</small></div>` : `<div class="sticky ghost" aria-label="Not found yet">…</div>`)).join("")}</div></div>`;
 }
 function files() {
   const list = ["places", ...(s.downloads.length ? ["downloads"] : []), ...s.bookmarks];
@@ -648,9 +709,9 @@ function settings() {
   const cur = tabOf("settings", sections.map((x) => x[0]));
   let body = "";
   if (cur === "appearance")
-    body = `<h2>Appearance</h2><div class="setting-row"><div><strong>Wallpaper</strong><p>Hand-painted by a watercolor process that also does not exist.</p></div></div><div class="swatches">${Object.entries(WALLPAPERS).map(([w, [name, url]]) => `<button class="wall ${ui.wallpaper === w ? "on" : ""}" data-action="wallpaper" data-id="${esc(w)}" aria-label="${esc(name)} wallpaper" style="background-image:url('${esc(url)}')"><span>${esc(name)}</span></button>`).join("")}</div><div class="setting-row"><div><strong>Window transparency</strong><p>How much of the calm shows through.</p></div><input type="range" id="glass" min="0.2" max="0.9" step="0.05" value="${1.1 - ui.glass}" aria-label="Window transparency" /></div><div class="setting-row"><div><strong>Accent</strong><p>Both are on brand. One is slightly more on brand.</p></div><div class="row">${["blue", "pink", "lilac"].map((a) => `<button class="accent-dot a-${a} ${ui.accent === a ? "on" : ""}" data-action="accent" data-id="${a}" aria-label="${a} accent"></button>`).join("")}</div></div>${toggle("Reduce motion", "Fewer animations. Story moments still happen, just more politely.", "still", ui.still, false, "pref")}`;
+    body = `<h2>Appearance</h2><div class="setting-row"><div><strong>Wallpaper</strong><p>Hand-painted by a watercolor process that also does not exist.</p></div></div><div class="swatches">${Object.entries(WALLPAPERS).map(([w, [name, url]]) => `<button class="wall ${ui.wallpaper === w ? "on" : ""}" data-action="wallpaper" data-id="${esc(w)}" aria-label="${esc(name)} wallpaper" style="background-image:url('${esc(url)}')"><span>${esc(name)}</span></button>`).join("")}</div><div class="setting-row"><div><strong>Window transparency</strong><p>How much of the calm shows through.</p></div><input type="range" id="glass" min="0.2" max="0.9" step="0.05" value="${1.1 - ui.glass}" aria-label="Window transparency" /></div><div class="setting-row"><div><strong>Accent</strong><p>Both are on brand. One is slightly more on brand.</p></div><div class="row">${["blue", "pink", "lilac"].map((a) => `<button class="accent-dot a-${a} ${ui.accent === a ? "on" : ""}" data-action="accent" data-id="${a}" aria-label="${a} accent"></button>`).join("")}</div></div>${toggle("Reduce motion", "Fewer animations. Story moments still happen, just more politely.", "still", ui.still, false, "pref")}${toggle("Relaxed timing", "Moments that need a quick reaction wait twice as long. Everything else, rewards included, stays the same.", "relaxed", s.settings.relaxed)}`;
   else if (cur === "development")
-    body = `<h2>Development</h2>${toggle("Safe development mode", "Careful writing means fewer defects. Turn it off to write 30% faster and add two defects to every new feature. Bold.", "safe", s.settings.safe)}`;
+    body = `<h2>Development</h2>${toggle("Safe development mode", "Careful writing means fewer defects. Turn it off to write 30% faster, with two more defects and one more debt in every new feature. Bold.", "safe", s.settings.safe)}`;
   else if (cur === "sound")
     body = `<h2>Sound</h2>${toggle("Interface sounds", "Clicks, chimes, windows opening and closing, and alerts. Music is separate.", "sounds", ui.sounds, false, "pref")}<div class="setting-row"><div><strong>Alert sound</strong><p>Played with notifications.${s.secrets.includes("quiet") ? " One of these wasn’t on the list before." : ""}</p></div><select id="alert" aria-label="Alert sound">${Object.entries(S.ALERTS).filter(([k]) => k !== "quack" || s.secrets.includes("quiet")).map(([k, l]) => `<option value="${k}" ${ui.alert === k ? "selected" : ""}>${l}</option>`).join("")}</select></div><div class="setting-row"><div><strong>Volume</strong><p>Interface sounds only.</p></div><input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="${ui.volume}" aria-label="Interface volume" /></div>${toggle("Play sound on startup", "A short chord when you sit down at the desk.", "startup", ui.startup, false, "pref")}${button("Open Murmur", "open", "music", false, "ghost")}`;
   else if (cur === "notifications")
@@ -1082,6 +1143,8 @@ function openApp(id, tab) {
   if (tab) w.tab = tab;
   focus(id);
   if (id === "help") checkClock();
+  if (id === "welcome") G.count(s, "welcome", 5, "welcomeagain");
+  if (Object.entries(APPS).every(([k, a]) => !docked(a) || ui.win[k]?.open)) G.secret(s, "fullhouse");
 }
 function focus(id) {
   ui.win[id].z = ++ui.z;
@@ -1226,7 +1289,7 @@ function renderChrome() {
   const [title, desc, app, cta, action = "open"] = goal();
   const active = s.jobs.filter((j) => !j.paused).length;
   const d = s.stories.duck;
-  morph($("widgets"), `<section class="widget goal">${eyebrow("Your next small victory")}<h3>${title}</h3><p>${desc}</p>${button(cta, action, app, false, "primary")}</section><section class="widget">${eyebrow("Processor")}<div class="meter"><i style="width:${Math.min(100, Math.round((active / G.workers(s)) * 100))}%"></i></div><p>${s.jobs.length ? `${active} running, ${s.jobs.length - active} paused · ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""}` : "Idle. Suspiciously peaceful."}</p></section><button class="widget news-widget" data-action="open" data-id="news">${eyebrow("The Daily Current")}<span class="duck" aria-hidden="true">🦆</span><b>${G.duckOpen(s) || d === 4 ? DUCK[d].head : "A QUIET DAY FOR THE DUCK"}</b></button>`);
+  morph($("widgets"), `<section class="widget goal">${eyebrow("Your next small victory")}<h3>${title}</h3><p>${desc}</p>${button(cta, action, app, false, "primary")}</section><section class="widget">${eyebrow("Processor")}<div class="meter"><i style="width:${Math.min(100, Math.round((active / G.workers(s)) * 100))}%"></i></div><p>${s.jobs.length ? `${active} running, ${s.jobs.length - active} paused · ${G.workers(s)} core${G.workers(s) > 1 ? "s" : ""}${G.bottleneck(s) ? ` · waiting on ${G.RESOURCES[G.bottleneck(s)].toLowerCase()}` : ""}` : "Idle. Suspiciously peaceful."}</p></section><button class="widget news-widget" data-action="open" data-id="news">${eyebrow("The Daily Current")}<span class="duck" aria-hidden="true">🦆</span><b>${G.duckOpen(s) || d === 4 ? DUCK[d].head : "A QUIET DAY FOR THE DUCK"}</b></button>`);
 }
 const selected = new Set();
 function deskIcons() {
@@ -1246,8 +1309,14 @@ function markRead() {
   }
   if (visible("mail") && ui.win.mail.tab === "personal") G.readThread(s, "parents");
 }
+/* What a manager walking past would see: a personal page in Wayfinder, or the sudoku. */
+function presence() {
+  const shown = (id) => !!(ui.win[id]?.open && !ui.win[id].min && !document.hidden && !lockState);
+  s.playing = shown("sudoku");
+  s.browsing = shown("browser") && ui.web.page?.status === "ok" && !!ui.web.page.category;
+}
 function render() {
-  s.playing = !!(ui.win.sudoku?.open && !ui.win.sudoku.min);
+  presence();
   markRead();
   renderChrome();
   renderWindows();
@@ -1281,6 +1350,11 @@ function notify(text, app = "welcome") {
   setTimeout(() => t.remove(), 6700);
 }
 function sourceOf(text) {
+  if (/^Your manager/.test(text)) return "browser";
+  if (/^Upgrade installed/.test(text)) return "toolshed";
+  if (/ refactored\. /.test(text)) return "workbench";
+  if (/handover note/.test(text)) return "notes";
+  if (/users are drifting|^Quiet Monitor (found|looked)/.test(text)) return "workbench";
   if (/^People & Serenity|^IT:|^IT Security|^Kevin|replied all|got cake/.test(text)) return "mail";
   if (/^Workspace Zero v|passed for .* v\d|rejected\. Take|^The assistant finished|^Migration rolled back|^Lunchboard went down/.test(text)) return "workbench";
   if (/^Live help|Translate translated|box7|Panel B, including B7|cover to cover/.test(text)) return /Live help/.test(text) ? "help" : /cover/.test(text) ? "library" : "browser";
@@ -1400,6 +1474,7 @@ function snapshot() {
   return { quickfix: s.stories.quickfix, bookmarks: [...s.bookmarks], complete: complete(), over: s.over, secrets: [...s.secrets], threads: Object.fromEntries(Object.keys(G.THREADS).map((id) => [id, (s.threads[id]?.step ?? 0) + Number(!!s.threads[id]?.open)])) };
 }
 function afterChange() {
+  G.purse(s);
   const now = snapshot();
   if (before.quickfix === 0 && now.quickfix === 1) {
     openApp("quickfix");
@@ -1424,6 +1499,32 @@ function afterChange() {
   }
   before = now;
   announce();
+}
+
+/* Moves to a new workstation, keeping only the archive and the look of the desk. */
+function newDesk(next) {
+  if (!$("moment").hidden) {
+    $("moment").hidden = true;
+    document.body.classList.remove("in-moment", ...Object.keys(MOMENTS).map((k) => "moment-" + k));
+    queue.length = 0;
+  }
+  s = next;
+  $("toasts").innerHTML = "";
+  saveArchive();
+  path = [];
+  ui = { ...structuredClone(UI_DEFAULT), wallpaper: ui.wallpaper, glass: ui.glass, accent: ui.accent, still: ui.still };
+  before = snapshot();
+  seenLog = "";
+  boot();
+}
+/* Runs a UI action and, if it turned up a secret, records and announces it straight away. */
+function noticed(fn) {
+  const n = s.secrets.length;
+  fn();
+  if (s.secrets.length > n) {
+    afterChange();
+    persist();
+  }
 }
 
 /* ---------- web navigation ---------- */
@@ -1537,6 +1638,10 @@ document.addEventListener("click", (e) => {
       trashIcon(id);
       break;
     case "network":
+      noticed(() => {
+        G.mark(s, "net:" + id);
+        if (["guest", "greg", "van"].every((n) => s.marks.includes("net:" + n))) G.secret(s, "wardriving");
+      });
       notify({ guest: "Stillwater-Guest requires a calm badge. Yours is provisional.", greg: "Greg’s Hotspot (heater) wants a password. It is probably “thursday”. It is not.", van: "You are not allowed to join “Definitely Not People & Serenity”. It already knows you." }[id], "settings");
       return;
     case "calday":
@@ -1607,17 +1712,27 @@ document.addEventListener("click", (e) => {
     case "release":
       changed = G.release(s, id);
       break;
+    case "shipanyway":
+      changed = G.shipAnyway(s, id);
+      break;
+    case "refactor":
+      changed = G.refactor(s, id);
+      break;
     case "buy":
       changed = G.buy(s, id);
+      break;
+    case "upgrade":
+      changed = G.upgrade(s, id);
       break;
     case "read":
       changed = G.read(s);
       break;
-    case "pause": {
-      const j = s.jobs.find((j) => j.id === Number(id));
-      if (j) j.paused = !j.paused;
+    case "pause":
+      G.pause(s, id);
       break;
-    }
+    case "rule":
+      changed = G.setRule(s, id, !s.rules[id]);
+      break;
     case "toggle":
       if (id === "auto") s.auto = !s.auto;
       else if (id === "private") s.private = !s.private;
@@ -1637,9 +1752,12 @@ document.addEventListener("click", (e) => {
       break;
     case "wallpaper":
       ui.wallpaper = id;
+      G.mark(s, "wall:" + id);
+      if (Object.keys(WALLPAPERS).every((w) => s.marks.includes("wall:" + w))) G.secret(s, "scenery");
       break;
     case "accent":
       ui.accent = id;
+      G.count(s, "accent", 10, "indecisive");
       break;
     case "story":
       changed = G.story(s, id);
@@ -1774,20 +1892,8 @@ document.addEventListener("click", (e) => {
       return;
     case "reset":
       if (!s.over && !confirm("Start a new workstation? This replaces your local progress. Export a backup first if you want to keep it.")) return;
-      if (!$("moment").hidden) {
-        $("moment").hidden = true;
-        document.body.classList.remove("in-moment", ...Object.keys(MOMENTS).map((k) => "moment-" + k));
-        queue.length = 0;
-      }
-      s = G.fresh();
-      $("toasts").innerHTML = "";
       archive.plays++;
-      saveArchive();
-      path = [];
-      ui = { ...structuredClone(UI_DEFAULT), wallpaper: ui.wallpaper, glass: ui.glass, accent: ui.accent, still: ui.still };
-      before = snapshot();
-      seenLog = "";
-      boot();
+      newDesk(G.fresh());
       break;
     default:
       return;
@@ -1867,6 +1973,14 @@ document.addEventListener("submit", (e) => {
     case "type":
       G.type(s, form.dataset.thread, v);
       break;
+    case "handoff": {
+      if (!confirm("Hand WS-0417 to the next user? Your projects and budget stay behind. A quarter of your knowledge, a legacy bonus and your note come with you to a new workstation.")) return;
+      const next = G.handoff(s, archive, v);
+      if (!next) return;
+      newDesk(next);
+      openApp("notes");
+      break;
+    }
   }
   if (clear && input?.type === "text" && kind !== "address") input.value = "";
   afterChange();
@@ -1886,6 +2000,7 @@ document.addEventListener("change", (e) => {
   }
   if (s.over) return;
   if (e.target.id === "ai") s.ai = e.target.value;
+  else if (e.target.id?.startsWith("rule-")) G.setRule(s, e.target.id.slice(5), e.target.value);
   else if (e.target.id === "installs") G.setInstalls(s, e.target.value);
   else return;
   afterChange();
@@ -1906,7 +2021,7 @@ document.addEventListener("input", (e) => {
     hits = searchHits(e.target.value);
     hitOn = 0;
     renderLauncher();
-    if (s.secrets.includes("search") && !before.secrets.includes("search")) afterChange(), persist();
+    if (s.secrets.some((x) => !before.secrets.includes(x))) afterChange(), persist();
   }
   if (id === "sfx-volume") {
     ui.volume = Number(e.target.value);
@@ -1945,6 +2060,12 @@ document.addEventListener("keydown", (e) => {
     if (!$("moment").hidden) {
       const first = $("moment").querySelector("[data-action=moment]");
       if (first) endMoment(first.dataset.id);
+      return;
+    }
+    if (!lockState && G.count(s, "escape", 10, "escape") === 10) {
+      notify("You pressed Escape ten times. There is no escape. There is, however, an achievement.", "settings");
+      afterChange();
+      persist();
     }
     return;
   }
@@ -2080,6 +2201,7 @@ function togglePop(kind, id, anchor) {
   else pop = { kind, id, anchor };
   calDay = 0;
   S.play("click");
+  if (pop?.kind === "calendar") noticed(() => G.count(s, "calendar", 10, "clockwatcher"));
   renderPop();
 }
 function closePop() {
@@ -2192,6 +2314,10 @@ function searchHits(q) {
   }
   if (/mara|chen/.test(q)) out.push({ title: "No results for Mara Chen", sub: "Try asking the desk.", run: () => {} });
   if (/furnace|heater|greg/.test(q)) out.push({ title: "B7 GREG — DO NOT", sub: "Panel B · facilities.stillwater", run: () => nav("facilities.stillwater") });
+  if (/^sudo\b/.test(q)) {
+    G.secret(s, "sudo");
+    out.push({ title: "You are not in the sudoers file.", sub: "This incident will be reported. To People & Serenity, gently.", run: () => {} });
+  }
   if (/calm/.test(q)) out.push({ title: "Calm Index", sub: `Currently ${G.calm(s)}%. It is watching the search too.`, run: () => {} });
   return out.slice(0, 9);
 }
@@ -2236,10 +2362,17 @@ function lockHTML() {
     return `${head}<div class="user"><div class="avatar-lg">M</div><b>mchen’s desktop</b><div class="note">The desktop is empty except for one file, <i>for-whoever.txt</i>:<br><br>“You found my password twice. Go outside sometimes. The duck does. — M.”</div><button class="primary" data-action="signout">Sign out</button></div></div>`;
   return `${head}<div class="user"><div class="avatar-lg">${G.RANKS[s.rank][0]}</div><b>You · WS-0417</b><button class="primary" data-action="unlock">Unlock</button><button class="link" data-action="switchuser">Other user: mchen</button></div></div>`;
 }
+let locks = [];
 function lockScreen(state) {
   closePop();
   closeLauncher();
   if (state === "lock" && lockState !== "lock") S.play("lock");
+  if (state === "lock" && lockState !== "saver")
+    noticed(() => {
+      G.bossKey(s);
+      locks = [...locks, Date.now()].filter((t) => Date.now() - t < 60000);
+      if (locks.length >= 5) G.secret(s, "paranoid");
+    });
   lockState = state;
   saverAt = state === "saver" ? Date.now() : 0;
   const el = $("lock");
@@ -2268,6 +2401,8 @@ function checkClock() {
   const d = new Date();
   let found = false;
   if (d.getHours() < 4) found = G.secret(s, "nightowl") || found;
+  found = G.clock(s, d) || found;
+  if (S.player.playing && S.player.volume === 0) found = G.secret(s, "silentdisco") || found;
   if (d.getDay() === 4 && d.getHours() === 16 && d.getMinutes() >= 15 && d.getMinutes() <= 19 && ui.win.help?.open && !ui.win.help.min && G.secret(s, "livehelp")) {
     G.log(s, "Live help: “Hi, this is Greg. Nobody else does Thursdays. Is it the heater? It’s always the heater.”");
     found = true;
@@ -2296,6 +2431,7 @@ function musicAction(id) {
   else if (id === "prev") S.prev();
   else if (id === "shuffle") S.player.shuffle = !S.player.shuffle;
   else if (id === "repeat") S.player.repeat = !S.player.repeat;
+  if (S.player.shuffle && S.player.repeat) G.secret(s, "forever");
   else if (id.startsWith("play:")) S.playTrack(Number(id.slice(5)));
 }
 S.onMusic(() => {
@@ -2363,6 +2499,8 @@ document.addEventListener("pointermove", (e) => {
 });
 document.addEventListener("pointerup", () => {
   if (!drag) return;
+  const w = ui.win[drag.id];
+  if (drag.grip && w.w <= 340 && w.h <= 240) noticed(() => G.secret(s, "tiny"));
   drag.win.classList.remove("dragging");
   drag = null;
   saveUI();
@@ -2381,11 +2519,11 @@ document.addEventListener("dblclick", (e) => {
 /* ---------- clock ---------- */
 let last = Date.now(),
   saveClock = 0;
-const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time, s.over, s.trace, s.elapsed < s.duckLock, ui.win.help?.open && Math.floor(s.elapsed / 5)]);
+const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time, s.over, s.trace, s.elapsed < s.duckLock, ui.win.help?.open && Math.floor(s.elapsed / 5), s.incidents.boss.state === 1 && Math.floor(s.elapsed), s.decisions, s.upgrades, s.settings.relaxed]);
 setInterval(() => {
   const now = Date.now();
   const was = sig();
-  s.playing = !!(ui.win.sudoku?.open && !ui.win.sudoku.min && !document.hidden);
+  presence();
   // A background tab, or a long gap after the browser froze it, counts as being away:
   // jobs keep going, but nothing can lose you the game while you aren't looking.
   const dt = (now - last) / 1000;

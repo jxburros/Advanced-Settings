@@ -1,6 +1,23 @@
 # Deepening the incremental layer
 
-Design notes for making Advanced Settings' idle/incremental half as rich as its puzzle half. Ideas are marked **(yours)** when they came from the designer and **(proposed)** when they came out of the code review that produced this page. Nothing here is implemented yet.
+Design notes for making Advanced Settings' idle/incremental half as rich as its puzzle half. Ideas are marked **(yours)** when they came from the designer and **(proposed)** when they came out of the code review that produced this page. Version 1.3.0 implements part of it; see **Status** below. "Where things stand" describes the game before that.
+
+## Status (1.3.0)
+
+| Section | State |
+| --- | --- |
+| 1.1 Users | Done. Users belong to projects. They pay per second, raise the next version's reward (demand), and drift away from stale projects down to a loyal 40%. Staleness counts only time at the desk, so nothing drifts offline. A Lunchboard outage costs users. |
+| 1.2 Spendable knowledge | Done, the "costs knowledge" option. Upgrades spend it; installing a skill still only needs it. |
+| 1.3 Scaling curve | Done. The upgrades can be bought repeatedly, each level costing 1.15× the last (memory, a tiered autocomplete model, test suite, release notes). Demand from users keeps a project's earnings per second roughly flat or rising per version, where they used to fall. |
+| 2 Product decisions | Done, with all four candidates (pricing, telemetry, support, roadmap) as Ashleigh's reviews in Ripple, at least two releases apart. Telemetry has delayed consequences in Quiet Monitor, the parents' last email and a later message from Ashleigh. Each review states its immediate effect, and Workbench lists the policy in force. |
+| 3.1 Technical debt | Done. "Ship anyway" turns open bugs into debt and known issues, which cut that release's pay and new users. Writing with Safe development off adds a point of debt. Debt slows writing and speeds drift on that project, and a Refactor job pays it off. |
+| 3.2 Parallelism | Done. Jobs need processor, memory, disk and network. QuickFix takes processor, Panel B doubles disk, isolation throttles network, and More memory adds memory. Activity Monitor shows the bottleneck. |
+| 3.3 Programmable scheduler | Done. There are per-project modes (ship, test only, hands off), a bug tolerance, a refactor threshold and auto-reading. The rules use thresholds rather than a full priority list. |
+| 3.4 Prestige | Done. A Principal Engineer can hand off the workstation from Mail and keep a quarter of their knowledge, a legacy bonus (+10% per handover, up to 50%) and a handover note shown in Notes on the next desk. "Handed over" is a new ending. |
+| 4 Secrets | 22 added, each with a hint and a test: Boss key and Nothing to report are tied to the new systems, and 20 more are just for fun, on surfaces like Esc, search, the clock, Wi-Fi, wallpapers, window sizes and Murmur. A test now checks that every secret is in `docs/SECRETS.md` and that the README's counts match. Six optional story moments are also new. |
+| 5 Fast moments | The boss key only. It needs the player present on a personal page, is telegraphed by a toast and sound, dents the Calm Index if missed, and is measured in `elapsed`. Relaxed timing (Settings › Appearance) doubles its window and the cake's. |
+
+None of this has been play-tested yet. Not yet built from the doc: more fast moments (Panel B mid-build, reply-all recall, deploy alert). The numbers (`INCOME`, `STALE`, the policy multipliers, the boss timings) live at the top of `game.js`.
 
 ## Where things stand
 

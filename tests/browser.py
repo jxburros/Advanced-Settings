@@ -245,6 +245,57 @@ with sync_playwright() as p:
     expect(page.get_by_role("heading", name="Welcome to Stillwater.")).to_be_visible()
     expect(dock.get_by_role("button", name="Secret Tracker")).to_be_visible()
 
+    # Secrets that are just for fun, on the new desk.
+    for _ in range(10):
+        page.keyboard.press("Escape")
+    expect(page.locator(".toast", has_text="There is no escape")).to_be_visible()
+    page.keyboard.press("Control+k")
+    page.locator("#launcher-q").fill("sudo make me a sandwich")
+    expect(page.locator("#launcher").get_by_text("You are not in the sudoers file.")).to_be_visible()
+    page.keyboard.press("Escape")
+    for _ in range(20):
+        page.locator("#clock").click()
+    for _ in range(5):
+        page.keyboard.press("Control+Shift+L")
+        page.get_by_role("button", name="Unlock").click()
+    page.locator("#wifi").click()
+    for net in ["Stillwater-Guest", "Greg’s Hotspot (heater)", "Definitely Not People & Serenity"]:
+        page.locator("#pop").get_by_role("menuitem", name=net).click()
+        page.locator("#wifi").click()
+    page.keyboard.press("Escape")
+    for _ in range(4):
+        page.locator("#icons").get_by_role("button", name="Welcome.pdf").dblclick()
+    dock.get_by_role("button", name="System Settings").click()
+    settings = page.locator("#win-settings")
+    settings.get_by_role("button", name="Appearance").click()
+    for i in range(10):
+        settings.get_by_role("button", name=["pink accent", "lilac accent"][i % 2]).click()
+    for wall in settings.locator("button.wall").all():
+        wall.click()
+    dock.get_by_role("button", name="Murmur").click()
+    murmur = page.locator("#win-music")
+    murmur.get_by_role("button", name="Shuffle").click()
+    murmur.get_by_role("button", name="Repeat").click()
+    murmur.get_by_label("Music volume").fill("0")
+    murmur.get_by_role("button", name="Play", exact=True).click()
+    for b in dock.locator(".dock-item").all():
+        b.click()
+    grip = page.locator(".window.focused .grip")
+    box = grip.bounding_box()
+    page.mouse.move(box["x"] + 4, box["y"] + 4)
+    page.mouse.down()
+    page.mouse.move(box["x"] - 900, box["y"] - 900, steps=4)
+    page.mouse.up()
+    page.clock.run_for(3000)
+    page.wait_for_timeout(300)
+    found = page.evaluate("JSON.parse(localStorage.getItem('stillwater-workstation')).secrets")
+    for sid in ["escape", "sudo", "clockwatcher", "paranoid", "wardriving", "welcomeagain", "indecisive", "scenery",
+                "forever", "silentdisco", "fullhouse", "tiny"]:
+        assert sid in found, (sid, found)
+    murmur_toggle = page.locator("#win-music").get_by_role("button", name="Pause", exact=True)
+    if murmur_toggle.count():
+        murmur_toggle.click()
+
     page.set_viewport_size({"width": 390, "height": 844})
     for name in ["Workbench", "Toolshed", "Library", "Conductor", "Mail", "Activity Monitor",
                  "The Daily Current", "Wayfinder", "Notes", "Files", "Secret Tracker", "System Settings", "Murmur"]:
@@ -259,4 +310,4 @@ with sync_playwright() as p:
     browser.close()
     print("PASS: release cycle, deep settings, Workspace Zero, developer options, filter and Translate, "
           "game store install, sudoku, Mara's blog, IM and family mail, pilots page, duck dashboard, duck desk lockout, returns, "
-          "Software Update and DLC, menus, calendar, search, sound settings, Murmur, lock screen, Help Desk, the improvement plan, story moments, firing, Secret Tracker across workstations, every app on mobile; no JS errors.")
+          "Software Update and DLC, menus, calendar, search, sound settings, Murmur, lock screen, Help Desk, the improvement plan, story moments, firing, Secret Tracker across workstations, fun secrets, every app on mobile; no JS errors.")
