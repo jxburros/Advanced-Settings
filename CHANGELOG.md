@@ -6,9 +6,13 @@ Each release's section becomes its GitHub release notes, which Software Update s
 
 - **Users matter.** Each project keeps its own users. They earn a little budget while they stay and make that project's next version pay more, so a new version is no longer a worse deal than the last. They drift away from projects that haven't shipped in a while, but only while you're at the desk.
 - **Upgrades.** A new Toolshed tab of upgrades you can buy again and again: more memory, an autocomplete model, a faster test suite and release notes. Each level costs 15% more and spends knowledge as well as budget.
-- **Product reviews.** Odette from Product asks one question every few releases in Ripple: pricing, telemetry, support and the roadmap. The answers change how the game plays, and some of them come back later in other apps.
+- **Product reviews.** Ashleigh from Product asks one question every few releases in Ripple: pricing, telemetry, support and the roadmap. The answers change how the game plays, and some of them come back later in other apps.
 - **Your manager walks over** if you linger on a personal page. Minimize it or lock the screen in time. A new Relaxed timing setting (Settings › Appearance) doubles the time for this and for the cake.
-- Two new secrets, six new story moments and three new notes from the previous user.
+- **Technical debt.** Ship with known bugs to get a release out now, or write without Safe development. Either leaves debt that slows that project down until you refactor.
+- **Resources.** Jobs compete for processor, memory, disk and network, and run at the pace of whichever is scarcest. Activity Monitor shows the bottleneck. QuickFix eats processor, Panel B feeds the disk, and isolating the workstation starves the network.
+- **Pipeline rules.** Conductor lets you decide what the release pipeline does with each project, how many known bugs it may ship, when it refactors, and whether it keeps reading.
+- **Handing over.** Principal Engineers can hand WS-0417 to its next user from Mail and start a new desk with a legacy bonus and a note to themselves.
+- 22 new secrets (20 of them just for fun), six new story moments, a new ending and three new notes from the previous user.
 - Saves from earlier versions are upgraded automatically.
 
 ## 1.2.5

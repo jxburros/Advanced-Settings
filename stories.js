@@ -296,7 +296,7 @@ export const THREADS = {
 
 /* Product reviews, one question per release. A choice's `decide` is [policy, option] from POLICIES in game.js. */
 THREADS.product = {
-  name: "Odette Lane",
+  name: "Ashleigh Lane",
   role: "Product · one question per release",
   app: "ripple",
   status: (s, t) => (t.step >= 5 ? "online · out of questions" : "online · reviewing"),
@@ -304,7 +304,7 @@ THREADS.product = {
     {
       when: all((s) => s.releases >= 2, wait(20)),
       lines: [
-        "Hi! Odette, Product. I run the release review: one question per release, I promise, and the answers stick.",
+        "Hi! Ashleigh, Product. I run the release review: one question per release, I promise, and the answers stick.",
         "First one is pricing. Free things get more people, and each of them is worth less. Paid things keep fewer people, who pay. P&S would like you to consider the Calm tier, which nobody can describe.",
       ],
       choices: [

@@ -339,6 +339,63 @@ const roadmap = (s, feature) => (!s.decisions.roadmap ? 1 : s.decisions.roadmap 
 export const BOSS = { releases: 3, after: 20, window: 10, cooldown: 600 };
 export const relaxed = (s, sec) => (s.settings.relaxed ? sec * 2 : sec);
 
+/* Technical debt. Shipping with known bugs, or writing without Safe development, leaves debt in a
+   project that slows every later version of it until a refactor pays it off. */
+export const DEBT_MAX = 20;
+export const refactorTime = (p) => 10 + 6 * p.debt;
+
+/* Named resources. Every job needs some of them, and runs at the pace of its scarcest one. */
+export const RESOURCES = { cpu: "Processor", memory: "Memory", disk: "Disk", network: "Network" };
+const NEEDS = { write: ["cpu"], test: ["cpu", "disk"], debug: ["cpu", "memory"], refactor: ["cpu", "memory"], reading: ["cpu", "memory"] };
+/* Lunchboard and anything with Cloud sync talk to the network while they build and test. */
+export function needs(s, j) {
+  const online = j.project && j.kind !== "refactor" && (j.project === "lunchboard" || s.projects[j.project]?.feature === "sync");
+  return online ? [...NEEDS[j.kind], "network"] : NEEDS[j.kind];
+}
+export function capacity(s) {
+  return {
+    cpu: workers(s) * (1 - quickfixLoad(s)),
+    memory: 1 + 0.25 * level(s, "memory"),
+    disk: breakerOk(s) ? 2 : 1,
+    network: s.settings.isolated ? 0.25 : 1,
+  };
+}
+/* Capacity and demand for each resource, counting running jobs only. */
+export function resources(s) {
+  const cap = capacity(s);
+  const out = Object.fromEntries(Object.keys(RESOURCES).map((r) => [r, { cap: cap[r], load: 0 }]));
+  for (const j of s.jobs) if (!j.paused) for (const r of needs(s, j)) out[r].load++;
+  return out;
+}
+export function pace(s, j, res = resources(s)) {
+  return Math.min(...needs(s, j).map((r) => Math.min(1, res[r].cap / Math.max(1, res[r].load))));
+}
+/* The resource holding work back the most, or null when nothing is waiting on anything. */
+export function bottleneck(s, res = resources(s)) {
+  let worst = null;
+  for (const [r, { cap, load }] of Object.entries(res)) if (load && load / cap > 1 && (!worst || load / cap > res[worst].load / res[worst].cap)) worst = r;
+  return worst;
+}
+
+/* Scheduler rules: what the release pipeline may do to each project, and when. */
+export const MODES = { ship: "Test, fix and ship", test: "Test and fix, then wait for me", off: "Hands off" };
+export function setRule(s, key, value) {
+  if (s.over) return false;
+  if (key === "read") s.rules.read = !!value;
+  else if (key === "bugs" || key === "debt") {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0 || n > 9) return false;
+    s.rules[key] = n;
+  } else if (PROJECTS.some((p) => p.id === key) && MODES[value]) s.rules.modes[key] = value;
+  else return false;
+  return true;
+}
+const mode = (s, id) => s.rules.modes[id] ?? "ship";
+
+/* Handing the workstation to the next user: a new desk that remembers you a little. */
+export const LEGACY_MAX = 5;
+const legacy = (s) => 1 + 0.1 * s.legacy;
+
 export const BLOG_TOPICS = [
   { id: "baking", name: "Weekend baking", flag: 6, readers: 3 },
   { id: "tips", name: "Ten productivity tips I do not follow", flag: 6, readers: 5 },
@@ -395,11 +452,33 @@ export const SECRETS = [
   ["recursion", "Lost in translation", "Translate the translator."],
   ["bosskey", "Boss key", "Locked screens don’t get questions."],
   ["nothing", "Nothing to report", "Collect nothing. Then go looking for it."],
+  // Just for fun: none of these are part of any story.
+  ["escape", "Escape artist", "There is no escape. Keep pressing it anyway."],
+  ["sudo", "Nice try", "The search box doesn’t take orders. Give it one."],
+  ["notfound", "Not found", "Some budgets can’t be found."],
+  ["broke", "Every last dollar", "Spend it all. Every last dollar."],
+  ["thirteen", "Unlucky for some", "Some buildings skip a floor. Don’t skip the version."],
+  ["fullhouse", "Full house", "Open everything in the dock. The desk can take it."],
+  ["tiny", "Pocket-sized", "Make a window as small as it will go."],
+  ["indecisive", "Indecisive", "Pick an accent. Then pick again. And again."],
+  ["scenery", "Change of scenery", "See every wall in the building."],
+  ["wardriving", "Not my network", "Try every network you aren’t allowed on."],
+  ["weekend", "Overtime", "Come in on a day nobody works."],
+  ["fiveoclock", "Clocking out", "Fridays at five, everyone leaves. Stay."],
+  ["coffee", "Coffee break", "Stop everything. All of it. At once."],
+  ["deepwork", "Deep work", "Stay an hour without looking away."],
+  ["maxed", "Maxed out", "Some upgrades stop. Find out where."],
+  ["clockwatcher", "Clock watcher", "Watch the clock. Then watch it again."],
+  ["paranoid", "Paranoid", "Lock the screen. Then lock it again, just in case."],
+  ["forever", "Surprise me, forever", "Ask the music to surprise you. Forever."],
+  ["silentdisco", "Silent disco", "Play music nobody can hear."],
+  ["welcomeagain", "Required reading", "Read the welcome again. It is very welcoming."],
 ].map(([id, name, hint]) => ({ id, name, hint }));
 export const ENDINGS = [
   { id: "probation", name: "End of probation", hint: "Finish every story." },
   { id: "fired", name: "Released to the community", hint: "Mind the Calm Index." },
   { id: "breach", name: "Reimaged", hint: "Unsigned helpers get bolder." },
+  { id: "handoff", name: "Handed over", hint: "Leave the desk ready for whoever comes next." },
 ];
 
 /* Help Desk tickets: three escalating answers per open problem. Each answer after the first
@@ -662,8 +741,8 @@ export function count(s, key, goal, id) {
   return s.counters[key];
 }
 
-const STAGES = ["plan", "writing", "written", "testing", "tested", "debugging", "task"];
-const JOB_KINDS = ["write", "test", "debug", "reading"];
+const STAGES = ["plan", "writing", "written", "testing", "tested", "debugging", "task", "refactoring"];
+const JOB_KINDS = ["write", "test", "debug", "reading", "refactor"];
 const INSTALLS = ["toolshed", "identified", "anywhere"];
 const BOOKMARKS = ["workspace", "channel"];
 const DOWNLOADS = ["tidepool"];
@@ -671,7 +750,7 @@ const GAMES = ["sudoku"];
 
 export function fresh(now = Date.now()) {
   return {
-    version: 6,
+    version: 7,
     money: 40,
     knowledge: 0,
     users: 0,
@@ -683,6 +762,9 @@ export function fresh(now = Date.now()) {
     },
     upgrades: {},
     decisions: {},
+    rules: { modes: {}, bugs: 0, debt: 0, read: false },
+    legacy: 0,
+    focus: 0,
     jobs: [],
     reading: 0,
     auto: false,
@@ -735,9 +817,10 @@ export function fresh(now = Date.now()) {
     counters: {},
   };
 }
-/* A project's state. `users` drift once `age` (seconds at the desk since its last release) passes STALE. */
+/* A project's state. `users` drift once `age` (seconds at the desk since its last release) passes STALE.
+   `known` counts the bugs shipped anyway in the version being released; they also live on as `debt`. */
 function project() {
-  return { version: 0, stage: "plan", bugs: 0, feature: "search", users: 0, peak: 0, age: 0, drift: false };
+  return { version: 0, stage: "plan", bugs: 0, feature: "search", users: 0, peak: 0, age: 0, drift: false, debt: 0, known: 0 };
 }
 export function log(s, text) {
   s.logs.unshift({ text, time: s.last });
@@ -787,11 +870,13 @@ export function start(s, id, feature) {
     0,
     f.bugs + (s.settings.safe ? 0 : 2) - (s.track === "specialist" ? 1 : 0),
   );
+  // Rushed code is written in, and stays.
+  if (!s.settings.safe) state.debt = Math.min(DEBT_MAX, state.debt + 1);
   return addJob(s, "write", id, writeTime(s, state, f));
 }
 /* Every version adds to the codebase, so each one takes a little longer to write. */
 export function writeTime(s, p, f) {
-  return Math.round(f.time * (1 + 0.4 * p.version) * (s.settings.safe ? 1 : 0.7) * (s.decisions.roadmap === f.id ? 0.8 : 1));
+  return Math.round(f.time * (1 + 0.4 * p.version) * (1 + 0.15 * (p.debt ?? 0)) * (s.settings.safe ? 1 : 0.7) * (s.decisions.roadmap === f.id ? 0.8 : 1));
 }
 export function test(s, id) {
   const p = s.projects[id];
@@ -804,6 +889,23 @@ export function debug(s, id) {
   if (s.over || !p || p.stage !== "tested" || p.bugs <= 0) return false;
   p.stage = "debugging";
   return addJob(s, "debug", id, 6 + p.bugs * 2);
+}
+/* Ship without fixing: the bugs go out as known issues and stay behind as debt. A release task still applies. */
+export function shipAnyway(s, id) {
+  const p = s.projects[id];
+  if (s.over || !p || p.stage !== "tested" || p.bugs <= 0) return false;
+  p.known = p.bugs;
+  p.debt = Math.min(DEBT_MAX, p.debt + p.bugs);
+  p.bugs = 0;
+  gate(s, id);
+  if (p.stage === "tested") release(s, id);
+  return true;
+}
+export function refactor(s, id) {
+  const p = s.projects[id];
+  if (s.over || !p || p.stage !== "plan" || p.debt <= 0) return false;
+  p.stage = "refactoring";
+  return addJob(s, "refactor", id, refactorTime(p));
 }
 /* After testing comes up clean, most versions still need a release task before they ship. */
 function gate(s, id) {
@@ -888,24 +990,29 @@ export function release(s, id) {
       (1 + p.version * 0.12) *
       demand(p) *
       roadmap(s, p.feature) *
+      Math.max(0.4, 1 - 0.1 * p.known) *
+      legacy(s) *
       (s.track === "manager" ? 1.25 : 1),
   );
-  const gained = Math.round(money * 1.4 * policy(s, "growth") * (1 + 0.1 * level(s, "notes")));
+  const gained = Math.round(money * 1.4 * policy(s, "growth") * (1 + 0.1 * level(s, "notes")) * Math.max(0.4, 1 - 0.15 * p.known));
+  const known = p.known;
+  p.known = 0;
   s.money += money;
   p.users += gained;
   p.peak = Math.max(p.peak, p.users);
   p.age = 0;
   p.drift = false;
   tally(s);
-  s.knowledge += (20 + Math.round(def.base / 10)) * (id === "monitor" ? 2 : 1);
+  s.knowledge += Math.round((20 + Math.round(def.base / 10)) * (id === "monitor" ? 2 : 1) * legacy(s));
   s.releases++;
   p.version++;
   p.stage = "plan";
   p.task = null;
   log(
     s,
-    `${def.name} v${p.version}.0 shipped. +$${money}, +${gained.toLocaleString()} users. Every test passed on the first run, as they always do.`,
+    `${def.name} v${p.version}.0 shipped. +$${money}, +${gained.toLocaleString()} users. ${known ? `It went out with ${known} known issue${known > 1 ? "s" : ""}, now technical debt.` : "Every test passed on the first run, as they always do."}`,
   );
+  if (p.version === 13) secret(s, "thirteen");
   if (id === "monitor") findings(s);
   if (id === "workspace" && p.version <= WORKSPACE_NOTES.length)
     log(s, WORKSPACE_NOTES[p.version - 1]);
@@ -922,9 +1029,14 @@ export function release(s, id) {
       "QuickFix installed itself to help with build performance, using a contractor credential (temp-contractor-••••). Build performance is down 20%. QuickFix is thrilled.",
     );
   }
-  if (s.track === "automator" && s.auto && s.skills.includes("scheduler"))
-    start(s, id, p.feature);
+  if (s.track === "automator" && s.auto && s.skills.includes("scheduler") && mode(s, id) === "ship") restart(s, id);
   return true;
+}
+/* The automator's next version, or a refactor first when the rules say the debt is too high. */
+function restart(s, id) {
+  const p = s.projects[id];
+  if (s.rules.debt && p.debt >= s.rules.debt) refactor(s, id);
+  else start(s, id, p.feature);
 }
 export function buy(s, id) {
   const k = SKILLS.find((k) => k.id === id);
@@ -950,6 +1062,7 @@ export function upgrade(s, id) {
   s.money -= c.money;
   s.knowledge -= c.knowledge;
   s.upgrades[id] = level(s, id) + 1;
+  if (s.upgrades[id] === u.max) secret(s, "maxed");
   log(s, `Upgrade installed: ${u.name}, level ${s.upgrades[id]}. It cost ${c.knowledge} knowledge, which you will have to learn again.`);
   return true;
 }
@@ -981,6 +1094,44 @@ export function bossKey(s) {
   secret(s, "bosskey");
   log(s, "Your manager arrived at a locked screen, read the clock on it, nodded, and left. Locked screens don’t get questions.");
   return true;
+}
+/* Small things noticed about the budget. Called after anything that changes it. */
+export function purse(s) {
+  if (Math.floor(s.money) === 404) secret(s, "notfound");
+  if (s.money < 1) secret(s, "broke");
+}
+export function pause(s, id) {
+  const j = s.jobs.find((j) => j.id === Number(id));
+  if (!j) return false;
+  j.paused = !j.paused;
+  if (s.jobs.length >= 3 && s.jobs.every((j) => j.paused)) secret(s, "coffee");
+  return true;
+}
+/* Secrets that depend on the real date and time. Returns whether anything new was found. */
+export function clock(s, d) {
+  let found = false;
+  if ([0, 6].includes(d.getDay())) found = secret(s, "weekend") || found;
+  if (d.getDay() === 5 && d.getHours() === 17 && d.getMinutes() < 5) found = secret(s, "fiveoclock") || found;
+  return found;
+}
+export function handoffReady(s) {
+  return !s.over && s.rank === 4;
+}
+/* Hand WS-0417 to the next user. Returns their new workstation: projects and budget stay behind,
+   a quarter of your knowledge and a legacy bonus come along, and so does your note. */
+export function handoff(s, archive, note = "") {
+  if (!handoffReady(s)) return null;
+  record(archive, s);
+  if (!archive.endings.includes("handoff")) archive.endings.push("handoff");
+  archive.legacy = Math.min(LEGACY_MAX, archive.legacy + 1);
+  const text = String(note).trim().slice(0, 200);
+  if (text) archive.notes = [text, ...archive.notes].slice(0, 5);
+  archive.plays++;
+  const n = fresh(s.last);
+  n.legacy = archive.legacy;
+  n.knowledge = Math.floor(s.knowledge / 4);
+  log(n, `There is a handover note in the drawer, from the previous user. It is in your handwriting. Legacy ${n.legacy}: releases and reading pay ${10 * n.legacy}% more.`);
+  return n;
 }
 export function read(s) {
   return addJob(s, "reading", null, 20);
@@ -1507,6 +1658,20 @@ function incidents(s, dt, offline) {
   } else if (!personal) b.seen = 0;
 }
 
+/* The release pipeline, following the player's rules. */
+function schedule(s) {
+  if (s.rules.read && !s.jobs.some((j) => j.kind === "reading")) read(s);
+  for (const [id, p] of Object.entries(s.projects)) {
+    const m = mode(s, id);
+    if (m === "off") continue;
+    if (p.stage === "written") test(s, id);
+    else if (p.stage === "tested") {
+      if (p.bugs && m === "ship" && p.bugs <= s.rules.bugs) shipAnyway(s, id);
+      else if (p.bugs) debug(s, id);
+      else if (m === "ship") release(s, id);
+    } else if (p.stage === "plan" && s.rules.debt && p.debt >= s.rules.debt) refactor(s, id);
+  }
+}
 export function tick(s, seconds, offline = false) {
   seconds = Math.min(Math.max(seconds, 0), 7200);
   if (s.over) return s;
@@ -1516,9 +1681,9 @@ export function tick(s, seconds, offline = false) {
     remaining -= dt;
     s.elapsed += dt;
     const active = s.jobs.filter((j) => !j.paused);
-    const share = Math.min(1, workers(s) / Math.max(1, active.length));
+    const res = resources(s);
     for (const j of active) {
-      let speed = share * (1 + 0.06 * level(s, "memory"));
+      let speed = pace(s, j, res) * (1 + 0.06 * level(s, "memory"));
       if (j.kind === "write" && s.skills.includes("autocomplete")) speed *= 1.4;
       if (j.kind === "write") speed *= 1 + 0.1 * level(s, "model");
       if (j.kind === "test" || j.kind === "debug") speed *= 1 + 0.15 * level(s, "suite");
@@ -1533,7 +1698,6 @@ export function tick(s, seconds, offline = false) {
           (s.ai === "reading" && j.kind === "reading"))
       )
         speed *= s.skills.includes("local") ? 1.8 : 1.4;
-      speed *= 1 - quickfixLoad(s);
       j.done += dt * speed;
     }
     for (const j of [...s.jobs]) {
@@ -1551,10 +1715,17 @@ export function tick(s, seconds, offline = false) {
         p.stage = "tested";
         gate(s, j.project);
       }
+      if (j.kind === "refactor") {
+        log(s, `${PROJECTS.find((x) => x.id === j.project).name} refactored. ${p.debt} debt paid off. The code is exactly as clever as before, but now somebody can read it.`);
+        p.debt = 0;
+        p.stage = "plan";
+        if (s.track === "automator" && s.auto && s.skills.includes("scheduler") && mode(s, j.project) === "ship") start(s, j.project, p.feature);
+      }
       if (j.kind === "reading") {
+        const k = Math.round(8 * legacy(s));
         s.reading++;
-        s.knowledge += 8;
-        log(s, "Reading complete. +8 knowledge. Some of it was even true.");
+        s.knowledge += k;
+        log(s, `Reading complete. +${k} knowledge. Some of it was even true.`);
         if (s.reading >= 11 && secret(s, "manual"))
           log(s, "You have read the documentation cover to cover. Nobody has done this before. The documentation is unsettled.");
       }
@@ -1577,17 +1748,13 @@ export function tick(s, seconds, offline = false) {
         mark(s, "drift");
         log(s, `${PROJECTS.find((x) => x.id === id).name} users are drifting away. It hasn’t shipped anything in a while. Ship a new version to win them back.`);
       }
-      p.users = Math.max(p.peak * LOYAL, p.users * (1 - DRIFT * policy(s, "drift") * dt));
+      p.users = Math.max(p.peak * LOYAL, p.users * (1 - DRIFT * policy(s, "drift") * (1 + 0.1 * p.debt) * dt));
     }
     tally(s);
-    if (s.auto && s.skills.includes("scheduler"))
-      for (const [id, p] of Object.entries(s.projects)) {
-        if (p.stage === "written") test(s, id);
-        else if (p.stage === "tested") {
-          if (p.bugs) debug(s, id);
-          else release(s, id);
-        }
-      }
+    purse(s);
+    s.focus = offline ? 0 : s.focus + dt;
+    if (s.focus >= 3600) secret(s, "deepwork");
+    if (s.auto && s.skills.includes("scheduler")) schedule(s);
     // The assistant handles release tasks, slowly, when it is assigned to development.
     if (s.skills.includes("assistant") && s.ai === "development")
       for (const [id, p] of Object.entries(s.projects)) {
@@ -1637,7 +1804,7 @@ export function tick(s, seconds, offline = false) {
 
 /* Cross-play record of secrets and endings. Lives outside the save. */
 export function freshArchive() {
-  return { found: [], endings: [], moments: [], plays: 1 };
+  return { found: [], endings: [], moments: [], plays: 1, legacy: 0, notes: [] };
 }
 export function record(archive, s) {
   let changed = false;
@@ -1668,6 +1835,8 @@ export function readArchive(raw) {
       endings: a.endings.filter((id) => ENDINGS.some((x) => x.id === id)),
       moments: Array.isArray(a.moments) ? a.moments.filter((id) => MOMENTS.some((x) => x.id === id)) : [],
       plays: Number.isInteger(a.plays) && a.plays > 0 ? a.plays : 1,
+      legacy: Number.isInteger(a.legacy) && a.legacy >= 0 ? Math.min(LEGACY_MAX, a.legacy) : 0,
+      notes: Array.isArray(a.notes) ? a.notes.filter((n) => typeof n === "string").map((n) => n.slice(0, 200)).slice(0, 5) : [],
     };
   } catch {
     return freshArchive();
@@ -1684,7 +1853,7 @@ export function complete(s) {
 }
 
 function migrate(s) {
-  if (![1, 2, 3, 4, 5].includes(s?.version)) return s;
+  if (![1, 2, 3, 4, 5, 6].includes(s?.version)) return s;
   const base = fresh(s.last);
   for (const k of Object.keys(base)) if (!(k in s)) s[k] = base[k];
   if (s.version === 1) s.secrets = [...s.bookmarks];
@@ -1698,7 +1867,9 @@ function migrate(s) {
       const users = shipped ? Math.round(((Number(s.users) || 0) * (Number(p.version) || 0)) / shipped) : 0;
       Object.assign(p, { users, peak: users, age: 0, drift: false });
     }
-  s.version = 6;
+  // Version 7: technical debt.
+  for (const p of projects) if (p && !("debt" in p)) Object.assign(p, { debt: 0, known: 0 });
+  s.version = 7;
   return s;
 }
 const bad = (msg) => {
@@ -1711,7 +1882,7 @@ export function restore(raw, now = Date.now()) {
   s = migrate(s);
   if (
     !s ||
-    s.version !== 6 ||
+    s.version !== 7 ||
     !s.projects ||
     !Array.isArray(s.jobs) ||
     !Array.isArray(s.skills) ||
@@ -1734,6 +1905,11 @@ export function restore(raw, now = Date.now()) {
       !num(p.peak) ||
       !num(p.age) ||
       typeof p.drift !== "boolean" ||
+      !Number.isInteger(p.debt) ||
+      p.debt < 0 ||
+      p.debt > DEBT_MAX ||
+      !Number.isInteger(p.known) ||
+      p.known < 0 ||
       (p.stage === "task" && !p.task) ||
       (p.task != null &&
         (typeof p.task !== "object" ||
@@ -1802,6 +1978,16 @@ export function restore(raw, now = Date.now()) {
     !s.decisions ||
     typeof s.decisions !== "object" ||
     Object.entries(s.decisions).some(([k, v]) => !POLICIES[k]?.options[v]) ||
+    !s.rules ||
+    !s.rules.modes ||
+    typeof s.rules.modes !== "object" ||
+    Object.entries(s.rules.modes).some(([id, m]) => !PROJECTS.some((p) => p.id === id) || !MODES[m]) ||
+    ![s.rules.bugs, s.rules.debt].every((n) => Number.isInteger(n) && n >= 0 && n <= 9) ||
+    typeof s.rules.read !== "boolean" ||
+    !Number.isInteger(s.legacy) ||
+    s.legacy < 0 ||
+    s.legacy > LEGACY_MAX ||
+    !num(s.focus) ||
     typeof s.sudoku !== "string" ||
     !/^[0-9]{81}$/.test(s.sudoku) ||
     !Array.isArray(s.breaker) ||
