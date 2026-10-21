@@ -1,6 +1,6 @@
 # Deepening the incremental layer
 
-Design notes for making Advanced Settings' idle/incremental half as rich as its puzzle half. Ideas are marked **(yours)** when they came from the designer and **(proposed)** when they came out of the code review that produced this page. Version 1.3.0 implements part of it; see **Status** below. "Where things stand" describes the game before that.
+Design notes for making Advanced Settings' idle/incremental half as rich as its puzzle half. Ideas are marked **(yours)** when they came from the designer and **(proposed)** when they came out of the code review that produced this page. Versions 1.3.0 and 1.4.0 implement most of it; the **Status** sections below are cumulative, newest first. "Where things stood" describes the game before 1.3.0 and is kept for history.
 
 ## Status (1.4.0)
 
@@ -15,7 +15,7 @@ Design notes for making Advanced Settings' idle/incremental half as rich as its 
 
 Not done: a use for the budget that piles up after the Toolshed is bought out (about $35,000 by 30 minutes). Section 3.4's handover is the natural place for it.
 
-## Status (1.3.0)
+## Status by section (as of 1.3.0; 1.4.0 retuned the numbers above)
 
 | Section | State |
 | --- | --- |
@@ -30,11 +30,11 @@ Not done: a use for the budget that piles up after the Toolshed is bought out (a
 | 4 Secrets | 22 added, each with a hint and a test: Boss key and Nothing to report are tied to the new systems, and 20 more are just for fun, on surfaces like Esc, search, the clock, Wi-Fi, wallpapers, window sizes and Murmur. A test now checks that every secret is in `docs/SECRETS.md` and that the README's counts match. Six optional story moments are also new. |
 | 5 Fast moments | The boss key only. It needs the player present on a personal page, is telegraphed by a toast and sound, dents the Calm Index if missed, and is measured in `elapsed`. Relaxed timing (Settings › Appearance) doubles its window and the cake's. |
 
-None of this has been play-tested yet. Not yet built from the doc: more fast moments (Panel B mid-build, reply-all recall, deploy alert). The numbers (`INCOME`, `STALE`, the policy multipliers, the boss timings) live at the top of `game.js`.
+The engine tests, the browser smoke test (`tests/browser.py`) and the pacing test exercise all of it, but no person has played it start to finish yet, so the pacing targets are unconfirmed by real players. Not yet built from the doc: more fast moments (Panel B mid-build, reply-all recall, deploy alert). The numbers (`INCOME`, `STALE`, the policy multipliers, the boss timings) live at the top of `game.js`.
 
-## Where things stand
+## Where things stood before 1.3.0
 
-From reading `game.js`:
+Historical: this is the analysis that led to 1.3.0, so its line references and complaints describe the old code and most are fixed now (see Status above). From reading `game.js`:
 
 - The loop is `start` → write → `test` → `debug` → task → `release`. Money, knowledge and users all grow roughly linearly.
 - **`users` is never read.** `release` adds `round(money × 1.4)` to `s.users` (`game.js:806`) and nothing uses it.
@@ -131,7 +131,7 @@ Candidate ideas:
 - Murmur: a track title or playback position that matches something in Mail.
 - Economy-linked: ship a project with zero users; choose the calm tier every time; leave a Ripple conversation unanswered past a threshold.
 
-Housekeeping: secrets are listed in `SECRETS`, `HINTS`, `docs/SECRETS.md` and the README's count (46). A data-driven registration step would prevent drift, and each new secret should ship with its hint and a test, as the existing ones do.
+Housekeeping: secrets are listed in `SECRETS`, `HINTS`, `docs/SECRETS.md` and the README's count (68 as of 1.4.0, up from 46 when this was written). A test now checks that they agree, and each new secret should ship with its hint and a test, as the existing ones do.
 
 ## 5. Short, fast, high-pressure moments (yours)
 

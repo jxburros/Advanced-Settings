@@ -2,6 +2,10 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
+## 1.4.1
+
+- Refreshed the desktop, mail and mobile previews, which still showed Juno from before the rename to Bella. Documentation only, so the game itself is unchanged.
+
 ## 1.4.0
 
 - **Progress takes more than shipping.** Every promotion after the first now waits on something only you can do, and People & Serenity only hints at what: a plugin nobody installed, the account behind it, and what the previous user left offline. Mail and the goal widget say when a growth conversation is on hold, and the Help Desk takes tickets about it.
