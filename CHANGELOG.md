@@ -2,6 +2,14 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
+## 1.2.1
+
+- **Smoother desktop.** Windows animate when they close, minimize and zoom, and double-clicking a title bar zooms again.
+- Switches, sliders, the dock and menus move smoothly instead of snapping.
+- Re-renders no longer interrupt hover effects or drag a slider out from under you.
+- **Tidier layout.** Desktop icons and project tabs line up, the welcome window no longer covers the widgets, windows stay on screen when the browser is resized, and settings switches stay beside their labels on phones.
+- **Murmur** has proper playback icons and styled sliders.
+
 ## 1.2.0
 
 - Maintenance release.
