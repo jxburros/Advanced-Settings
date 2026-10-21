@@ -65,7 +65,8 @@ export const SKILLS = [
     cost: 650,
     knowledge: 240,
     requires: "assistant",
-    desc: "A third worker and a stronger assistant. Runs entirely on this machine, which is now warm.",
+    circuit: true,
+    desc: "A third worker and a stronger assistant. Runs entirely on this machine, which will need a circuit that stays on.",
   },
 ];
 export const PROJECTS = [
@@ -146,9 +147,36 @@ export const RANKS = [
 ];
 export const TRACKS = ["specialist", "manager", "automator"];
 /* Total releases needed for each rank. The gaps widen as the work gets bigger. */
-export const RANK_AT = [0, 3, 7, 12, 18];
+export const RANK_AT = [0, 5, 15, 30, 50];
+/* Releases are not enough after the first promotion. Each later growth conversation waits on
+   something only the player can do, and leadership only ever hints at what. */
+export const HOLDS = [
+  null,
+  null,
+  {
+    test: (s) => s.stories.quickfix >= 3,
+    app: "activity",
+    text: "Leadership has noticed that your build times are being helped by something nobody installed. Senior Developers keep their own workstation tidy.",
+  },
+  {
+    test: (s) => s.stories.quickfix === 5,
+    app: "activity",
+    text: "Staff Engineers are trusted with signing policy. The account behind your helper is still active, and it still signs in from your desk. Leadership would prefer it didn’t.",
+  },
+  {
+    test: (s) => s.stories.employee === 3,
+    app: "notes",
+    text: "Principal Engineers inherit everything their desk has ever known. Leadership would like to be sure you have read all of it, including the parts that were never on the network.",
+  },
+];
+/* The growth conversation that has enough releases but is waiting on something else, if any. */
+export function promotionHeld(s) {
+  if (s.over || s.rank >= 4 || s.releases < RANK_AT[s.rank + 1]) return null;
+  const h = HOLDS[s.rank + 1];
+  return h && !h.test(s) ? h : null;
+}
 export function promotionDue(s) {
-  return !s.over && s.rank < 4 && s.releases >= RANK_AT[s.rank + 1];
+  return !s.over && s.rank < 4 && s.releases >= RANK_AT[s.rank + 1] && !promotionHeld(s);
 }
 
 /* Records revealed one per Archive Index release. Several are clues. */
@@ -169,10 +197,11 @@ export const WORKSPACE_NOTES = [
   "Workspace Zero v4.0 notes: “The consumer pilots use the same dashboards. Somebody’s parents are going to buy a fridge that guesses.”",
 ];
 
-/* Duck corrections: the answer has to be found elsewhere; every option is mundane. */
+/* Duck corrections: the answer has to be found elsewhere; every option is mundane. The Daily Current
+   runs one story per rank, so the news finds you as you rise. */
 export const DUCK_CASES = [
   {
-    release: 0,
+    rank: 0,
     question: "Why won’t the duck leave headquarters?",
     options: [
       "It is nesting under the lobby ficus.",
@@ -183,7 +212,7 @@ export const DUCK_CASES = [
     answer: 2,
   },
   {
-    release: 2,
+    rank: 1,
     question: "How does the duck “predict” layoffs?",
     options: [
       "It reacts to raised voices in meeting rooms.",
@@ -194,7 +223,7 @@ export const DUCK_CASES = [
     answer: 1,
   },
   {
-    release: 5,
+    rank: 2,
     question: "How did the duck get into the secure wing?",
     options: [
       "It walked in behind an intern.",
@@ -205,7 +234,7 @@ export const DUCK_CASES = [
     answer: 3,
   },
   {
-    release: 8,
+    rank: 3,
     question: "How did the duck end up on the board of directors?",
     options: [
       "A test entry in the employee directory was tagged public and synced to the website.",
@@ -288,6 +317,11 @@ export const INCOME = 0.0004; // budget per user per second
 export const STALE = 300; // seconds at the desk without a release before users start to drift
 const DRIFT = 0.0006; // share of users lost per second while drifting
 const LOYAL = 0.4; // nobody drifts below this share of a project's best
+/* Each project can only find so many users. New ones get harder to win as a project nears its market. */
+const MARKET = 60;
+export function market(s, id) {
+  return Math.round(PROJECTS.find((x) => x.id === id).base * MARKET * policy(s, "growth"));
+}
 export function demand(p) {
   return 1 + Math.min(2, Math.sqrt(p?.users ?? 0) / 40);
 }
@@ -619,6 +653,16 @@ export const HINTS = [
     },
   },
   {
+    id: "circuit",
+    title: "The local model needs power",
+    active: (s) => s.skills.includes("assistant") && !s.skills.includes("local") && !breakerOk(s),
+    steps: (s) => [
+      "Facilities won’t sign off on a 400 W model while your floor’s panel keeps tripping. Bella has warned you about the reason.",
+      "Panel B is on facilities.stillwater. Each switch also flips the ones beside, above and below it. Facilities wants every switch on except one, and you know whose.",
+      `From where Panel B is now, flip ${breakerSolution(s).map((i) => "B" + (i + 1)).join(", ") || "nothing"}${s.settings.isolated ? " (reconnect the workstation first)" : ""}.`,
+    ],
+  },
+  {
     id: "calm",
     title: "My Calm Index is falling",
     active: (s) => s.suspicion >= 25,
@@ -851,6 +895,22 @@ export function quickfixLoad(s) {
 export function calm(s) {
   return Math.max(1, 99 - Math.floor(s.suspicion / 3) - Math.max(0, s.returns - 3));
 }
+/* How much faster than normal a kind of job runs. Boosts add up rather than multiply, so a full set of
+   upgrades makes work about three times faster, not seven, and each new version still takes longer. */
+export function boost(s, kind) {
+  let b = 0.06 * level(s, "memory");
+  if (kind === "write") {
+    if (s.skills.includes("autocomplete")) b += 0.4;
+    b += 0.1 * level(s, "model");
+    if (s.perks.includes("chair")) b += 0.1;
+  }
+  if (kind === "test" || kind === "debug") b += 0.15 * level(s, "suite");
+  if (kind === "reading" && s.perks.includes("headphones")) b += 0.25;
+  if (kind !== "reading" && breakerOk(s)) b += 0.1;
+  if (s.skills.includes("assistant") && (s.ai === "development" ? kind !== "reading" : s.ai === "reading" && kind === "reading"))
+    b += s.skills.includes("local") ? 0.8 : 0.4;
+  return 1 + b;
+}
 export function addJob(s, kind, project, total) {
   if (s.over || s.jobs.some((j) => j.kind === kind && j.project === project))
     return false;
@@ -876,13 +936,13 @@ export function start(s, id, feature) {
 }
 /* Every version adds to the codebase, so each one takes a little longer to write. */
 export function writeTime(s, p, f) {
-  return Math.round(f.time * (1 + 0.4 * p.version) * (1 + 0.15 * (p.debt ?? 0)) * (s.settings.safe ? 1 : 0.7) * (s.decisions.roadmap === f.id ? 0.8 : 1));
+  return Math.round(f.time * (1 + 0.6 * p.version) * (1 + 0.15 * (p.debt ?? 0)) * (s.settings.safe ? 1 : 0.7) * (s.decisions.roadmap === f.id ? 0.8 : 1));
 }
 export function test(s, id) {
   const p = s.projects[id];
   if (s.over || !p || p.stage !== "written") return false;
   p.stage = "testing";
-  return addJob(s, "test", id, 8 + 2 * p.version);
+  return addJob(s, "test", id, 8 + 3 * p.version);
 }
 export function debug(s, id) {
   const p = s.projects[id];
@@ -994,7 +1054,8 @@ export function release(s, id) {
       legacy(s) *
       (s.track === "manager" ? 1.25 : 1),
   );
-  const gained = Math.round(money * 1.4 * policy(s, "growth") * (1 + 0.1 * level(s, "notes")) * Math.max(0.4, 1 - 0.15 * p.known));
+  const room = Math.max(0, 1 - p.users / market(s, id));
+  const gained = Math.round(money * 1.4 * policy(s, "growth") * (1 + 0.1 * level(s, "notes")) * Math.max(0.4, 1 - 0.15 * p.known) * room);
   const known = p.known;
   p.known = 0;
   s.money += money;
@@ -1046,7 +1107,8 @@ export function buy(s, id) {
     s.skills.includes(id) ||
     s.money < k.cost ||
     s.knowledge < k.knowledge ||
-    (k.requires && !s.skills.includes(k.requires))
+    (k.requires && !s.skills.includes(k.requires)) ||
+    (k.circuit && !breakerOk(s))
   )
     return false;
   s.money -= k.cost;
@@ -1243,7 +1305,7 @@ export function revoke(s, text) {
   return true;
 }
 export function duckOpen(s, i = s.stories.duck) {
-  return i < DUCK_CASES.length && s.releases >= DUCK_CASES[i].release;
+  return i < DUCK_CASES.length && s.rank >= DUCK_CASES[i].rank;
 }
 export function correct(s, option) {
   const i = s.stories.duck;
@@ -1399,6 +1461,21 @@ export function shop(s, id) {
 }
 export function breakerOk(s) {
   return s.breaker.join("") === BREAKER.goal.join("");
+}
+/* The fewest switches that take Panel B from where it is now to where Facilities wants it. */
+export function breakerSolution(s) {
+  let best = null;
+  for (let m = 0; m < 512; m++) {
+    const b = [...s.breaker];
+    const set = [];
+    for (let i = 0; i < 9; i++)
+      if (m & (1 << i)) {
+        set.push(i);
+        for (const j of [i, i - 3, i + 3, i % 3 ? i - 1 : -1, i % 3 < 2 ? i + 1 : -1]) if (j >= 0 && j < 9) b[j] ^= 1;
+      }
+    if (b.join("") === BREAKER.goal.join("") && (!best || set.length < best.length)) best = set;
+  }
+  return best ?? [];
 }
 export function flip(s, i) {
   if (s.over || s.settings.isolated || !(i >= 0 && i < 9) || breakerOk(s)) return false;
@@ -1683,21 +1760,9 @@ export function tick(s, seconds, offline = false) {
     const active = s.jobs.filter((j) => !j.paused);
     const res = resources(s);
     for (const j of active) {
-      let speed = pace(s, j, res) * (1 + 0.06 * level(s, "memory"));
-      if (j.kind === "write" && s.skills.includes("autocomplete")) speed *= 1.4;
-      if (j.kind === "write") speed *= 1 + 0.1 * level(s, "model");
-      if (j.kind === "test" || j.kind === "debug") speed *= 1 + 0.15 * level(s, "suite");
+      let speed = pace(s, j, res) * boost(s, j.kind);
       if (j.kind !== "reading") speed *= policy(s, "speed");
-      if (j.kind === "write" && s.perks.includes("chair")) speed *= 1.1;
       if (j.kind === "debug" && s.perks.includes("rubberduck")) speed *= 2;
-      if (j.kind === "reading" && s.perks.includes("headphones")) speed *= 1.25;
-      if (j.kind !== "reading" && breakerOk(s)) speed *= 1.1;
-      if (
-        s.skills.includes("assistant") &&
-        ((s.ai === "development" && j.kind !== "reading") ||
-          (s.ai === "reading" && j.kind === "reading"))
-      )
-        speed *= s.skills.includes("local") ? 1.8 : 1.4;
       j.done += dt * speed;
     }
     for (const j of [...s.jobs]) {

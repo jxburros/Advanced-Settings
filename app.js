@@ -298,6 +298,9 @@ function goal() {
     return ["A release is waiting on you", `${waiting.name} passed its tests, but it still needs a ${G.T.TASK_NAMES[G.T.kindOf(waiting.id, s.projects[waiting.id].version)].toLowerCase()} before it can ship. The scheduler won’t do this part.`, "workbench", "Open Workbench"];
   if (G.promotionDue(s))
     return ["Your growth conversation is ready", "People & Serenity would like to discuss your trajectory. It’s in Mail.", "mail", "Open Mail"];
+  const held = G.promotionHeld(s);
+  if (held)
+    return ["Your growth conversation is on hold", held.text, held.app, held.app === "notes" ? "Open Notes" : "Open Activity Monitor"];
   if (s.stories.quickfix > 0 && s.stories.quickfix < 5)
     return ["Something is using your processor", "A plugin you didn’t install is helping. Activity Monitor has opinions about that.", "activity", "Open Activity Monitor"];
   const drifting = G.PROJECTS.find((d) => s.projects[d.id]?.drift && s.projects[d.id].stage === "plan");
@@ -368,11 +371,12 @@ function workbench() {
   });
   return tabs("workbench", tabList, cur) + `<div class="pane">${projectView(def)}</div>`;
 }
-function usersHTML(p) {
+function usersHTML(p, id) {
   if (!p.version) return "";
+  const market = G.market(s, id);
   const rate = p.users * G.INCOME * G.policy(s, "income") * 60;
   const fresh = Math.max(0, Math.ceil((G.STALE - p.age) / 60));
-  return `<div class="users-line"><span><b>${Math.round(p.users).toLocaleString()}</b> users</span>${p.debt ? `<span class="warn">${p.debt} debt</span>` : ""}<span>${money(rate)}/min while they stay</span><span>next version pays ×${G.demand(p).toFixed(2)}</span><span class="${p.drift ? "warn" : ""}">${p.drift ? "drifting away · ship to win them back" : `settled for about ${fresh} more min`}</span></div>`;
+  return `<div class="users-line"><span><b>${Math.round(p.users).toLocaleString()}</b> users</span>${p.debt ? `<span class="warn">${p.debt} debt</span>` : ""}<span>${money(rate)}/min while they stay</span><span class="${p.users >= market * 0.95 ? "warn" : ""}">${p.users >= market * 0.95 ? "market reached" : `market ${market.toLocaleString()}`}</span><span>next version pays ×${G.demand(p).toFixed(2)}</span><span class="${p.drift ? "warn" : ""}">${p.drift ? "drifting away · ship to win them back" : `settled for about ${fresh} more min`}</span></div>`;
 }
 function policyHTML() {
   const made = Object.entries(s.decisions);
@@ -413,7 +417,7 @@ function projectView(def) {
   const steps = ["Plan", "Write", "Test", "Debug", "Task", "Ship"]
     .map((n, i) => `<li class="${i < at ? "done" : i === at && open ? "now" : ""}">${n}</li>`)
     .join("");
-  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${usersHTML(p)}${card(control, "controls")}${projectExtra(def, p)}${policyHTML()}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test, but the users each version brings make the next one pay more. Users drift away from projects that stop shipping. Each job needs processor and sometimes memory, disk or network, and runs at the pace of whichever is scarcest; Activity Monitor shows which.</p>`;
+  return `<div class="project-head">${icon(def.id === "workspace" ? "workspace" : "workbench", def.id === "workspace" ? "lilac" : ["blue", "pink", "lilac", "mint", "peach"][G.PROJECTS.indexOf(def)])}<div><div class="eyebrow">${def.kind}${def.id === "workspace" ? " · owner: you" : ""}</div><h2>${def.name}</h2></div><span class="pill">${open ? "v" + p.version + ".0" : "locked"}</span></div><p class="lede">${def.desc}</p><ol class="pipeline">${steps}</ol>${usersHTML(p, def.id)}${card(control, "controls")}${projectExtra(def, p)}${policyHTML()}<p class="fine">Each project runs one job at a time. Every job shares your processor. Pause one to give the others room. Every version makes the codebase bigger, so later versions take longer to write and test, but the users each version brings make the next one pay more. Users drift away from projects that stop shipping, and each project can only find so many. Each job needs processor and sometimes memory, disk or network, and runs at the pace of whichever is scarcest; Activity Monitor shows which.</p>`;
 }
 function toolshed() {
   const groups = {
@@ -426,9 +430,10 @@ function toolshed() {
     .map((id) => {
       const k = G.SKILLS.find((k) => k.id === id);
       const own = s.skills.includes(k.id);
-      const can = s.money >= k.cost && s.knowledge >= k.knowledge && (!k.requires || s.skills.includes(k.requires));
-      const why = own ? "" : s.knowledge < k.knowledge ? `Needs ${k.knowledge} knowledge` : k.requires && !s.skills.includes(k.requires) ? "Needs the AI task assistant" : s.money < k.cost ? `Needs ${money(k.cost)}` : "";
-      return `<div class="shelf ${own ? "owned" : ""}"><div><strong>${k.name}</strong><p>${k.desc}</p><small class="muted">${money(k.cost)} · ${k.knowledge} knowledge${k.requires ? " · needs assistant" : ""}</small></div>${button(own ? "Installed" : can ? "Install" : why, "buy", k.id, own || !can, own ? "ghost" : "primary", `aria-label="${own ? "Installed" : "Install"} ${k.name}"`)}</div>`;
+      const power = !k.circuit || G.breakerOk(s);
+      const can = s.money >= k.cost && s.knowledge >= k.knowledge && (!k.requires || s.skills.includes(k.requires)) && power;
+      const why = own ? "" : s.knowledge < k.knowledge ? `Needs ${k.knowledge} knowledge` : k.requires && !s.skills.includes(k.requires) ? "Needs the AI task assistant" : !power ? "Needs a stable circuit" : s.money < k.cost ? `Needs ${money(k.cost)}` : "";
+      return `<div class="shelf ${own ? "owned" : ""}"><div><strong>${k.name}</strong><p>${k.desc}</p><small class="muted">${money(k.cost)} · ${k.knowledge} knowledge${k.requires ? " · needs assistant" : ""}${k.circuit && !own ? ` · ${power ? "circuit stable" : "Facilities won’t approve another 400 W on an unstable panel"}` : ""}</small></div>${button(own ? "Installed" : can ? "Install" : why, "buy", k.id, own || !can, own ? "ghost" : "primary", `aria-label="${own ? "Installed" : "Install"} ${k.name}"`)}</div>`;
     })
     .join("");
   return (
@@ -585,7 +590,9 @@ function mail() {
           ? "<p>There are no further promotions. There is a Distinguished Engineer title, but nobody has ever met one.</p>"
           : eligible
             ? `<p>You’ve shipped ${s.releases} releases. Leadership would like to recognise this by changing your title. How should your contribution be remembered?</p><div class="choices">${Object.entries(TRACKS).map(([id, [n, d, perk]]) => button(`<b>${n}</b><small>${d}</small><small class="perk">${perk}</small>`, "promote", id, false, "choice", `aria-label="Choose ${n}"`)).join("")}</div><p class="fine">Your most recent direction decides your working style. Every tool stays available, whatever you pick.</p>`
-            : `<p>Ship ${G.RANK_AT[s.rank + 1]} releases in total for your next growth conversation. So far: ${s.releases}. Promotions come with budget, and a new email signature.</p>`
+            : G.promotionHeld(s)
+              ? `<p>You’ve shipped ${s.releases} releases, which is plenty. Your growth conversation is on hold.</p><p>${G.promotionHeld(s).text}</p><p class="fine">The Help Desk takes tickets about this kind of thing.</p>`
+              : `<p>Ship ${G.RANK_AT[s.rank + 1]} releases in total for your next growth conversation. So far: ${s.releases}. Promotions come with budget, and a new email signature.</p>`
       }${s.track ? `<span class="pill">On file: ${TRACKS[s.track][0]} · ${TRACKS[s.track][2]}</span>` : ""}`,
       eligible ? "action needed" : "",
     );

@@ -2,6 +2,19 @@
 
 Design notes for making Advanced Settings' idle/incremental half as rich as its puzzle half. Ideas are marked **(yours)** when they came from the designer and **(proposed)** when they came out of the code review that produced this page. Version 1.3.0 implements part of it; see **Status** below. "Where things stand" describes the game before that.
 
+## Status (1.4.0)
+
+1.3.0 was simulated with a scripted player (acting every 15 seconds, 30 seconds per release task, ignoring puzzles). It reached Principal Engineer in about 15 minutes and had every skill by 12; by an hour it had 311,000 users and $280,000 with nothing left to buy. Speed boosts multiplied to about 6.6×, outrunning the growth in write time, and story beats tied to release counts all unlocked in the first quarter hour. 1.4.0 changes:
+
+- **Target length.** A player who stops for the puzzles should reach Principal Engineer in about 60–90 minutes.
+- **Boosts add up** (a full set is about 3.5× for writing), writing grows 60% per version and testing 3 seconds per version.
+- **Markets.** Each project has a market of 60 users per dollar of base pay, scaled by the growth policies. New users shrink as it fills; total users settle near 34,000.
+- **Ranks** at 5, 15, 30 and 50 releases, and every promotion after the first waits on a puzzle or a specific action (`HOLDS` in `game.js`): QuickFix quarantined, the credential revoked, Channel 04 opened. The Local model runtime waits on Panel B. Each has a Help Desk ticket.
+- **Story beats follow progress or actions:** Ashleigh's reviews and the duck headlines by rank, Bella's bug report on installing the Test harness.
+- **A pacing test** (`tests/game.test.js`) plays a perfect player who solves each puzzle the moment it opens. It must not reach Senior before 8 minutes or Principal before 20 (it takes about 26), must reach Principal within the hour, and must keep users within their markets.
+
+Not done: a use for the budget that piles up after the Toolshed is bought out (about $35,000 by 30 minutes). Section 3.4's handover is the natural place for it.
+
 ## Status (1.3.0)
 
 | Section | State |
