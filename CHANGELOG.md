@@ -2,9 +2,13 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
-## 1.4.2
+## 1.4.3
 
 - Rewrote the README as a Stillwater press release and user manual, with new brand art and screenshots. Documentation only, so the game itself is unchanged.
+
+## 1.4.2
+
+- **Release fix.** Publishing a new version no longer fails the first time with “No release found”: the release tool now waits for the draft it has just created to appear.
 
 ## 1.4.1
 
