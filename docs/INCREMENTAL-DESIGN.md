@@ -18,7 +18,7 @@ From reading `game.js`:
 
 > Everything you do is noticed: by users, by the Calm Index, by your manager, by the careful player.
 
-New systems should make the player's choices visible somewhere else in the game, later, in a different app. That is how the existing content already works (the sudoku row is the blog password; the Furnace of Thursdays brings Juno back).
+New systems should make the player's choices visible somewhere else in the game, later, in a different app. That is how the existing content already works (the sudoku row is the blog password; the Furnace of Thursdays brings Bella back).
 
 ## 1. Foundations
 
@@ -59,7 +59,7 @@ Shape of the system:
   - Support policy: fast replies cost time, slow ones cost users.
   - Roadmap direction: which of several features to commit to.
 - **Delayed, cross-app consequences.** A telemetry choice at v2 could surface as a Quiet Monitor finding or a message about the parents' pilot products at v6.
-- **Fairness.** Consequences should be discoverable. Give each decision a small in-world hint beforehand (a Library note, a remark from Juno) so punishment never comes from information the player could not have had.
+- **Fairness.** Consequences should be discoverable. Give each decision a small in-world hint beforehand (a Library note, a remark from Bella) so punishment never comes from information the player could not have had.
 
 ## 3. Mid-game systems (proposed)
 

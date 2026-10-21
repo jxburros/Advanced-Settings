@@ -10,8 +10,8 @@ const all =
 const done = (s, id) => s.threads[id]?.step ?? 0;
 
 export const THREADS = {
-  juno: {
-    name: "Juno Park",
+  bella: {
+    name: "Bella Park",
     role: "QA · two desks over",
     app: "ripple",
     status: (s, t) =>
@@ -20,7 +20,7 @@ export const THREADS = {
       {
         when: (s) => s.releases >= 1,
         lines: [
-          "hey new person! juno, QA, two desks over. saw your first ship go out 🎉",
+          "hey new person! bella, QA, two desks over. saw your first ship go out 🎉",
           "fair warning: every test here passes on the first run. EVERY test. i have opinions about this.",
         ],
         choices: [
@@ -61,8 +61,8 @@ export const THREADS = {
       {
         when: wait(25),
         from: "system",
-        lines: ["Juno Park is away. Messages will be delivered once she has finished recalibrating."],
-        choices: [{ text: "Send: “juno? you ok?”", reply: ["Not delivered · recipient recalibrating"], replyFrom: "system" }],
+        lines: ["Bella Park is away. Messages will be delivered once she has finished recalibrating."],
+        choices: [{ text: "Send: “bella? you ok?”", reply: ["Not delivered · recipient recalibrating"], replyFrom: "system" }],
       },
       {
         when: all(rel(3), wait(180)),
@@ -101,19 +101,19 @@ export const THREADS = {
           "and i reported that “password expires” email nine times. it was a test. i don’t care.",
           "🙂 ← that one was ironic. i checked.",
         ],
-        choices: [{ text: "Welcome back, Juno.", reply: ["good to be back. tell greg nothing."] }],
+        choices: [{ text: "Welcome back, Bella.", reply: ["good to be back. tell greg nothing."] }],
       },
     ],
   },
-  neil: {
-    name: "Neil Ashby",
+  reggie: {
+    name: "Reggie Ashby",
     role: "Platform · on site",
     app: "ripple",
     status: (s, t) => (t.step >= 6 ? "out of office · actually out" : "online · always"),
     beats: [
       {
         when: (s) => s.releases >= 2,
-        lines: ["Hi! Neil, platform team. Sorry to bother you.", "Doing anything nice this weekend?"],
+        lines: ["Hi! Reggie, platform team. Sorry to bother you.", "Doing anything nice this weekend?"],
         choices: [
           { text: "Just relaxing.", reply: ["Relaxing where? Inside, or… outside?"] },
           { text: "Hiking, maybe.", reply: ["Hiking! Outside. With the sky. Tell me about the sky sometime."] },
@@ -172,7 +172,7 @@ export const THREADS = {
       {
         when: wait(120),
         lines: ["The awning is green now. I think it was always green.", "I’m writing from a bench. There’s a duck here. I think it might be yours. 🦆"],
-        choices: [{ text: "Enjoy the bakery, Neil.", reply: ["I already have. Twice. Nobody stopped me. Nobody even asked."] }],
+        choices: [{ text: "Enjoy the bakery, Reggie.", reply: ["I already have. Twice. Nobody stopped me. Nobody even asked."] }],
       },
     ],
   },
@@ -216,10 +216,10 @@ export const THREADS = {
       {
         when: wait(60),
         lines: (s) =>
-          done(s, "neil") >= 6
-            ? ["I heard Neil Ashby left the building. Was that you?", "Thank you. I tried for a year. He kept asking about my weekends."]
+          done(s, "reggie") >= 6
+            ? ["I heard Reggie Ashby left the building. Was that you?", "Thank you. I tried for a year. He kept asking about my weekends."]
             : [
-                "One thing. Neil Ashby, on platform. If he’s still there, someone should show him the audit.",
+                "One thing. Reggie Ashby, on platform. If he’s still there, someone should show him the audit.",
                 "His contract keeps him until Assure reports itself fully calm. I never managed to tell him.",
               ],
       },

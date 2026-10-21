@@ -27,11 +27,11 @@ After a version passes its tests (Pocket Notes v1.0 excepted) it needs a release
 
 ## Story moments
 
-The Secret Tracker's Story tab lists 58 moments in nine sections (Work, the previous user, QuickFix, the duck, Juno, Neil, Mom & Dad, the office, the Calm Index). The 15 marked “needed for probation” are the ones the win requires: the first release, all four promotions, Workspace Zero, the attachment, Channel 04, QuickFix arriving, quarantined and revoked, and the four duck corrections. Some optional ones exclude each other in a single run (getting the cake or missing it; reporting the phishing email or clicking it), so a full tracker takes more than one workstation.
+The Secret Tracker's Story tab lists 58 moments in nine sections (Work, the previous user, QuickFix, the duck, Bella, Reggie, Mom & Dad, the office, the Calm Index). The 15 marked “needed for probation” are the ones the win requires: the first release, all four promotions, Workspace Zero, the attachment, Channel 04, QuickFix arriving, quarantined and revoked, and the four duck corrections. Some optional ones exclude each other in a single run (getting the cake or missing it; reporting the phishing email or clicking it), so a full tracker takes more than one workstation.
 
 ## Help Desk
 
-Help › Help Desk lists a ticket for every problem the player currently has: the workspace, Mara's attachment, Channel 04, QuickFix, the credential, the current duck case, Juno, Neil, the parents' current product, and a falling Calm Index. Each ticket has three answers: a vague one at once, a clearer one 2½ minutes later, and the solution 5 minutes after that. Hints don't affect anything else.
+Help › Help Desk lists a ticket for every problem the player currently has: the workspace, Mara's attachment, Channel 04, QuickFix, the credential, the current duck case, Bella, Reggie, the parents' current product, and a falling Calm Index. Each ticket has three answers: a vague one at once, a clearer one 2½ minutes later, and the solution 5 minutes after that. Hints don't affect anything else.
 
 ## Secrets
 
@@ -56,8 +56,8 @@ Help › Help Desk lists a ticket for every problem the player currently has: th
 | Appendix H | Library: “See Appendix H for what time means here” | Complete 6 reading sessions and return to the game at least 3 times. |
 | The desk remembers | Trash count, the renamed Welcome file, a fading wallpaper, the falling Calm Index; a note at 6 returns says “I stopped counting at twelve” | Return 12 times. Each new browser session after the first counts as a return, and so does coming back to a tab that was in the background for 20 minutes. |
 
-| Herself again | Juno’s own words before she leaves: “if i come back weird, remind me who i am”; Notes: “Remind them of something silly.” | When Juno returns very calm, the preset replies get nowhere. Type a message mentioning the **Furnace of Thursdays**, the nickname she taught you for Greg’s heater. |
-| Out of office | Neil’s questions; the directory (“last badge-out: never”); facilities (sleeping pod 4); Mara’s guest message | Archive Index box 5 is Neil’s retention agreement: he stays “until Stillwater Assure reports that it is fully calm”. Once you have Channel 04 (Mara’s audit), a new reply appears: send him the audit. The condition is impossible, so the clause is void, and he leaves. |
+| Herself again | Bella’s own words before she leaves: “if i come back weird, remind me who i am”; Notes: “Remind them of something silly.” | When Bella returns very calm, the preset replies get nowhere. Type a message mentioning the **Furnace of Thursdays**, the nickname she taught you for Greg’s heater. |
+| Out of office | Reggie’s questions; the directory (“last badge-out: never”); facilities (sleeping pod 4); Mara’s guest message | Archive Index box 5 is Reggie’s retention agreement: he stays “until Stillwater Assure reports that it is fully calm”. Once you have Channel 04 (Mara’s audit), a new reply appears: send him the audit. The condition is impossible, so the clause is void, and he leaves. |
 | Return to sender | Mom: “see intranet.stillwater/pilots” | Answers are on the hidden intranet.stillwater/pilots page: hold the Hearth dial for ten seconds; say “I am calm” three times to the Serene TV. For the Pantry fridge, the truthful reply appears only after Channel 04. The corporate script also ends the thread, but without the secret. |
 | Part of the problem | — | Press Reply all on the fridge-cleanout thread. Six more people reply all to agree with you. |
 | There was cake | A toast: “CAKE in kitchen 3!!” | After the reply-all storm ends (from 4 releases), cake is announced. You have 45 seconds to click Go to kitchen 3. |
@@ -89,13 +89,13 @@ Help › Help Desk lists a ticket for every problem the player currently has: th
 
 | Thread | Where | Arc |
 | --- | --- | --- |
-| Juno Park (QA) | Ripple, after the first release | Jokes about tests that always pass and teaches you “the Furnace of Thursdays”. She files a bug at 3 releases and is sent to the Wellness Wing; your message isn’t delivered. Three releases and three minutes later she returns very calm, and only the shared joke brings her back. Afterwards she refiles the bug with your logs. |
-| Neil Ashby (Platform) | Ripple, after 2 releases | He asks about your weekend, a bakery on Fifth, and what time you leave. His badge only opens inward. He hints at an archive document, then asks about “the weather”. Sending the audit frees him, and he writes from a bench with your duck. |
+| Bella Park (QA) | Ripple, after the first release | Jokes about tests that always pass and teaches you “the Furnace of Thursdays”. She files a bug at 3 releases and is sent to the Wellness Wing; your message isn’t delivered. Three releases and three minutes later she returns very calm, and only the shared joke brings her back. Afterwards she refiles the bug with your logs. |
+| Reggie Ashby (Platform) | Ripple, after 2 releases | He asks about your weekend, a bakery on Fifth, and what time you leave. His badge only opens inward. He hints at an archive document, then asks about “the weather”. Sending the audit frees him, and he writes from a bench with your duck. |
 | Mom & Dad | Mail › Personal, after the first release | Three pilot products, each fixed with an answer from the hidden pilots page. The last one asks you to choose between the script and the truth. |
 | Greg Okafor | Ripple, after you revoke the credential | His heater’s smart plug used the contractor account, so the “hacker” was partly a heater. He has a later note once Panel B is fixed. |
-| mchen (guest) | Ripple, after Mara’s blog and Channel 04 | Mara says hello, then asks you to help Neil, or thanks you if you already have. |
+| mchen (guest) | Ripple, after Mara’s blog and Channel 04 | Mara says hello, then asks you to help Reggie, or thanks you if you already have. |
 
-Shipping Workspace Zero recovers one of Mara’s notes per version (v1–v4). These mention Juno, Neil and the consumer pilots.
+Shipping Workspace Zero recovers one of Mara’s notes per version (v1–v4). These mention Bella, Reggie and the consumer pilots.
 
 ## The duck corrections
 
