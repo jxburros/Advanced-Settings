@@ -4,10 +4,11 @@
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const AdmZip = require("adm-zip");
 const D = require("../desktop/dlc.cjs");
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const [id, flag] = process.argv.slice(2);
 const fail = (msg) => {
   console.error(msg);

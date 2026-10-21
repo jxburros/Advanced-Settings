@@ -2,6 +2,10 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
+## 1.2.2
+
+- **Windows build fix.** The DLC packer now finds its files on Windows, so the Windows edition builds again. 1.2.1 was never published; its changes ship in this release.
+
 ## 1.2.1
 
 - **Smoother desktop.** Windows animate when they close, minimize and zoom, and double-clicking a title bar zooms again.
