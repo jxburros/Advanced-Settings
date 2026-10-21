@@ -6,12 +6,25 @@
 
 | Ending | How |
 | --- | --- |
-| End of probation (win) | Reach Principal Engineer (18 releases; promotions at 3, 7, 12 and 18) and finish all four stories: the previous user (Channel 04), QuickFix (credential revoked), and all four duck corrections. |
+| End of probation (win) | Reach Principal Engineer (promotions at 5, 15, 30 and 50 releases, each after the first also waiting on a puzzle; see Growth conversations below) and finish all four stories: the previous user (Channel 04), QuickFix (credential revoked), and all four duck corrections. |
 | Released to the community (loss) | Acceptable Use concern reaches 100% **twice**. It rises with blocked sites (+1), translated or proxied personal pages, shopping (+4 to +10), blog posts (+6 to +26), and online sudoku play. **Private browsing multiplies it by 1.5**, although Settings › Privacy claims it counts *less*; the Calm Improvement Plan issues a correction in the log, in Mail and in the setting itself. Real work (a running build) lowers it, and nothing is reported while the workstation is isolated. Mail warns you at 40 and 70, and the Calm Index in the menu bar drops. The first time it reaches 100 you get a Calm Improvement Plan instead: concern resets to 55, Wayfinder closes for three minutes and private browsing is switched off. |
 | Reimaged (loss) | Leave QuickFix unquarantined for about 15 minutes of build time (900 breach points). It only grows while a build is running and you're online and looking: it pauses while isolated, while nothing is building, and while the tab is in the background. It speeds up 3× if Developer › Install from is set to “Anywhere”. Warnings arrive at 5, 10 and 13 minutes of build time, and its processor use grows from 20% to 30% to 40%. Quiet Monitor releases push it back. |
 | Handed over (neither) | As a Principal Engineer, use Mail › Hand off WS-0417. You start a new workstation with no projects or budget, a quarter of your knowledge, an optional handover note (it appears in Notes, signed “the previous user (you)”), and a legacy bonus: releases and reading pay 10% more per handover, up to 50%. |
 
 The Secret Tracker unlocks in the dock after the first ending of any kind, and it persists across new workstations.
+
+## Growth conversations
+
+Promotions need releases (5, 15 and 30, then 50) and, after the first, one more thing. Until it's done, Mail › Career and the goal widget say the conversation is on hold and drop a hint, and the Help Desk's ticket for that story leads to the answer.
+
+| Promotion | Held until | Hint |
+| --- | --- | --- |
+| Developer | Nothing: releases only. | — |
+| Senior Developer | QuickFix is quarantined (Activity Monitor › Security). | “Your build times are being helped by something nobody installed.” |
+| Staff Engineer | The contractor credential is revoked: type `temp-contractor-0417` in Activity Monitor › Security. | “The account behind your helper still signs in from your desk.” |
+| Principal Engineer | Channel 04 is open: Workspace Zero, then Mara's attachment, then Systems programming and an isolated workstation. | “Read all of it, including the parts that were never on the network.” |
+
+**Local model runtime** won't install until Panel B is solved (Facilities won't approve another 400 W on an unstable panel). The Help Desk opens a ticket for it once the AI task assistant is installed, and its last answer lists the switches to flip from wherever the panel is now.
 
 ## Release tasks
 
@@ -112,18 +125,18 @@ Help › Help Desk lists a ticket for every problem the player currently has: th
 
 | Thread | Where | Arc |
 | --- | --- | --- |
-| Bella Park (QA) | Ripple, after the first release | Jokes about tests that always pass and teaches you “the Furnace of Thursdays”. She files a bug at 3 releases and is sent to the Wellness Wing; your message isn’t delivered. Three releases and three minutes later she returns very calm, and only the shared joke brings her back. Afterwards she refiles the bug with your logs. |
+| Bella Park (QA) | Ripple, after the first release | Jokes about tests that always pass and teaches you “the Furnace of Thursdays”. She files a bug once you install the Test harness and is sent to the Wellness Wing; your message isn’t delivered. Three releases and three minutes later she returns very calm, and only the shared joke brings her back. Afterwards she refiles the bug with your logs. |
 | Reggie Ashby (Platform) | Ripple, after 2 releases | He asks about your weekend, a bakery on Fifth, and what time you leave. His badge only opens inward. He hints at an archive document, then asks about “the weather”. Sending the audit frees him, and he writes from a bench with your duck. |
 | Mom & Dad | Mail › Personal, after the first release | Three pilot products, each fixed with an answer from the hidden pilots page. The last one asks you to choose between the script and the truth. |
 | Greg Okafor | Ripple, after you revoke the credential | His heater’s smart plug used the contractor account, so the “hacker” was partly a heater. He has a later note once Panel B is fixed. |
 | mchen (guest) | Ripple, after Mara’s blog and Channel 04 | Mara says hello, then asks you to help Reggie, or thanks you if you already have. |
-| Ashleigh Lane (Product) | Ripple, after 2 releases | One product review every two releases or more (from 2, 5, 8 and 11 releases): pricing, telemetry, support and the roadmap. Each answer stays on file and is listed under Product policy in Workbench. A last message reports what Assure did with your telemetry. |
+| Ashleigh Lane (Product) | Ripple, after 2 releases | Pricing after 2 releases, then one review per promotion (Developer, Senior, Staff), each at least two releases after the last: telemetry, support and the roadmap. Each answer stays on file and is listed under Product policy in Workbench. A last message reports what Assure did with your telemetry. |
 
 Shipping Workspace Zero recovers one of Mara’s notes per version (v1–v4). These mention Bella, Reggie and the consumer pilots.
 
 ## Users and product policy
 
-Each shipped project keeps its own users. A release adds 1.4 users per dollar it earned. Users pay $0.0004 each per second, and a project's next version pays more the more users it has (× 1 + √users ÷ 40, at most × 3). After 5 minutes at the desk without a release a project starts to drift: it loses 0.06% of its users a second, never dropping below 40% of its best. Time away never counts. A Lunchboard outage loses 10% of its users.
+Each shipped project keeps its own users. A release adds 1.4 users per dollar it earned. Each project has a market of 60 users per dollar of its base pay (Pocket Notes 2,700, Lunchboard 4,800, Archive Index 6,600, Quiet Monitor 9,000, Workspace Zero 10,800), scaled by the pricing and telemetry answers; new users shrink in proportion as a project fills its market, and Workbench says when it is full. Users pay $0.0004 each per second, and a project's next version pays more the more users it has (× 1 + √users ÷ 40, at most × 3). After 5 minutes at the desk without a release a project starts to drift: it loses 0.06% of its users a second, never dropping below 40% of its best. Time away never counts. A Lunchboard outage loses 10% of its users.
 
 | Review | Answer | Effect |
 | --- | --- | --- |
@@ -136,6 +149,8 @@ Each shipped project keeps its own users. A release adds 1.4 users per dollar it
 | Support | Within the hour | Users drift half as fast; project jobs run 10% slower. (“Can the duck do it?” gets a reply but no decision.) |
 | | Within the week | Users drift 50% faster. |
 | Roadmap | Search, Cloud sync or Performance | The chosen kind pays 30% more and takes 20% less time to write; the other two pay 10% less. |
+
+Speed boosts add together rather than multiply: a job runs at 1 + the sum of its boosts (More memory 0.06 a level; for writing, Autocomplete 0.4, the model 0.1 a tier and the chair 0.1; for testing and debugging, the suite 0.15 a level; for reading, headphones 0.25; Panel B 0.1 for everything but reading; the assistant 0.4, or 0.8 with the local model, for the work it is assigned). The rubber duck still doubles debugging and Support within the hour still slows project jobs by 10%. Writing takes 60% longer and testing 3 seconds longer with each version.
 
 Toolshed › Upgrades can be bought repeatedly. Each level costs 15% more budget and knowledge than the last, and the knowledge is spent: More memory (every job +6% a level, 10 levels), Autocomplete model (writing +10% a tier, 5 tiers, needs Autocomplete), Faster test suite (testing and debugging +15% a level, 5 levels, needs Test harness) and Release notes (+10% new users a level, 8 levels).
 
@@ -153,7 +168,7 @@ From 3 releases, 20 seconds on a personal page (a translated personal site, or t
 
 ## The duck corrections
 
-The newsletter’s headlines arrive at 0, 2, 5 and 8 releases. A wrong correction closes the desk for 60 seconds. Every option is mundane on purpose, so the right one needs evidence.
+The newsletter’s headlines arrive at the start and at each of the first three promotions (Developer, Senior Developer, Staff Engineer). A wrong correction closes the desk for 60 seconds. Every option is mundane on purpose, so the right one needs evidence.
 
 | Case | Answer | Evidence |
 | --- | --- | --- |

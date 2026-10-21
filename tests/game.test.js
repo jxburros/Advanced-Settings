@@ -26,10 +26,15 @@ function task(s, id) {
   assert.equal(s.projects[id].stage, "tested");
 }
 function ship(s, id = "pocket", feature = "search") {
+  const until = (stage) => {
+    for (let i = 0; i < 50 && s.projects[id].stage === stage; i++) G.tick(s, 100);
+  };
   assert.ok(G.start(s, id, feature));
   G.tick(s, 400);
+  until("writing");
   assert.ok(G.test(s, id));
   G.tick(s, 400);
+  until("testing");
   if (s.projects[id].bugs) {
     assert.ok(G.debug(s, id));
     G.tick(s, 400);
@@ -352,6 +357,22 @@ test("AI security traces and quarantines, but you still revoke the credential", 
   assert.equal(G.workers(s), 2);
   assert.ok(G.revoke(s, G.CREDENTIAL));
 });
+/* Mara's story, start to finish: the workspace, her attachment, then Channel 04. */
+function mara(s) {
+  s.money += 1000;
+  s.knowledge += 300;
+  s.settings.legacy = true;
+  G.read(s);
+  s.jobs.at(-1).paused = true;
+  assert.ok(G.discover(s, "workspace"));
+  s.jobs.pop();
+  assert.ok(G.buy(s, "database"));
+  assert.ok(G.story(s, "attachment"));
+  assert.ok(G.buy(s, "systems"));
+  s.settings.isolated = true;
+  assert.ok(G.discover(s, "channel"));
+  s.settings.isolated = false;
+}
 test("all storylines and final promotion are reachable, and the archive records the ending", () => {
   const s = G.fresh();
   while (s.rank < 4) {
@@ -359,7 +380,8 @@ test("all storylines and final promotion are reachable, and the archive records 
       trace(s);
       assert.ok(G.story(s, "quarantine"));
       assert.ok(G.revoke(s, G.CREDENTIAL));
-    } else ship(s);
+    } else if (G.promotionHeld(s) === G.HOLDS[4]) mara(s);
+    else ship(s);
     if (G.promotionDue(s)) assert.ok(G.promote(s, "specialist"));
   }
   assert.equal(s.rank, 4);
@@ -368,15 +390,6 @@ test("all storylines and final promotion are reachable, and the archive records 
   assert.equal(s.over, null);
   for (const c of G.DUCK_CASES) assert.ok(G.correct(s, c.answer));
   assert.equal(G.correct(s, 0), false);
-  assert.ok(G.buy(s, "database"));
-  assert.ok(G.buy(s, "systems"));
-  s.settings.legacy = true;
-  G.read(s);
-  s.jobs.at(-1).paused = true;
-  G.discover(s, "workspace");
-  G.story(s, "attachment");
-  s.settings.isolated = true;
-  G.discover(s, "channel");
   assert.deepEqual(s.stories, { employee: 3, quickfix: 5, duck: 4, career: 4 });
   assert.ok(G.complete(s));
   const archive = G.freshArchive();
@@ -449,6 +462,9 @@ test("Bella IMs you, disappears to a retreat, and only a shared joke brings her 
   assert.ok(G.say(s, "bella", 0), "the Furnace of Thursdays");
   s.releases = 3;
   G.tick(s, 1);
+  assert.equal(G.say(s, "bella", 1), false, "she writes once you install the test harness");
+  s.skills.push("tests");
+  G.tick(s, 31);
   assert.ok(G.say(s, "bella", 1));
   G.tick(s, 61);
   G.tick(s, 26);
@@ -576,8 +592,10 @@ test("Workspace Zero releases recover Mara's notes, and conversations survive a 
 });
 test("promotions need more releases each time, and later versions take longer", () => {
   const s = G.fresh();
-  assert.deepEqual(G.RANK_AT, [0, 3, 7, 12, 18]);
-  for (let i = 0; i < 6; i++) ship(s);
+  assert.deepEqual(G.RANK_AT, [0, 5, 15, 30, 50]);
+  ship(s), ship(s);
+  s.stories.quickfix = 5; // the holds have tests of their own
+  while (s.releases < G.RANK_AT[2] - 1) ship(s);
   assert.ok(G.promote(s, "manager"));
   assert.equal(G.promote(s, "manager"), false, "one promotion at a time");
   assert.equal(G.promotionDue(s), false);
@@ -585,6 +603,67 @@ test("promotions need more releases each time, and later versions take longer", 
   assert.ok(G.promotionDue(s));
   const f = G.FEATURES[0];
   assert.ok(G.writeTime(s, { version: 5 }, f) > G.writeTime(s, { version: 0 }, f) * 2);
+});
+test("later growth conversations wait on a puzzle, and say so without saying how", () => {
+  const s = G.fresh();
+  while (s.releases < G.RANK_AT[1]) ship(s);
+  assert.ok(G.promote(s, "specialist"), "the first one only needs releases");
+  s.settings.isolated = true; // QuickFix waits while you're offline
+  while (s.releases < G.RANK_AT[2]) ship(s);
+  s.settings.isolated = false;
+  assert.equal(s.stories.quickfix, 1);
+  assert.equal(G.promotionDue(s), false);
+  assert.equal(G.promotionHeld(s), G.HOLDS[2], "held: QuickFix is still helping");
+  assert.ok(G.story(s, "quarantine"));
+  assert.ok(G.promote(s, "specialist"));
+  while (s.releases < G.RANK_AT[3]) ship(s);
+  assert.equal(G.promotionHeld(s), G.HOLDS[3], "held: the credential still signs in");
+  assert.ok(G.revoke(s, G.CREDENTIAL));
+  assert.ok(G.promote(s, "specialist"));
+  while (s.releases < G.RANK_AT[4]) ship(s);
+  assert.equal(G.promotionHeld(s), G.HOLDS[4], "held: Channel 04 is unread");
+  assert.equal(G.promote(s, "specialist"), false);
+  mara(s);
+  assert.equal(G.promotionHeld(s), null);
+  assert.ok(G.promote(s, "specialist"));
+  assert.equal(s.rank, 4);
+  // Every hold has a Help Desk ticket open while it holds.
+  const q = G.fresh();
+  q.stories.quickfix = 1;
+  assert.ok(G.HINTS.find((h) => h.id === "quickfix").active(q));
+  q.stories.quickfix = 3;
+  assert.ok(G.HINTS.find((h) => h.id === "revoke").active(q));
+  assert.ok(G.HINTS.find((h) => h.id === "workspace").active(q));
+});
+test("the local model needs Panel B stable, and the Help Desk knows how", () => {
+  const s = G.fresh();
+  s.money = 5000;
+  s.knowledge = 1000;
+  assert.ok(G.buy(s, "assistant"));
+  assert.equal(G.buy(s, "local"), false, "Facilities won't approve it");
+  const h = G.HINTS.find((x) => x.id === "circuit");
+  assert.ok(h.active(s));
+  for (const i of G.breakerSolution(s)) G.flip(s, i);
+  assert.ok(G.breakerOk(s));
+  assert.equal(h.active(s), false);
+  assert.ok(G.buy(s, "local"));
+});
+test("boosts add up rather than multiply, and each project's market fills", () => {
+  const s = G.fresh();
+  s.skills.push("autocomplete", "assistant", "local");
+  s.perks.push("chair");
+  Object.assign(s.upgrades, { memory: 10, model: 5 });
+  s.breaker = [...G.BREAKER.goal];
+  assert.ok(Math.abs(G.boost(s, "write") - 3.5) < 1e-9, "1 + 0.6 + 0.4 + 0.5 + 0.1 + 0.1 + 0.8");
+  assert.equal(G.boost(G.fresh(), "write"), 1);
+  const m = G.market(s, "pocket");
+  s.projects.pocket.users = m;
+  s.projects.pocket.stage = "tested";
+  const before = s.projects.pocket.users;
+  assert.ok(G.release(s, "pocket"));
+  assert.equal(s.projects.pocket.users, before, "a full market brings nobody new");
+  s.decisions.pricing = "ads";
+  assert.ok(G.market(s, "pocket") > m, "free with ads reaches more people");
 });
 test("the Help Desk escalates hints slowly, and only for open problems", () => {
   const s = G.fresh();
@@ -782,7 +861,12 @@ function review(s, choice) {
   while (!t.open) G.tick(s, 1);
   return G.say(s, "product", choice);
 }
-test("product reviews come one per release, stick, and come back later in other apps", () => {
+/* Ship until the next growth conversation, then take it. */
+function rise(s) {
+  while (!G.promotionDue(s)) ship(s);
+  assert.ok(G.promote(s, "specialist"));
+}
+test("product reviews come one early and one per promotion, stick, and come back later in other apps", () => {
   const s = G.fresh();
   ship(s);
   G.tick(s, 30);
@@ -794,8 +878,10 @@ test("product reviews come one per release, stick, and come back later in other 
   assert.equal(G.policy(s, "growth"), 1.4);
   assert.equal(G.policy(s, "income"), 0.5);
   G.tick(s, 600);
-  assert.equal(G.thread(s, "product").open, false, "the next question waits for more releases");
-  ship(s), ship(s), ship(s);
+  ship(s), ship(s);
+  G.tick(s, 600);
+  assert.equal(G.thread(s, "product").open, false, "the next question waits for a promotion");
+  rise(s);
   assert.ok(review(s, 0), "collect everything");
   assert.equal(s.decisions.telemetry, "all");
   // The Calm Index reads the same feeds.
@@ -808,10 +894,10 @@ test("product reviews come one per release, stick, and come back later in other 
   assert.ok(s.marks.includes("telemetry"));
   G.moments(s);
   assert.ok(s.moments.includes("watcher"));
-  while (s.releases < 8) ship(s);
+  rise(s);
   assert.equal(review(s, 0), "retry", "the duck is not on the support rota");
   assert.ok(G.say(s, "product", 1));
-  while (s.releases < 11) ship(s);
+  rise(s);
   assert.ok(review(s, 2));
   assert.equal(s.decisions.roadmap, "performance");
   const f = G.FEATURES.find((x) => x.id === "performance");
@@ -1039,4 +1125,48 @@ test("every secret and ending is documented, and the README counts match", async
   assert.ok(readme.includes(`every story moment (${G.MOMENTS.length},`));
   assert.ok(doc.includes(`lists ${G.MOMENTS.length} moments`));
   assert.equal(new Set(G.SECRETS.map((x) => x.id)).size, G.SECRETS.length);
+});
+/* A tireless player who acts every 15 seconds, takes 30 seconds over each release task and solves every
+   puzzle the moment it opens. Nobody plays faster, so this is the floor on how long the game takes. */
+test("pacing: even a perfect player needs a while to reach Principal, and users stay within their markets", () => {
+  const s = G.fresh(0);
+  const order = ["web", "tests", "hardware", "autocomplete", "database", "scheduler", "systems", "assistant", "local"];
+  const ranks = [];
+  for (let sec = 0; sec < 3600 && s.rank < 4; sec++) {
+    if (sec % 15 === 0) {
+      const next = order.find((k) => !s.skills.includes(k));
+      if (next) G.buy(s, next);
+      for (const u of ["memory", "notes", "suite", "model"]) if (s.money > 300) G.upgrade(s, u);
+      if (G.promotionDue(s)) G.promote(s, "specialist"), ranks.push(sec);
+      if (!s.jobs.some((j) => j.kind === "reading")) G.read(s);
+      for (const [id, p] of Object.entries(s.projects)) {
+        if (p.stage === "plan") G.start(s, id, "performance");
+        else if (p.stage === "written") G.test(s, id);
+        else if (p.stage === "tested") p.bugs ? G.debug(s, id) : G.release(s, id);
+        else if (p.stage === "task" && s.elapsed - p.task.at > 30 && !T.rushing(T.makeTask(id, p.version), s.elapsed)) task(s, id);
+      }
+      for (const d of G.PROJECTS) if (G.unlocked(s, d) && !s.projects[d.id]) G.start(s, d.id, "performance");
+      if ([1, 2].includes(s.stories.quickfix)) G.story(s, "quarantine");
+      if ([3, 4].includes(s.stories.quickfix)) G.revoke(s, G.CREDENTIAL);
+      if (s.skills.includes("assistant")) for (const i of G.breakerSolution(s)) G.flip(s, i);
+      if (s.releases >= 3 && s.jobs[0] && !s.bookmarks.includes("workspace")) {
+        s.settings.legacy = s.jobs[0].paused = true;
+        G.discover(s, "workspace");
+        s.jobs[0].paused = false;
+      }
+      G.story(s, "attachment");
+      if (s.stories.employee === 2 && s.skills.includes("systems")) {
+        s.settings.isolated = true;
+        G.discover(s, "channel");
+        s.settings.isolated = false;
+      }
+    }
+    G.tick(s, 1);
+    const room = G.PROJECTS.reduce((n, d) => n + G.market(s, d.id), 0);
+    assert.ok(s.users <= room, `users within their markets at ${sec} s`);
+  }
+  assert.equal(s.over, null);
+  assert.equal(s.rank, 4, "a perfect player makes Principal within the hour");
+  assert.ok(ranks[3] >= 20 * 60, `Principal no sooner than 20 minutes (took ${Math.round(ranks[3] / 60)})`);
+  assert.ok(ranks[1] >= 8 * 60, `Senior no sooner than 8 minutes (took ${Math.round(ranks[1] / 60)})`);
 });
