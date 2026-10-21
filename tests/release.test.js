@@ -85,9 +85,11 @@ test("the packer builds a valid catalog entry", { skip: (() => { try { require.r
   assert.deepEqual(names, ["manifest.json", "pack.js"]);
   assert.deepEqual(JSON.parse(fs.readFileSync("dlc/catalog.json", "utf8")), [], "--no-catalog leaves the catalog alone");
 });
-test("a release started from the website writes the version everywhere", () => {
+test("the local version helper synchronizes fields and preserves existing notes", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ver-"));
   for (const f of ["package.json", "package-lock.json", "version.js", "CHANGELOG.md"]) fs.copyFileSync(f, path.join(dir, f));
+  // Test a genuinely new release rather than depending on the repository's current changelog.
+  fs.writeFileSync(path.join(dir, "CHANGELOG.md"), "# Changelog\n\n## 1.1.0\n\n- Previous release.\n");
   const run = (...args) => execFileSync(process.execPath, [path.resolve("tools/set-version.mjs"), ...args], { cwd: dir }).toString();
   run("1.2.0", "More ducks; fewer heaters");
   const read = (f) => fs.readFileSync(path.join(dir, f), "utf8");

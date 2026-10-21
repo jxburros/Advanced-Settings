@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "bumpPolicy": "every-main-change",
+  "apps": {
+    "advanced-settings": {
+      "tagPrefix": "v",
+      "paths": [
+        "**"
+      ],
+      "versionFiles": [
+        {
+          "path": "package.json",
+          "format": "json",
+          "key": "version"
+        },
+        {
+          "path": "package-lock.json",
+          "format": "json",
+          "key": "version"
+        },
+        {
+          "path": "version.js",
+          "format": "text",
+          "pattern": "export const VERSION = \"(?<version>[^\"]+)\""
+        },
+        {
+          "path": "package-lock.json",
+          "format": "json",
+          "key": "packages..version"
+        }
+      ],
+      "notes": ".release/notes/{app}/{version}.md",
+      "assets": [
+        "Advanced-Settings-Setup-{version}.exe",
+        "Advanced-Settings-Setup-{version}.exe.blockmap",
+        "latest.yml",
+        "Advanced-Settings-web-{version}.zip"
+      ],
+      "security": "standard",
+      "checksumFile": "SHA256SUMS.txt",
+      "legacyLatest": true
+    }
+  }
+}
