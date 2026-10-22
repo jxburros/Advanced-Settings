@@ -71,6 +71,7 @@ const SOUNDS = {
   success: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.07, 0.3, { gain: 0.07 })),
   trash: () => noise(0, 0.35, 0.12, 900),
   lock: () => tone(180, 0, 0.2, { type: "triangle", gain: 0.15, to: 120 }),
+  glitch: () => (noise(0, 0.14, 0.05, 2600), tone(120, 0, 0.12, { type: "square", gain: 0.03, to: 60 }), tone(1760, 0.07, 0.05, { type: "square", gain: 0.012 })),
   startup: () => [261.6, 329.6, 392, 523.2].forEach((f, i) => tone(f, i * 0.02, 1.8, { gain: 0.06 })),
   alert: () => ALERT[prefs.alert]?.(),
 };

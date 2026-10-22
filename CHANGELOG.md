@@ -2,6 +2,12 @@
 
 Each release's section becomes its GitHub release notes, which Software Update shows in the game. Keep the newest version first, under a `## <version>` heading.
 
+## 1.5.0
+
+- **A title screen.** The game now opens on a title screen with Continue Game, New Game, Options and Secrets. Every so often the calm logo glitches into the other one for a few seconds, then thinks better of it. The desk's clock waits while you're there, and the logo menu has a new **Return to Title**.
+- **Secrets, from the title screen.** Every story moment, secret and ending you've found across your workstations, plus 13 new achievements worked out from that record, so earlier playthroughs count straight away.
+- **Options before you sit down.** Sound, volume, startup chord, reduced motion and relaxed timing.
+
 ## 1.4.4
 
 - Added a `marketing` folder with the teaser trailer and the two wide logo lockups. It is not part of the game or its packages, so the game itself is unchanged.

@@ -1867,6 +1867,25 @@ export function tick(s, seconds, offline = false) {
   return s;
 }
 
+/* Milestones across every desk, shown on the title screen. Each is worked out from the archive,
+   so there is nothing extra to save and old archives earn theirs straight away. */
+export const ACHIEVEMENTS = [
+  ["noticed", "Something noticed", "Find your first secret.", (a) => a.found.length >= 1],
+  ["curious", "Curious", "Find 10 secrets.", (a) => a.found.length >= 10],
+  ["thorough", "Thorough", "Find 30 secrets.", (a) => a.found.length >= 30],
+  ["everything", "Nothing left in the drawers", "Find every secret.", (a) => SECRETS.every((x) => a.found.includes(x.id))],
+  ["involved", "Involved", "See 20 story moments.", (a) => a.moments.length >= 20],
+  ["probationer", "On the record", "See every moment needed for probation.", (a) => MOMENTS.filter((m) => m.required).every((m) => a.moments.includes(m.id))],
+  ["storied", "The whole story", "See every story moment.", (a) => MOMENTS.every((m) => a.moments.includes(m.id))],
+  ["ended", "An ending", "Reach any ending.", (a) => a.endings.length >= 1],
+  ["endings", "Every way out", "Reach every ending.", (a) => ENDINGS.every((x) => a.endings.includes(x.id))],
+  ["again", "Here before", "Start a second workstation.", (a) => a.plays >= 2],
+  ["regular", "Regular", "Start five workstations.", (a) => a.plays >= 5],
+  ["legacy", "Legacy", "Hand a desk over to its next user.", (a) => a.legacy >= 1],
+  ["institution", "Institution", `Hand over ${LEGACY_MAX} desks.`, (a) => a.legacy >= LEGACY_MAX],
+].map(([id, name, hint, test]) => ({ id, name, hint, test }));
+export const achieved = (archive) => ACHIEVEMENTS.filter((x) => x.test(archive)).map((x) => x.id);
+
 /* Cross-play record of secrets and endings. Lives outside the save. */
 export function freshArchive() {
   return { found: [], endings: [], moments: [], plays: 1, legacy: 0, notes: [] };
