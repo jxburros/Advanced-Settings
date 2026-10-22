@@ -1,7 +1,7 @@
 {
   "name": "advanced-settings",
   "productName": "Advanced Settings",
-  "version": "1.4.4",
+  "version": "1.5.0",
   "description": "A menu-driven puzzle game set on a slightly suspicious company workstation.",
   "author": "jxburros",
   "license": "UNLICENSED",
@@ -31,7 +31,7 @@
   "build": {
     "appId": "com.jxburros.advancedsettings",
     "productName": "Advanced Settings",
-    "copyright": "Stillwater Systems (fictional)",
+    "copyright": "© 2026 JX Holdings, LLC",
     "directories": {
       "output": "dist",
       "buildResources": "build"

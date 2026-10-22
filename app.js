@@ -6,6 +6,7 @@ const UIKEY = "stillwater-desktop";
 const ARCHIVEKEY = "stillwater-archive";
 let s = G.fresh(),
   saveError = "",
+  saved = false,
   bootSeen;
 // A reload is not a return. Closing the tab and coming back is.
 let returning = true;
@@ -17,6 +18,7 @@ try {
   const raw = localStorage.getItem(KEY);
   if (raw) {
     s = G.restore(raw);
+    saved = true;
     bootSeen = s.logs[0]?.text + s.logs[0]?.time;
     if (returning) G.welcomeBack(s);
   }
@@ -737,7 +739,7 @@ function settings() {
   else if (cur === "storage")
     body = `<h2>Storage</h2><p class="lede">Progress saves itself in this browser. Running jobs keep going for up to two hours while you’re away. Export a backup to move desks. Clearing browser data clears the desk.</p><div class="row">${button("Export save", "export", "", false, "ghost")}${button("Import save", "import", "", false, "ghost")}${button("New workstation", "reset", "", false, "danger")}</div>${saveError ? `<p class="warn">${saveError}</p>` : ""}`;
   else
-    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: ${s.secrets.includes("redacted") ? "<b>Mara Chen</b>" : `<button class="redact" data-action="redact" aria-label="Redacted name">Mara Chen</button>`}${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings ${U.VERSION} · ${U.desktop ? "Windows edition" : "web edition"}${U.state.dlc.installed.length ? ` · ${U.state.dlc.installed.length} DLC pack${U.state.dlc.installed.length === 1 ? "" : "s"}` : ""}</p>${button("Software Update…", "open", "updates", false, "ghost")}<p class="fine">Advanced Settings is a game. All the work is simulated. The satisfaction is not.</p></div>`;
+    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: ${s.secrets.includes("redacted") ? "<b>Mara Chen</b>" : `<button class="redact" data-action="redact" aria-label="Redacted name">Mara Chen</button>`}${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings ${U.VERSION} · ${U.desktop ? "Windows edition" : "web edition"}${U.state.dlc.installed.length ? ` · ${U.state.dlc.installed.length} DLC pack${U.state.dlc.installed.length === 1 ? "" : "s"}` : ""}</p>${button("Software Update…", "open", "updates", false, "ghost")}<p class="fine">Advanced Settings is a game by Jeffrey Guntly, for JX Holdings, LLC. All the work is simulated. The satisfaction is not.</p></div>`;
   return `<div class="split"><nav class="sidebar">${sections.map(([id, l]) => `<button class="side ${cur === id ? "on" : ""}" data-action="tab" data-app="settings" data-id="${id}" ${cur === id ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</nav><div class="pane">${body}</div></div>`;
 }
 function explorer() {
@@ -887,11 +889,11 @@ function trace() {
   const path = [{ addr: "WS-0417", ttl: 64, rtt: 1 }, ...G.TRACE.slice(0, s.trace).map((hop, k) => hop[G.TRACE_ANSWERS[k]])];
   return `<div class="pane">${eyebrow(`QuickFix outbound · hop ${s.trace + 1} of ${G.TRACE.length}`)}<h2>Follow the packet.</h2><ol class="hops">${path.map((p) => `<li><b>${p.addr}</b><small>TTL ${p.ttl} · ${p.rtt} ms</small></li>`).join("")}</ol><p class="lede">Three replies claim to be the next hop. Only one is telling the truth.</p><div class="choices">${G.TRACE[s.trace].map((c, i) => button(`<b>${c.addr}</b><small>TTL ${c.ttl} · ${c.rtt} ms</small>`, "hop", i, false, "choice mono", `aria-label="Follow ${c.addr}"`)).join("")}</div><p class="fine">Each router lowers the TTL by exactly one. Follow a forged reply and QuickFix will notice.</p></div>`;
 }
-function tracker() {
+/* The Secret Tracker's lists, shared with the title screen's Secrets. */
+function trackerBody(cur) {
   const found = new Set(archive.found);
   const row = (x, got, run) => `<div class="proc ${got ? "" : "unfound"}"><div><strong>${got ? x.name : "???"}</strong><small>${x.hint}</small></div>${run ? '<span class="pill">this run</span>' : ""}</div>`;
   const seen = new Set(archive.moments);
-  const cur = tabOf("tracker", ["moments", "secrets", "endings"]);
   let body;
   if (cur === "moments") {
     const sections = [...new Set(G.MOMENTS.map((m) => m.section))];
@@ -899,6 +901,13 @@ function tracker() {
     body = `<p class="fine">Every story moment on the desk. Only the ones marked “needed for probation” are required; the rest depend on what you do, and some rule each other out.</p>${sections.map((sec) => { const list = G.MOMENTS.filter((m) => m.section === sec); return `<h3>${esc(sec)} · ${list.filter((m) => seen.has(m.id)).length}/${list.length}</h3>${list.map(mrow).join("")}`; }).join("")}`;
   } else if (cur === "secrets") body = G.SECRETS.map((x) => row(x, found.has(x.id), s.secrets.includes(x.id))).join("");
   else body = G.ENDINGS.map((x) => row(x, archive.endings.includes(x.id), (s.over ?? (complete() ? "probation" : "")) === x.id)).join("");
+  return body;
+}
+function tracker() {
+  const cur = tabOf("tracker", ["moments", "secrets", "endings"]);
+  const found = new Set(archive.found);
+  const seen = new Set(archive.moments);
+  const body = trackerBody(cur);
   return tabs("tracker", [["moments", `Story · ${seen.size}/${G.MOMENTS.length}`], ["secrets", `Secrets · ${found.size}/${G.SECRETS.length}`], ["endings", `Endings · ${archive.endings.length}/${G.ENDINGS.length}`]], cur) + `<div class="pane">${eyebrow(`Secret Tracker · ${archive.plays} workstation${archive.plays === 1 ? "" : "s"}`)}<h2>What you’ve found, across every desk.</h2><p class="lede">This record survives new workstations.</p>${body}</div>`;
 }
 const HINT_FROM = ["Knowledge base article", "Reply from a human", "Reply from someone who has been here too long"];
@@ -1329,20 +1338,13 @@ function render() {
   renderWindows();
   updateClock();
   if (pop && pop.kind !== "menu" && pop.kind !== "ctx") renderPop();
+  if (titled) renderTitle();
 }
 function updateClock() {
   $("clock").textContent = new Date().toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
 }
-let startedUp = false;
-document.addEventListener(
-  "pointerdown",
-  () => {
-    if (startedUp) return;
-    startedUp = true;
-    Promise.resolve(S.unlock()).then(() => ui.startup && S.play("startup"));
-  },
-  { capture: true, once: true },
-);
+// Browsers allow sound only after the first click or key press. The startup chord waits for the desk.
+for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, () => S.unlock(), { capture: true, once: true });
 
 /* ---------- notifications and story moments ---------- */
 function notify(text, app = "welcome") {
@@ -1543,7 +1545,7 @@ function nav(url) {
 }
 
 /* ---------- input ---------- */
-const PLAY = ["checkupdate", "downloadupdate", "installupdate", "dlcload", "dlcinstall", "dlcremove", "open", "close", "min", "max", "tab", "menu", "calm", "wallpaper", "accent", "pref", "path", "deeper", "decoy", "moment", "replay", "export", "import", "reset", "back", "pause", "icon", "popover", "launcher", "lock", "unlock", "switchuser", "signout", "shutdown", "minall", "front", "shortcuts", "oshelp", "selectall", "sorticons", "getinfo", "iconinfo", "trashicon", "network", "calday", "music", "hit", "newfolder"];
+const PLAY = ["checkupdate", "downloadupdate", "installupdate", "dlcload", "dlcinstall", "dlcremove", "open", "close", "min", "max", "tab", "menu", "calm", "wallpaper", "accent", "pref", "path", "deeper", "decoy", "moment", "replay", "export", "import", "reset", "back", "pause", "icon", "popover", "launcher", "lock", "unlock", "switchuser", "signout", "shutdown", "minall", "front", "shortcuts", "oshelp", "selectall", "sorticons", "getinfo", "iconinfo", "trashicon", "network", "calday", "music", "hit", "newfolder", "title"];
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-action]");
   if (!b || b.disabled) return;
@@ -1604,6 +1606,10 @@ document.addEventListener("click", (e) => {
     case "switchuser":
     case "signout":
       lockAction(a);
+      return;
+    case "title":
+      persist();
+      leaveDesk();
       return;
     case "shutdown":
       notify("Shut Down is disabled. Calm never sleeps. You could lock the screen instead.", "settings");
@@ -2060,6 +2066,7 @@ document.addEventListener("input", (e) => {
   }
 });
 document.addEventListener("keydown", (e) => {
+  if (titled) return;
   const typing = e.target.closest?.("input, textarea, select");
   if (e.key === "Escape") {
     if (!$("launcher").hidden) return closeLauncher();
@@ -2138,7 +2145,7 @@ let pop = null,
 function menuItems(id) {
   const top = topWindow();
   if (id === "logo")
-    return [["About This Workstation", "open", "settings", false, 'data-tab="about"'], ["System Settings…", "open", "settings"], [`Software Update…${U.state.update.state === "available" || U.state.update.state === "ready" ? " · 1 update" : ""}`, "open", "updates"], "-", ["Lock Screen", "lock", "", false, "", "Ctrl Shift L"], ["Shut Down…", "shutdown"]];
+    return [["About This Workstation", "open", "settings", false, 'data-tab="about"'], ["System Settings…", "open", "settings"], [`Software Update…${U.state.update.state === "available" || U.state.update.state === "ready" ? " · 1 update" : ""}`, "open", "updates"], "-", ["Lock Screen", "lock", "", false, "", "Ctrl Shift L"], ["Return to Title", "title"], ["Shut Down…", "shutdown"]];
   if (id === "file")
     return [["New Folder", "newfolder", "", s.rank < 4], ["Open…", "launcher", "", false, "", "Ctrl K"], "-", ["Close Window", "close", top ?? "", !top], ["Minimize Window", "min", top ?? "", !top], "-", ["Export Save…", "export"]];
   if (id === "edit") return [["Undo", "undo"], ["Redo", "", "", true], "-", ["Cut", "", "", true], ["Copy", "", "", true], ["Paste", "", "", true], "-", ["Select All Icons", "selectall"]];
@@ -2234,7 +2241,7 @@ document.addEventListener("click", (e) => {
   if (pop && e.target.closest("#pop .item")) closePop();
 });
 document.addEventListener("contextmenu", (e) => {
-  if (e.target.closest(".window, .dock, .menubar, #pop, input, textarea, .lock, .launcher, .moment")) return;
+  if (e.target.closest(".window, .dock, .menubar, #pop, input, textarea, .lock, .launcher, .moment, .title")) return;
   e.preventDefault();
   const iconEl = e.target.closest(".desk-icon");
   pop = { kind: "ctx", id: iconEl ? "icon:" + iconEl.dataset.key : "desktop", x: e.clientX, y: e.clientY };
@@ -2443,6 +2450,7 @@ function musicAction(id) {
 }
 S.onMusic(() => {
   renderChrome();
+  if (titled) renderTitle();
   if (ui.win.music?.open) renderWindows();
 });
 S.loadTracks();
@@ -2529,6 +2537,8 @@ let last = Date.now(),
 const sig = () => JSON.stringify([s.jobs.map((j) => j.id), s.projects, s.stories, s.knowledge, s.logs.length, s.logs[0]?.time, s.over, s.trace, s.elapsed < s.duckLock, ui.win.help?.open && Math.floor(s.elapsed / 5), s.incidents.boss.state === 1 && Math.floor(s.elapsed), s.decisions, s.upgrades, s.settings.relaxed]);
 setInterval(() => {
   const now = Date.now();
+  // Nothing on the desk moves while you're at the title screen.
+  if (titled) return void (last = now);
   const was = sig();
   presence();
   // A background tab, or a long gap after the browser froze it, counts as being away:
@@ -2591,6 +2601,182 @@ window.addEventListener("hashchange", () => {
     render();
   }
 });
+/* ---------- title screen ---------- */
+// The game opens on a title screen, and the desk's clock waits until you sit down. Every so
+// often the calm logo glitches into the other one for a few seconds, then thinks better of it.
+let titled = true,
+  titleView = "menu",
+  titleTab = "moments",
+  glitchTimer = 0;
+const WORD = "ADVANCED SETTINGS";
+const FLIP = new Set([1, 5, 10, 15]); // the D, C, E and G the other logo writes backwards
+const wordHTML = () => [...WORD].map((c, i) => (c === " " ? '<span class="sp"> </span>' : `<span${FLIP.has(i) ? ' class="flip"' : ""}>${c}</span>`)).join("");
+const GEAR = Array.from({ length: 24 }, (_, i) => {
+  const a = ((i + 0.5 * (i % 2 ? 1 : -1) * 0.6) / 24) * Math.PI * 2 - Math.PI / 2;
+  const r = i % 4 < 2 ? 30 : 21;
+  return `${(32 + r * Math.cos(a)).toFixed(1)} ${(32 + r * Math.sin(a)).toFixed(1)}`;
+});
+const MARKS = `<svg class="mark-calm" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="title-drop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c9de0"/><stop offset="1" stop-color="#e48cb0"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#title-drop)"/><circle cx="46" cy="6" r="24" fill="#fff" opacity=".13"/><path d="M32 14c6 8 11.5 14.5 11.5 21.5a11.5 11.5 0 0 1-23 0C20.5 28.5 26 22 32 14z" fill="none" stroke="#fff" stroke-width="3.4" stroke-linejoin="round"/><path d="M26.5 37.5q.8 3.2 3.6 4.4" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><svg class="mark-dark" viewBox="0 0 64 64" aria-hidden="true"><path fill-rule="evenodd" d="M${GEAR.join("L")}Z M41 32a9 9 0 1 0-18 0a9 9 0 1 0 18 0Z"/></svg>`;
+/* Credits. The songs come from assets/music/tracks.json, so they appear here as they are added. */
+const MAKER = "Jeffrey Guntly";
+const TOOLS = [
+  ["OpenAI Codex", "Programming"],
+  ["Claude Desktop", "Programming"],
+  ["Vixl", "Wallpapers and art"],
+  ["Song Deck with ACE-Step 1.5", "Music"],
+  // ["Scenario", "Art"],
+];
+function titleCredits() {
+  const songs = S.ownTracks();
+  const block = (head, body) => `<div class="credit"><h3>${head}</h3>${body}</div>`;
+  return `<section class="title-panel credits" aria-labelledby="title-h">${titleBack()}<h2 id="title-h">Credits</h2><div class="title-scroll">${block("Created by", `<p class="credit-name">${MAKER}</p><p>for JX Holdings, LLC</p>`)}${block("Design, writing and programming", `<p>${MAKER}</p>`)}${block(
+    "Music",
+    songs.length
+      ? `<p>Composed by ${MAKER}</p><ul class="credit-songs">${songs.map((t) => `<li>${esc(t.title)}</li>`).join("")}</ul>`
+      : `<p>Composed by ${MAKER}</p><p class="fine">The songs are still being written. Please continue to hold.</p>`,
+  )}${block("Made with", `<ul class="credit-tools">${TOOLS.map(([name, role]) => `<li><b>${esc(name)}</b><small>${esc(role)}</small></li>`).join("")}</ul>`)}${block(
+    "A note on AI",
+    "<p>AI was used in the production of this game. The game itself makes no AI calls: the assistant on the desk is simulated, and so is everything else on it.</p>",
+  )}${block("Dedicated to", "<p class=\"credit-name\">LeahAnn</p><p>my biggest fan, even if she pretends she isn’t.</p>")}<p class="fine credit-foot">© 2026 JX Holdings, LLC. Stillwater Systems is fictional, and very calm about it.</p></div></section>`;
+}
+const titleSaveLine = () => {
+  if (saveError) return "Your saved workstation could not be loaded.";
+  if (!saved) return "No workstation yet. One is being prepared for you.";
+  if (s.over) return "WS-0417 · this workstation is finished";
+  return `WS-0417 · ${G.RANKS[s.rank]} · ${s.releases} release${s.releases === 1 ? "" : "s"} · Calm ${G.calm(s)}%`;
+};
+function titleMenu() {
+  const got = G.achieved(archive).length;
+  const items = [
+    ["continue", "Continue Game", titleSaveLine(), !saved || !!saveError],
+    ["new", "New Game", saved && !s.over ? "Replaces the workstation you have now." : "A fresh desk, a chair, a keyboard."],
+    ["options", "Options", "Sound, motion and timing."],
+    ["secrets", "Secrets", `${archive.found.length}/${G.SECRETS.length} secrets · ${archive.moments.length}/${G.MOMENTS.length} story · ${got}/${G.ACHIEVEMENTS.length} achievements`],
+    ["credits", "Credits", `A game by ${MAKER}.`],
+  ];
+  return `<nav class="title-menu" aria-label="Main menu">${items
+    .map(([id, label, sub, off]) => `<button class="title-item" data-title="${id}" ${off ? "disabled" : ""}><b>${label}</b><small>${esc(sub)}</small></button>`)
+    .join("")}</nav>`;
+}
+const titleBack = () => `<button class="title-back" data-title="menu" aria-label="Back to the main menu">‹ Back</button>`;
+function titleOptions() {
+  return `<section class="title-panel" aria-labelledby="title-h">${titleBack()}<h2 id="title-h">Options</h2>${toggle("Interface sounds", "Clicks, chimes, windows opening and closing, and alerts.", "sounds", ui.sounds, false, "pref")}<div class="setting-row"><div><strong>Interface volume</strong><p>How loud the calm is.</p></div><input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="${ui.volume}" aria-label="Interface volume" /></div><div class="setting-row"><div><strong>Music volume</strong><p>For Murmur, and the hold music.</p></div><input type="range" id="music-vol" min="0" max="1" step="0.05" value="${ui.music}" aria-label="Music volume" /></div>${toggle("Play sound on startup", "A short chord when you sit down at the desk.", "startup", ui.startup, false, "pref")}${toggle("Reduce motion", "Fewer animations, and a politer title screen.", "still", ui.still, false, "pref")}${s.over ? "" : toggle("Relaxed timing", "Moments that need a quick reaction wait twice as long. This one belongs to the current workstation.", "relaxed", s.settings.relaxed)}<p class="fine">Everything else is in System Settings, once you sit down. Some of it goes deeper than it looks.</p></section>`;
+}
+function titleSecrets() {
+  const list = [
+    ["moments", `Story · ${archive.moments.length}/${G.MOMENTS.length}`],
+    ["secrets", `Secrets · ${archive.found.length}/${G.SECRETS.length}`],
+    ["endings", `Endings · ${archive.endings.length}/${G.ENDINGS.length}`],
+    ["achievements", `Achievements · ${G.achieved(archive).length}/${G.ACHIEVEMENTS.length}`],
+  ];
+  const got = new Set(G.achieved(archive));
+  const body =
+    titleTab === "achievements"
+      ? G.ACHIEVEMENTS.map((x) => `<div class="proc ${got.has(x.id) ? "" : "unfound"}"><div><strong>${got.has(x.id) ? esc(x.name) : "???"}</strong><small>${esc(x.hint)}</small></div>${got.has(x.id) ? '<span class="pill">earned</span>' : ""}</div>`).join("")
+      : trackerBody(titleTab);
+  return `<section class="title-panel wide" aria-labelledby="title-h">${titleBack()}<h2 id="title-h">Secrets</h2><p class="lede">What you’ve found, across ${archive.plays} workstation${archive.plays === 1 ? "" : "s"}. This record survives new desks.</p><div class="tabs" role="tablist">${list
+    .map(([id, label]) => `<button role="tab" aria-selected="${id === titleTab}" class="tab ${id === titleTab ? "on" : ""}" data-title="tab" data-id="${id}">${label}</button>`)
+    .join("")}</div><div class="title-scroll">${body}</div></section>`;
+}
+function titleConfirm() {
+  return `<section class="title-panel" aria-labelledby="title-h" role="alertdialog">${titleBack()}<h2 id="title-h">Start a new workstation?</h2><p class="lede">This replaces WS-0417 as you left it: ${esc(titleSaveLine().replace("WS-0417 · ", ""))}. Your secrets, story and achievements stay with you. They always do.</p><div class="row"><button class="primary" data-title="fresh">Start fresh</button><button class="ghost" data-action="export">Export a backup first</button><button class="ghost" data-title="menu">Keep my desk</button></div></section>`;
+}
+function renderTitle() {
+  document.body.classList.toggle("at-title", titled);
+  $("title").hidden = !titled;
+  if (!titled) return;
+  const view = { menu: titleMenu, options: titleOptions, secrets: titleSecrets, confirm: titleConfirm, credits: titleCredits }[titleView] ?? titleMenu;
+  morph($("title-body"), view());
+  $("title").dataset.view = titleView;
+  $("title-body").querySelectorAll('input[type="range"]').forEach(fill);
+}
+function titleGo(view) {
+  titleView = view;
+  renderTitle();
+  ($("title-body").querySelector(".title-item:not(:disabled), .title-panel .tab.on, .title-panel .primary, .title-panel .switch") ?? $("title-body").querySelector("button"))?.focus();
+}
+function enterDesk() {
+  titled = false;
+  clearTimeout(glitchTimer);
+  last = Date.now();
+  lastInput = Date.now();
+  const el = $("title");
+  el.classList.add("leaving");
+  setTimeout(() => {
+    el.classList.remove("leaving", "dark", "glitching");
+    renderTitle();
+  }, ui.still ? 0 : 450);
+  document.body.classList.remove("at-title");
+  Promise.resolve(S.unlock()).then(() => ui.startup && S.play("startup"));
+  render();
+  if (s.over) moment(s.over);
+}
+function leaveDesk() {
+  titled = true;
+  closePop();
+  titleGo("menu");
+  clearTimeout(glitchTimer);
+  glitchTimer = setTimeout(glitch, 4000);
+}
+// Calm for a while, then a glitch, a few seconds of the other logo, and another glitch back.
+function glitch() {
+  if (!titled) return;
+  const el = $("title");
+  const still = ui.still || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const flicker = (then) => {
+    if (still) return then();
+    el.classList.add("glitching");
+    S.play("glitch");
+    setTimeout(then, 260);
+    setTimeout(() => el.classList.remove("glitching"), 620);
+  };
+  flicker(() => el.classList.add("dark"));
+  glitchTimer = setTimeout(() => {
+    flicker(() => el.classList.remove("dark"));
+    glitchTimer = setTimeout(glitch, 9000 + Math.random() * 8000);
+  }, 3000 + Math.random() * 2500);
+}
+$("title-word").innerHTML = wordHTML();
+$("title-ghosts").innerHTML = `<span class="title-ghost c">${wordHTML()}</span><span class="title-ghost m">${wordHTML()}</span>`;
+$("title-mark").innerHTML = MARKS;
+$("title-version").textContent = `Stillwater OS · WS-0417 · v${U.VERSION}`;
+$("title").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-title]");
+  if (!b || b.disabled) return;
+  const what = b.dataset.title;
+  S.play("click");
+  if (what === "continue") return enterDesk();
+  if (what === "new") return saved && !s.over ? titleGo("confirm") : startFresh();
+  if (what === "fresh") return startFresh();
+  if (what === "tab") {
+    titleTab = b.dataset.id;
+    return renderTitle();
+  }
+  titleGo(what);
+});
+function startFresh() {
+  if (saved) {
+    archive.plays++;
+    newDesk(G.fresh());
+  }
+  saved = true;
+  saveError = "";
+  persist();
+  enterDesk();
+}
+$("title").addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && titleView !== "menu") {
+    e.preventDefault();
+    return titleGo("menu");
+  }
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  const items = [...$("title").querySelectorAll(".title-item:not(:disabled)")];
+  const at = items.indexOf(document.activeElement);
+  if (!items.length || (at < 0 && titleView !== "menu")) return;
+  e.preventDefault();
+  items[(at + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus();
+});
+
 function boot() {
   for (const id of Object.keys(ui.win)) if (!APPS[id]) delete ui.win[id];
   if (!ui.booted) {
@@ -2629,5 +2815,6 @@ if (G.record(archive, s)) saveArchive();
 render();
 announce();
 if (saveError) notify(saveError, "settings");
-if (s.over) moment(s.over);
 startUpdates();
+titleGo("menu");
+glitchTimer = setTimeout(glitch, 5000);

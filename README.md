@@ -162,6 +162,7 @@ Every Stillwater OS workstation includes a full suite of **fifteen** professiona
 - **Short incidents.** An all-staff reply-all storm, birthday cake that disappears quickly, an IT phishing test, and a manager who walks over while you're on a personal page.
 - **Messing around.** Shopping, blogging and gaming on a work computer, each behind its own way past the filter. Personal use lowers your Calm Index. (*Lowers.* We said *lowers*.)
 - **Help Desk.** Help › Help Desk takes a ticket for any open problem. The first answer is vague. Better answers unlock after a few minutes, and the last one is the solution. Our average ticket resolution time is five minutes and a bit. We are very proud of the "bit."
+- **A title screen.** Continue Game, New Game, Options and Secrets, which collects every story moment, secret, ending and achievement from all your workstations. The logo is calm. The logo is *almost always* calm.
 - **Secret Tracker.** After your first win or loss, a tracker appears in the dock. It lists every story moment (64, of which those marked "needed for probation" are required and many are optional or rule each other out), every secret (68) and every ending. It persists across new workstations. It is the only part of the system that remembers everything. That is considered a perk.
 - **Sound.** Interface sounds (clicks, chimes, windows, alerts, a startup chord) are synthesized in the browser and can be switched off in the menu bar or System Settings › Sound.
 - **Returning.** Closing the game and coming back (or leaving it in the background for 20 minutes) has a small effect each time, and it adds up. The desk remembers. We mean that warmly.
@@ -281,6 +282,15 @@ Game rules live in `game.js`, release tasks in `tasks.js`, conversation scripts 
 Use **Actions → Release → Run workflow** from **main**, choose stable or preview, and leave **dry_run** enabled first. Only apps ahead of their published version in their own namespace are selected. Build/test/sign all required packages before publishing. Tag pushes and merges no longer publish migrated apps automatically. After inspecting the dry run, dispatch with dry_run disabled and satisfy configured approvals. Published versions are never overwritten; use a new version for a correction.
 
 See [.release/README.md](.release/README.md) for this repository's inventory, credentials, compatibility, and validation limits. Shared implementation: [JX Holdings release infrastructure](https://github.com/JX-Holdings-LLC/release-infrastructure).
+
+### Credits
+
+**Advanced Settings** is a game by **Jeffrey Guntly**, for **JX Holdings, LLC**: design, writing, programming and music.
+
+- **Made with:** OpenAI Codex and Claude Desktop (programming), [Vixl](https://github.com/jxburros/Vixl) (wallpapers and art), and Song Deck with ACE-Step 1.5 (music).
+- **Music:** every song is composed by Jeffrey Guntly. The list is in the game's Credits, which reads it from `assets/music/tracks.json`.
+- **A note on AI:** AI was used in the production of this game. The game itself makes no AI calls.
+- **Dedicated to LeahAnn,** my biggest fan, even if she pretends she isn't.
 
 ### How this brochure was made
 

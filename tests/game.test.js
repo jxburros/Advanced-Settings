@@ -1079,6 +1079,20 @@ test("handing off the workstation starts a new desk with a legacy and your note"
   assert.deepEqual([back.legacy, back.notes.length, back.notes[0].length], [G.LEGACY_MAX, 1, 200]);
   assert.deepEqual(G.readArchive(JSON.stringify({ found: [], endings: [] })).notes, [], "old archives still load");
 });
+test("achievements come from the archive alone", () => {
+  const archive = G.freshArchive();
+  assert.deepEqual(G.achieved(archive), [], "a first desk has earned nothing yet");
+  archive.found.push(G.SECRETS[0].id);
+  archive.plays = 2;
+  assert.deepEqual(G.achieved(archive), ["noticed", "again"]);
+  archive.found = G.SECRETS.map((x) => x.id);
+  archive.moments = G.MOMENTS.map((m) => m.id);
+  archive.endings = G.ENDINGS.map((x) => x.id);
+  archive.plays = 5;
+  archive.legacy = G.LEGACY_MAX;
+  assert.deepEqual(G.achieved(archive), G.ACHIEVEMENTS.map((x) => x.id), "everything earns everything");
+  assert.equal(new Set(G.ACHIEVEMENTS.map((x) => x.id)).size, G.ACHIEVEMENTS.length);
+});
 test("fun secrets the game itself notices", () => {
   const s = G.fresh();
   s.money = 404.5;

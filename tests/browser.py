@@ -37,6 +37,14 @@ with sync_playwright() as p:
     page.on("console", lambda m: m.type == "error" and errors.append(m.text))
     page.clock.install()
     page.goto("http://127.0.0.1:8000")
+    # The title screen comes first. With no save, there is nothing to continue.
+    expect(page.get_by_role("heading", name="Advanced Settings")).to_be_visible()
+    expect(page.get_by_role("button", name="Continue Game")).to_be_disabled()
+    page.get_by_role("button", name="Secrets").click()
+    page.get_by_role("tab", name="Achievements", exact=False).click()
+    expect(page.locator("#title").get_by_text("Find your first secret.")).to_be_visible()
+    page.keyboard.press("Escape")
+    page.get_by_role("button", name="New Game").click()
     expect(page.get_by_role("heading", name="Welcome to Stillwater.")).to_be_visible()
     page.get_by_role("button", name="Read later").click()
     dock = page.locator("#dock")
@@ -208,6 +216,7 @@ with sync_playwright() as p:
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.clock.install()
         page.goto("http://127.0.0.1:8000")
+        page.get_by_role("button", name="Continue Game").click()
     dock = page.locator("#dock")
     web = page.locator("#win-browser")
     expect(page.locator("#icons").get_by_role("button", name="Welcome (2).pdf")).to_be_visible()
@@ -222,6 +231,7 @@ with sync_playwright() as p:
             warned,
         )
         page.reload()
+        page.get_by_role("button", name="Continue Game").click()
         dock.get_by_role("button", name="Wayfinder").click()
         go(page, "somewhere.shop")
 

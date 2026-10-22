@@ -12,4 +12,6 @@ Murmur, the music player on the desktop, plays whatever is listed in `tracks.jso
 ]
 ```
 
+Every song listed here also appears in the title screen's Credits, composed by Jeffrey Guntly. (DLC songs and the hold music don't.)
+
 `file` is relative to this folder. File names may use letters, numbers, spaces and `. _ - ( ) & '`. If the list is missing or empty, Murmur only has the hold music.
