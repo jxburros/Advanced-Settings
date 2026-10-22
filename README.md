@@ -283,6 +283,15 @@ Use **Actions → Release → Run workflow** from **main**, choose stable or pre
 
 See [.release/README.md](.release/README.md) for this repository's inventory, credentials, compatibility, and validation limits. Shared implementation: [JX Holdings release infrastructure](https://github.com/JX-Holdings-LLC/release-infrastructure).
 
+### Credits
+
+**Advanced Settings** is a game by **Jeffrey Guntly**, for **JX Holdings, LLC**: design, writing, programming and music.
+
+- **Made with:** OpenAI Codex and Claude Desktop (programming), [Vixl](https://github.com/jxburros/Vixl) (wallpapers and art), and Song Deck with ACE-Step 1.5 (music).
+- **Music:** every song is composed by Jeffrey Guntly. The list is in the game's Credits, which reads it from `assets/music/tracks.json`.
+- **A note on AI:** AI was used in the production of this game. The game itself makes no AI calls.
+- **Dedicated to LeahAnn,** my biggest fan, even if she pretends she isn't.
+
 ### How this brochure was made
 
 The Stillwater art in `docs/art` was painted with [Vixl](https://github.com/jxburros/Vixl). `tools/make-readme-art.py` regenerates it:

@@ -739,7 +739,7 @@ function settings() {
   else if (cur === "storage")
     body = `<h2>Storage</h2><p class="lede">Progress saves itself in this browser. Running jobs keep going for up to two hours while you’re away. Export a backup to move desks. Clearing browser data clears the desk.</p><div class="row">${button("Export save", "export", "", false, "ghost")}${button("Import save", "import", "", false, "ghost")}${button("New workstation", "reset", "", false, "danger")}</div>${saveError ? `<p class="warn">${saveError}</p>` : ""}`;
   else
-    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: ${s.secrets.includes("redacted") ? "<b>Mara Chen</b>" : `<button class="redact" data-action="redact" aria-label="Redacted name">Mara Chen</button>`}${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings ${U.VERSION} · ${U.desktop ? "Windows edition" : "web edition"}${U.state.dlc.installed.length ? ` · ${U.state.dlc.installed.length} DLC pack${U.state.dlc.installed.length === 1 ? "" : "s"}` : ""}</p>${button("Software Update…", "open", "updates", false, "ghost")}<p class="fine">Advanced Settings is a game. All the work is simulated. The satisfaction is not.</p></div>`;
+    body = `<div class="about">${icon("welcome", "blue", "big")}<h2>Stillwater OS 9 “Tide”</h2><p>Workstation WS-0417 · ${G.RANKS[s.rank]}</p>${button("Build 9.4.17 (Tide)", "tap", "", false, "build")}<p class="fine">Previously assigned to: ${s.secrets.includes("redacted") ? "<b>Mara Chen</b>" : `<button class="redact" data-action="redact" aria-label="Redacted name">Mara Chen</button>`}${s.returns >= 10 ? ", <span class=\"redact\">you</span>" : ""}</p><p class="fine">Advanced Settings ${U.VERSION} · ${U.desktop ? "Windows edition" : "web edition"}${U.state.dlc.installed.length ? ` · ${U.state.dlc.installed.length} DLC pack${U.state.dlc.installed.length === 1 ? "" : "s"}` : ""}</p>${button("Software Update…", "open", "updates", false, "ghost")}<p class="fine">Advanced Settings is a game by Jeffrey Guntly, for JX Holdings, LLC. All the work is simulated. The satisfaction is not.</p></div>`;
   return `<div class="split"><nav class="sidebar">${sections.map(([id, l]) => `<button class="side ${cur === id ? "on" : ""}" data-action="tab" data-app="settings" data-id="${id}" ${cur === id ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</nav><div class="pane">${body}</div></div>`;
 }
 function explorer() {
@@ -2450,6 +2450,7 @@ function musicAction(id) {
 }
 S.onMusic(() => {
   renderChrome();
+  if (titled) renderTitle();
   if (ui.win.music?.open) renderWindows();
 });
 S.loadTracks();
@@ -2616,6 +2617,28 @@ const GEAR = Array.from({ length: 24 }, (_, i) => {
   return `${(32 + r * Math.cos(a)).toFixed(1)} ${(32 + r * Math.sin(a)).toFixed(1)}`;
 });
 const MARKS = `<svg class="mark-calm" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="title-drop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c9de0"/><stop offset="1" stop-color="#e48cb0"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#title-drop)"/><circle cx="46" cy="6" r="24" fill="#fff" opacity=".13"/><path d="M32 14c6 8 11.5 14.5 11.5 21.5a11.5 11.5 0 0 1-23 0C20.5 28.5 26 22 32 14z" fill="none" stroke="#fff" stroke-width="3.4" stroke-linejoin="round"/><path d="M26.5 37.5q.8 3.2 3.6 4.4" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><svg class="mark-dark" viewBox="0 0 64 64" aria-hidden="true"><path fill-rule="evenodd" d="M${GEAR.join("L")}Z M41 32a9 9 0 1 0-18 0a9 9 0 1 0 18 0Z"/></svg>`;
+/* Credits. The songs come from assets/music/tracks.json, so they appear here as they are added. */
+const MAKER = "Jeffrey Guntly";
+const TOOLS = [
+  ["OpenAI Codex", "Programming"],
+  ["Claude Desktop", "Programming"],
+  ["Vixl", "Wallpapers and art"],
+  ["Song Deck with ACE-Step 1.5", "Music"],
+  // ["Scenario", "Art"],
+];
+function titleCredits() {
+  const songs = S.ownTracks();
+  const block = (head, body) => `<div class="credit"><h3>${head}</h3>${body}</div>`;
+  return `<section class="title-panel credits" aria-labelledby="title-h">${titleBack()}<h2 id="title-h">Credits</h2><div class="title-scroll">${block("Created by", `<p class="credit-name">${MAKER}</p><p>for JX Holdings, LLC</p>`)}${block("Design, writing and programming", `<p>${MAKER}</p>`)}${block(
+    "Music",
+    songs.length
+      ? `<p>Composed by ${MAKER}</p><ul class="credit-songs">${songs.map((t) => `<li>${esc(t.title)}</li>`).join("")}</ul>`
+      : `<p>Composed by ${MAKER}</p><p class="fine">The songs are still being written. Please continue to hold.</p>`,
+  )}${block("Made with", `<ul class="credit-tools">${TOOLS.map(([name, role]) => `<li><b>${esc(name)}</b><small>${esc(role)}</small></li>`).join("")}</ul>`)}${block(
+    "A note on AI",
+    "<p>AI was used in the production of this game. The game itself makes no AI calls: the assistant on the desk is simulated, and so is everything else on it.</p>",
+  )}${block("Dedicated to", "<p class=\"credit-name\">LeahAnn</p><p>my biggest fan, even if she pretends she isn’t.</p>")}<p class="fine credit-foot">© 2026 JX Holdings, LLC. Stillwater Systems is fictional, and very calm about it.</p></div></section>`;
+}
 const titleSaveLine = () => {
   if (saveError) return "Your saved workstation could not be loaded.";
   if (!saved) return "No workstation yet. One is being prepared for you.";
@@ -2629,6 +2652,7 @@ function titleMenu() {
     ["new", "New Game", saved && !s.over ? "Replaces the workstation you have now." : "A fresh desk, a chair, a keyboard."],
     ["options", "Options", "Sound, motion and timing."],
     ["secrets", "Secrets", `${archive.found.length}/${G.SECRETS.length} secrets · ${archive.moments.length}/${G.MOMENTS.length} story · ${got}/${G.ACHIEVEMENTS.length} achievements`],
+    ["credits", "Credits", `A game by ${MAKER}.`],
   ];
   return `<nav class="title-menu" aria-label="Main menu">${items
     .map(([id, label, sub, off]) => `<button class="title-item" data-title="${id}" ${off ? "disabled" : ""}><b>${label}</b><small>${esc(sub)}</small></button>`)
@@ -2661,7 +2685,7 @@ function renderTitle() {
   document.body.classList.toggle("at-title", titled);
   $("title").hidden = !titled;
   if (!titled) return;
-  const view = { menu: titleMenu, options: titleOptions, secrets: titleSecrets, confirm: titleConfirm }[titleView] ?? titleMenu;
+  const view = { menu: titleMenu, options: titleOptions, secrets: titleSecrets, confirm: titleConfirm, credits: titleCredits }[titleView] ?? titleMenu;
   morph($("title-body"), view());
   $("title").dataset.view = titleView;
   $("title-body").querySelectorAll('input[type="range"]').forEach(fill);

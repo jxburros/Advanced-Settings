@@ -31,7 +31,7 @@
   "build": {
     "appId": "com.jxburros.advancedsettings",
     "productName": "Advanced Settings",
-    "copyright": "Stillwater Systems (fictional)",
+    "copyright": "© 2026 JX Holdings, LLC",
     "directories": {
       "output": "dist",
       "buildResources": "build"

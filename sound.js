@@ -119,6 +119,8 @@ export async function loadTracks() {
 }
 let own = [],
   extra = [];
+/* The game's own songs from tracks.json (not DLC, not the hold music), for the credits. */
+export const ownTracks = () => own.slice();
 function rebuild() {
   const playing = player.tracks[player.index];
   player.tracks = [...own, ...extra, HOLD];

@@ -7,6 +7,7 @@ Each release's section becomes its GitHub release notes, which Software Update s
 - **A title screen.** The game now opens on a title screen with Continue Game, New Game, Options and Secrets. Every so often the calm logo glitches into the other one for a few seconds, then thinks better of it. The desk's clock waits while you're there, and the logo menu has a new **Return to Title**.
 - **Secrets, from the title screen.** Every story moment, secret and ending you've found across your workstations, plus 13 new achievements worked out from that record, so earlier playthroughs count straight away.
 - **Options before you sit down.** Sound, volume, startup chord, reduced motion and relaxed timing.
+- **Credits.** A new Credits screen on the title menu: who made the game, the tools it was made with, a note that AI was used in its production, the songs (listed as they are added) and a dedication.
 
 ## 1.4.4
 
